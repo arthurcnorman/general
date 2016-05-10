@@ -27,7 +27,7 @@ module lalr;
 % POSSIBILITY OF SUCH DAMAGE.
 %
 
-% $Id: lalr.red 3137 2015-06-15 09:45:01Z arthurcnorman $
+% $Id$
 
 % The module genparser contains code that can create LALR parsing
 % tables, while yyparse has a hand-written lexer suitable for use with

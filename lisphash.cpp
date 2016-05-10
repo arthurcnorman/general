@@ -29,7 +29,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id:$
+// $Id$
 
 #define __STDC_CONSTANT_MACROS__ 1
 #define __STDC_FORMAT_MACROS__   1
@@ -87,8 +87,7 @@ int LOGSIZE = 18;
 #define MAXTABLESIZE ((size_t)(1<<MAXLOGSIZE))
 int TABLESIZE = ((size_t)(1<<LOGSIZE));
 
-ENTRY table[MAXTABLESIZE];
-
+ENTRY *table = NULL;;
 uint64_t multiplier = UINT64_C(0x3141582718281515);
 
 static uint64_t hashcount=0, comparecount=0;
@@ -570,9 +569,13 @@ void showstats(size_t n)
 int main(int argc, char *argv[])
 {
     srand48((long)time(NULL));
-//  srand48(1);
     for (LOGSIZE=3; LOGSIZE<LIMIT; LOGSIZE++)
-    {   TABLESIZE = 1<<LOGSIZE;
+    {   TABLESIZE = ((size_t)1)<<LOGSIZE;
+        table = (ENTRY *)malloc(sizeof(ENTRY)*TABLESIZE);
+        if (table == NULL)
+        {   printf("malloc failed\n");
+            exit(0);
+        }
         for (int trials=0; trials<NTRIALS; trials++)
         {   size_t n, n0, n1, n2, n3, n4;
             already_n=0, already_h=0, already_c=0;
@@ -615,6 +618,7 @@ int main(int argc, char *argv[])
             showstats(n+1);
             checktable();
         }
+        free(table);
     }
     return 0;
 }
