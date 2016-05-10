@@ -97,7 +97,6 @@ static uint64_t hashcount=0, comparecount=0;
 #define COMPARE(k1, k2)       (comparecount++,((k1) == (k2)))
 
 
-#ifdef TRACE
 void dumptable(const char *s, bool checkdups)
 {
     size_t i;
@@ -109,8 +108,8 @@ void dumptable(const char *s, bool checkdups)
         int h1 = h >> (64-LOGSIZE);
         int h2 = (multiplier*h) >> (64-LOGSIZE);
         int h3 = (multiplier*multiplier*h) >> (64-LOGSIZE);
-        if (k == EMPTY) printf("%3d: EMPTY\n", i);
-        else if (k == TOMBSTONE) printf("%3d: TOMBSTONE\n", i);
+        if (k == EMPTY) printf("%3"PRIuMAX": EMPTY\n", (uintmax_t)i);
+        else if (k == TOMBSTONE) printf("%3"PRIuMAX": TOMBSTONE\n", (uintmax_t)i);
         else
         {   const char *s1=" ", *s2 = " ", *s3 = " ", *s4 = "";
             if (h1 == i)
@@ -131,8 +130,8 @@ void dumptable(const char *s, bool checkdups)
                 if (table[h1] == EMPTY) s4 = " @@@";
                 if (table[h2] == EMPTY) s4 = " @@@";
             }
-            printf("%3d: [%"PRIx64"] %s%d %s%d %s%d%s\n",
-                i, (uint64_t)k, s1, h1, s2, h2, s3, h3, s4);
+            printf("%3"PRIuMAX": [%"PRIx64"] %s%d %s%d %s%d%s\n",
+                (uintmax_t)i, (uint64_t)k, s1, h1, s2, h2, s3, h3, s4);
         }
     }
     if (bad && checkdups)
@@ -140,11 +139,11 @@ void dumptable(const char *s, bool checkdups)
         exit(0);
     }
 }
-#endif
 
 static void corrupted()
 {
     printf("Table is corrupted\n");
+    dumptable("Table is corrupted", true);
     fflush(stdout);
     abort();
 }
@@ -166,12 +165,13 @@ void checktable()
             if (h2 == i)
             {   if (h1 != i && table[h1] == k) corrupted();
                 if (h3 != i && table[h3] == k) corrupted();
-                if (table[h1] == EMPTY) corrupted();
+                if (h1 != i && table[h1] == EMPTY) corrupted();
             }
             if (h3 == i)
             {   if (h1 != i && table[h1] == k) corrupted();
                 if (h2 != i && table[h2] == k) corrupted();
-                if (table[h1] == EMPTY || table[h2] == EMPTY) corrupted();
+                if (h1 != i && h2 != i &&
+                    (table[h1] == EMPTY || table[h2] == EMPTY)) corrupted();
             }
         }
     }
@@ -541,7 +541,8 @@ void showstats(size_t n)
     for (i=0; i<TABLESIZE; i++)
     {   if (table[i] != EMPTY && table[i] != TOMBSTONE)
         {   int j = instrumented_lookup(table[i]); // should be there
-            if (i != j) printf("??? i=%d j=%d\n", i, j);
+            if (i != j) printf("??? i=%"PRIuMAX" j=%"PRIuMAX"\n",
+                               (uintmax_t)i, (uintmax_t)j);
             instrumented_lookup(lrand48());        // probably not there
         }
     }
