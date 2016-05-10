@@ -8,12 +8,10 @@ on lalr_verbose;
 
 lisp; 
 
-inline procedure id x; x;
-
 simple_grammar := '(
-	(s  ((cc cc)  difference !$1 !$2)) 
-	(cc (("c" cc) add1 !$2) 
-	    (("d")    id 0)));
+	(s  ((cc cc)  (difference !$1 !$2))) 
+	(cc (("c" cc) (add1 !$2)) 
+	    (("d")    0)));
 
 simple_parser := lalr_create_parser(nil, simple_grammar);
 

@@ -1003,7 +1003,7 @@ symbolic procedure lalr_construct_fn(lambda_expr, args_n);
   begin
     scalar fn;
     fn := gensym();
-    lambda_expr := 'lambda  . lalr_make_arglist args_n . list lambda_expr;
+    lambda_expr := 'lambda  . lalr_make_arglist args_n . lambda_expr;
     putd(fn, 'expr, lambda_expr) where !*pwrds = nil;
     return fn
   end;
