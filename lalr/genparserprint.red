@@ -222,8 +222,7 @@ symbolic procedure lalr_prin_production production;
 
 
 symbolic procedure lalr_warn_shift_reduce_conflict(shift, reduce, state);
-  begin
-    scalar s;
+  <<
     if not zerop posn() then terpri();
     princ "+++ Shift/reduce conflict in itemset #"; prin state; 
     princ " on lookahead "; lalr_prin_symbol car shift; terpri();
@@ -231,7 +230,7 @@ symbolic procedure lalr_warn_shift_reduce_conflict(shift, reduce, state);
     princ "Shift: to state #"; prin cadr cadr shift; terpri(); 
     printc "Resolved in favour of the shift operation";
     terpri()
-  end;
+  >>;
 
 endmodule;
 

@@ -42,14 +42,6 @@ global '(lex_char yylval last64 last64p which_line if_depth);
 global '(next_lex_code);
 global '(dot_char rpar_char rsquare_char);
 
-global '(goto_index goto_old_state goto_new_state);
-global '(action_index, action_terminal action_result);
-global '(action_first_error action_error_messages);
-global '(action_fn action_a action_n);
-
-global '(terminals non_terminals symbols goto_cache action_map);
-fluid '(renamings);
-
 #if (memq 'psl lispsystem!*)
 
 % CSL has special vectors that hold just 8-bit integers (it also has ones
