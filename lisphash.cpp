@@ -82,19 +82,28 @@ typedef uint64_t ENTRY;
 #define EMPTY     ((ENTRY)(-1))
 #define TOMBSTONE ((ENTRY)(-2))
 
-#define MAXLOGSIZE 24
-int LOGSIZE = 18;
-#define MAXTABLESIZE ((size_t)(1<<MAXLOGSIZE))
+int LOGSIZE   = 18;
 int TABLESIZE = ((size_t)(1<<LOGSIZE));
 
-ENTRY *table = NULL;;
-uint64_t multiplier = UINT64_C(0x3141582718281515);
+ENTRY *table = NULL;
+uint64_t multiplier = UINT64_C(0x9e3779b99e3779bd);
+
+static inline void update_multiplier()
+{
+// The constants here yield a linear congruential generator with full
+// period for 64-bit integers.
+    multiplier = UINT64_C(2862933555777941757)*multiplier +
+                 UINT64_C(3037000493);
+}
 
 static uint64_t hashcount=0, comparecount=0;
 
 #define HASH(key, multiplier) (hashcount++,((key)*multiplier))
 #define COMPARE(k1, k2)       (comparecount++,((k1) == (k2)))
 
+// dumptable() displys the contants of the hash table (for debugging
+// purposes), optionally checking to confirm that it seems to be
+// properly configured.
 
 void dumptable(const char *s, bool checkdups)
 {
@@ -129,6 +138,7 @@ void dumptable(const char *s, bool checkdups)
                 if (table[h1] == EMPTY) s4 = " @@@";
                 if (table[h2] == EMPTY) s4 = " @@@";
             }
+            if (h1 != i && h2 != i && h3 != i) s4 = "@@@";
             printf("%3"PRIuMAX": [%"PRIx64"] %s%d %s%d %s%d%s\n",
                 (uintmax_t)i, (uint64_t)k, s1, h1, s2, h2, s3, h3, s4);
         }
@@ -172,10 +182,16 @@ void checktable()
                 if (h1 != i && h2 != i &&
                     (table[h1] == EMPTY || table[h2] == EMPTY)) corrupted();
             }
+            if (h1 != i && h2 != i && h3 != i) corrupted();
         }
     }
 }
 
+// The main lookup function. In the worst case this can do three
+// key comparisons. But it can be cheaper either on success if it
+// finds a match on the first or second comparison, or on failure if
+// it encounters an empty hash table slot in its probe sequence.
+// Observe how very concise and fast this code is!
 
 int lookup(ENTRY key)
 {
@@ -210,13 +226,8 @@ int lookup(ENTRY key)
     else return -1;
 }
 
-// I instrument this - and the code to do that is bulkier than the
-// code that acually does anything interesting! For both successful and
-// unsuccessful lookups I record the number of times a hash function is
-// calculated and the number of times that keys are compared. For lookup
-// these are simple and the only interesting result will be how often
-// the search can return before performing the three comparisons that are
-// the worst case.
+// I provide instrumented lookup and insert functions that count the
+// number of hash evaluations and key comparisons used.
 
 uint64_t found_n=0, found_h=0, found_c=0;
 uint64_t notfound_n=0, notfound_h=0, notfound_c=0;
@@ -264,8 +275,6 @@ bool discard(ENTRY key)
 }
 
 
-#define QSIZE 100
-
 // I will search for a place to insert using a breadth-first search. For that
 // purpose I will have a queue, where the items stored in it will be the
 // addresses in the table where I wish to put something.
@@ -297,6 +306,13 @@ bool discard(ENTRY key)
 // increase the chances of fitting everything in. For now I will just return
 // a failure marker.
 //
+// QSIZE is the size of the queue used in the breadth-first search. Higher
+// values make a few insert oparations more expensive but lead to better
+// ability to fit keys in. For most key inserts (even as you get towards
+// the highest table occupancy I support) the amount of queue used will be
+// trivial.
+
+#define QSIZE 100
 
 
 int insert(ENTRY key)
@@ -491,35 +507,56 @@ int instrumented_insert(ENTRY key)
 // rehash operation here could fail. This could happen in the (new) hash
 // function being used led to a bad cluster of clashing keys. That is
 // generally very improbable, but it has to be allowed for. So rehash returns
-// a value that reports on its success. If it fails then all the data will
-// remain in the table, but not at locations valid with respect to the
-// current hash function.
+// a value that reports on its success. If it fails then some data will
+// be in the hash but any leftovers will be in the array pending_for_rehash[].
+//
 
 bool reinsert(ENTRY k)
 {
     return (insert(k) != -1); // for now!
 }
 
+#define MAXPENDING 10000
+
+static ENTRY pending_for_rehash[MAXPENDING+1];
+static int npending = 0;
+
 bool rehash()
 {
     size_t i;
-// Any current TOMBSTONE values relate to the previous hash regime, so I can
-// re-map them to EMPTY at the start of the rehash operation.
-    for (i=0; i<TABLESIZE; i++)
-        if (table[i] == TOMBSTONE) table[i] = EMPTY;
+    npending = 0;
     for (i=0; i<TABLESIZE; i++)
     {   ENTRY k = table[i];
+// TOMBSTONE values present at the start relate to the old hashing regime
+// and so are now irrelevant.
+        if (k == TOMBSTONE)
+        {   table[k] = EMPTY;
+            continue;
+        }
+// EMPTY entries do not need anything done to them.
+        else if (k == EMPTY) continue;
+// The first MAXPENDING keys that I encouter are liften out and stored
+// for processing at the end. For tables with up to MAXPENDING items in
+// that is really good - if ensures that there will be no TOMBSTONE values
+// left after the rehash operation. It also means that most of the
+// reinsert steps happen into a mostly empty table and so will be fast.
+        else if (npending < MAXPENDING)
+        {   pending_for_rehash[npending++] = k;
+            table[k] = EMPTY;
+            continue;
+        }
+// For BIG tables I need to leave a TOMBSTONE where a key used to be before
+// being moved. 
         table[i] = TOMBSTONE;
-// Suppose I arrange that reinsert always places the key k in its first choice
-// location.
         if (!reinsert(k))
-        {   i = 0;
-// If reinsertion failed then there is a value that I have lifted out of
-// the table and I need to put it back. It will not matter where. I know there
-// is space since I had just removed it, but in all plausible cases I expect
-// to find a gap rather soon using a simple linear search.
-            while (table[i] != TOMBSTONE || table[i] == EMPTY) i++;
-            table[i] = k;
+        {   pending_for_rehash[npending++] = k;
+            return false;
+        }
+    }
+    while (npending != 0)
+    {   ENTRY k = pending_for_rehash[--npending];
+        if (!reinsert(k))
+        {   pending_for_rehash[npending++] = k;
             return false;
         }
     }
@@ -563,7 +600,7 @@ void showstats(size_t n)
 
 #define NTRIALS 1
 //#define LIMIT 4
-#define LIMIT MAXLOGSIZE
+#define LIMIT 24
 
 
 int main(int argc, char *argv[])

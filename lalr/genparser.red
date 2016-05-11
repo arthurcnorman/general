@@ -297,7 +297,7 @@ symbolic procedure lalr_augment_grammar grammar;
 
 symbolic procedure lalr_create_precedence_table (precedence_list, lex_codes);
   begin
-    scalar table, associativity, next_precedence, terminal_code;
+    scalar table, associativity, next_precedence, terminal_code, w;
     table := mkvect caar lex_codes;
     next_precedence := 0;
     associativity := '!:left;
@@ -306,8 +306,13 @@ symbolic procedure lalr_create_precedence_table (precedence_list, lex_codes);
         associativity := x
       else <<
         for each xx in (if atom x then list x else x) do <<
-          terminal_code := car rassoc(intern xx, lex_codes);
-          putv(table, terminal_code, next_precedence . associativity) >>;
+          w := rassoc(intern xx, lex_codes);
+% The precedence information could perhaps try to specify a precedence for
+% some symbol not used in the grammar, and then rassoc here would have
+% returned nil. Ignore settings on such symbols.
+          if w then <<
+            terminal_code := car w;
+            putv(table, terminal_code, next_precedence . associativity) >> >>;
         next_precedence := next_precedence + 1 >> >>;
     return table
   end;
@@ -798,7 +803,7 @@ symbolic procedure lalr_resolve_conflicts(action_list, itemset_i);
             shift := action
           else if null reduce then % handles accept as well?
             reduce := action
-          else % reduce-reduce conflict b B keep first reduction seen
+          else % reduce-reduce conflict - keep first reduction seen
             lalr_warn_reduce_reduce_conflict(reduce, action, itemset_i);
 
           if shift and reduce then << % shift-reduce conflict

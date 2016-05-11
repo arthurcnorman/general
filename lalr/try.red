@@ -5,6 +5,7 @@ on backtrace, comp; % useful options!
 
 in "lalr.red"$      % The "$" supresses echo
 in "genparser.red"; % The ";" enables echo
+in "genparserprint.red"$
 in "yylex.red"$
 in "yyparse.red"$
 
@@ -89,28 +90,28 @@ on lalr_verbose;
 
 
 grammar := '(
-  (s  ((c c)    )   % One production for S, no semantic actions
+  (!S  ((c1 c1)   )   % One production for S, no semantic actions
   )
-  (c  (("c" c)  )   % First production for C
-      (("d")    )   % Second production for C
+  (c1  (("c" c1)  )   % First production for C
+       (("d")     )   % Second production for C
   ));
 
-lalr_construct_parser grammar;
+g := lalr_create_parser(nil, grammar);
 
-symbolic procedure pparse();
+symbolic procedure pparse g;
   begin
     scalar r;
-    r := yyparse();
+    r := yyparse g;
     terpri();
     princ "= ";
     print r
   end;
 
-pparse()$
+pparse g$
 
 c c c d c d ;
 
-pparse()$
+pparse g$
 
 d d ;
 
