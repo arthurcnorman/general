@@ -91,6 +91,9 @@ fluid '(reduction_fn reduction_lhs reduction_rhs_n);
 % nonterminal_codes to be initialized in this format -- convenient!
 fluid '(nonterminal_codes);
 
+% Ditto for terminal symbols.
+fluid '(terminal_codes);
+
 % This function deconstructs the parser structure passed to yyparse() and 
 % initialized all the necessary fluid variables. 
 %
@@ -99,15 +102,20 @@ fluid '(nonterminal_codes);
 % to be passed to lex_restore_context (in yylex.red) so that the lexer will 
 % provide the correct tokens for this grammar.
 symbolic procedure set_parser parser;
-  <<
-    lex_restore_context(car parser);
-    parser_action_table := cadr parser;
-    reduction_fn := car caddr parser;
-    reduction_rhs_n := cadr caddr parser;
-    reduction_lhs := caddr caddr parser;
-    parser_goto_table := cadddr parser;
-    nonterminal_codes := cadddr cdr parser
-  >>;
+  begin
+    scalar w;
+    lex_restore_context    car parser;
+    parser_action_table := car (parser := cdr parser);
+    reduction_info :=      car (parser := cdr parser);
+    w := reduction_info;
+    reduction_fn :=          car w;
+    reduction_rhs_n :=       car (w := cdr w);
+    reduction_lhs :=         car (w := cdr w);
+    parser_goto_table :=   car (parser := cdr parser);
+    nonterminal_codes :=   car (parser := cdr parser);
+    terminal_codes :=      car (parser := cdr parser);
+    return nil
+  end;
 
 symbolic procedure get_goto(src_state, nonterminal);
   begin
@@ -205,7 +213,12 @@ symbolic procedure yyparse parser;
         lhs := getv16(reduction_lhs, w);            
         w := nil;
         for i := 1:rhs_n do <<
-          w := car sym_stack . w;
+%         w := car sym_stack . w;
+% terminal_codes no longer exists, so I may not know the name associated
+% with the integer code used here!
+princ "sym = "; print car sym_stack;
+princ "terminal_codes = "; print terminal_codes;
+          w := cdr assoc(car sym_stack, terminal_codes) . w; % @@@
           sym_stack := cdr sym_stack;
           state_stack := cdr state_stack >>;
 

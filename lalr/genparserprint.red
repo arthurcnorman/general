@@ -81,6 +81,7 @@ symbolic procedure lalr_prin_action action;
 symbolic procedure lalr_prin_reduction code;
   begin
     scalar reduction_fn, reduction_rhs_length, reduction_lhs, fn;
+princ "reduction_info = "; print reduction_info; % @@@
     reduction_fn := first reduction_info; 
     reduction_rhs_length := second reduction_info;
     reduction_lhs := third reduction_info;

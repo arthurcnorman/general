@@ -239,7 +239,7 @@ symbolic procedure lalr_create_parser (precedence_list, grammar);
     lalr_cleanup();
 
     return list(lex_context, compressed_action_table, reduction_info, 
-                compressed_goto_table, nonterminal_codes)
+                compressed_goto_table, nonterminal_codes, terminal_codes)
   end; 
 
 symbolic procedure lalr_cleanup();
