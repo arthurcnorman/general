@@ -1,0 +1,4 @@
+*.cpp ident
+*/*.sml ident
+*/*.red ident
+*/*.tst ident

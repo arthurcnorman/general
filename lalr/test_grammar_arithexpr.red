@@ -6,17 +6,15 @@ in "genparser.red"$ in "genparserprint.red"$
 
 on lalr_verbose;
 
-inline procedure id x; x;
-
 arith_grammar := '(
-  (s    ((expr "eof")    id !$1))
-  (expr ((expr "+" expr) plus !$1 !$3)
-        ((expr "*" expr) times !$1 !$3)
-        ((expr "/" expr) quotient !$1 !$3)
-        ((expr "-" expr) difference !$1 !$3)
-        ((expr "^" expr) expt !$1 !$3)
-        ((expr "=" expr) cond ((eq !$1 !$3) "true") (t "false"))
-        (("(" expr ")")  id !$2)
+  (s    ((expr "eof")    !$1))
+  (expr ((expr "+" expr) (plus !$1 !$3))
+        ((expr "*" expr) (times !$1 !$3))
+        ((expr "/" expr) (quotient !$1 !$3))
+        ((expr "-" expr) (difference !$1 !$3))
+        ((expr "^" expr) (expt !$1 !$3))
+        ((expr "=" expr) (cond ((eq !$1 !$3) "true") (t "false")))
+        (("(" expr ")")  !$2)
         ((!:number    )))
 );
 

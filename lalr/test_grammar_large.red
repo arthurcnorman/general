@@ -19,37 +19,38 @@ large_grammar := '(
           ((":::" expression program1)))
   (expression
           ((funcall))
-          ((expression "*" expression))
-          ((expression "/" expression))
-          ((expression "+" expression))
-          ((expression "-" expression))
-          ((expression "<" expression))
-          ((expression "<=" expression))
-          ((expression "==" expression))
-          ((expression "neq" expression))
-          ((expression "=>" expression))
-          ((expression ">" expression))
-          ((expression ":=" expression))
-          (("fun" funcall "=" expression))
-          (("if" sequence "then" expression))
-          (("if" sequence "then" sequence "else" expression))
-          (("go" !:symbol))
-          (("go" "to" !:symbol))
-          (("goto" !:symbol))
-          (("return" expression)))
+          ((expression "*" expression)  (list 'times !$1 !$3))
+          ((expression "/" expression)  (list 'quotient !$1 !$3))
+          ((expression "+" expression)  (list 'plus !$1 !$3))
+          ((expression "-" expression)  (list 'difference !$1 !$3))
+          ((expression "<" expression)  (list 'lessp !$1 !$3))
+          ((expression "<=" expression) (list 'leq !$1 !$3))
+          ((expression "==" expression) (list 'equal !$1 !$3))
+          ((expression "neq" expression)(list 'neq !$1 !$3))
+          ((expression "=>" expression) (list 'geq !$1 !$3))
+          ((expression ">" expression)  (list 'greaterp !$1 !$3))
+          ((expression ":=" expression) (list 'setq !$1 !$3))
+          (("fun" funcall "=" expression) (list 'fundef !$2 !$4))
+          (("if" sequence "then" expression) (list 'if !$2 !$4 nil))
+          (("if" sequence "then" sequence "else" expression)
+                                             (list 'if !$2 !$4 !$6))
+          (("go" !:symbol)              (list 'go !$2))
+          (("go" "to" !:symbol)         (list 'go !$3))
+          (("goto" !:symbol)            (list 'go !$2))
+          (("return" expression)        (list 'return !$2)))
 
   (funcall
           ((closedexpression))
-          ((funcall closedexpression)))
+          ((funcall closedexpression) (list !$1 !$2)))
 
   (closedexpression
           ((!:symbol))
           ((!:number))
           ((strings))
           (("let" sequence "in" sequence "end"))
-          (("(" exprlist ")"))
-          (("(" sequence ")"))
-          (("[" exprlist "]")))
+          (("(" exprlist ")")  !$2)
+          (("(" sequence ")")  !$2)
+          (("[" exprlist "]")  (cons 'bracketed !$2)))
   (strings
           ((!:string strings))
           ((!:string)))
@@ -57,7 +58,7 @@ large_grammar := '(
   (exprlist ((expression exprlist1)))
   (exprlist1 
           (())
-          (("," expression exprlist1)))
+          (("," expression exprlist1) (cons !$2 !$3)))
 
   (sequence ((expression sequence1)))
   (sequence1 
@@ -66,5 +67,8 @@ large_grammar := '(
 );
 
 large_parser := lalr_create_parser(large_precedence, large_grammar);
+
+yyparse large_parser;
+if x == 3 then 1 else "not-three" eof
 
 end;
