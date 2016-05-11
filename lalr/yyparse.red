@@ -106,8 +106,7 @@ symbolic procedure set_parser parser;
     scalar w;
     lex_restore_context    car parser;
     parser_action_table := car (parser := cdr parser);
-    reduction_info :=      car (parser := cdr parser);
-    w := reduction_info;
+    w              :=      car (parser := cdr parser);
     reduction_fn :=          car w;
     reduction_rhs_n :=       car (w := cdr w);
     reduction_lhs :=         car (w := cdr w);
@@ -206,19 +205,17 @@ symbolic procedure yyparse parser;
 
       % REDUCE
       else begin                                   
-        scalar lhs, rhs_n, fn;
+        scalar lhs, rhs_n, fn, name;
         w := -w;
         fn := getv(reduction_fn, w);
         rhs_n := getv8(reduction_rhs_n, w);             
         lhs := getv16(reduction_lhs, w);            
         w := nil;
         for i := 1:rhs_n do <<
-%         w := car sym_stack . w;
-% terminal_codes no longer exists, so I may not know the name associated
-% with the integer code used here!
-princ "sym = "; print car sym_stack;
-princ "terminal_codes = "; print terminal_codes;
-          w := cdr assoc(car sym_stack, terminal_codes) . w; % @@@
+          name := car sym_stack;
+          if fixp name and assoc(name, terminal_codes) then
+            name := cdr assoc(name, terminal_codes);
+          w := name . w;
           sym_stack := cdr sym_stack;
           state_stack := cdr state_stack >>;
 

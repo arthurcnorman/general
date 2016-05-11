@@ -1007,7 +1007,7 @@ symbolic procedure lalr_reduction_index rule;
 symbolic procedure lalr_construct_fn(lambda_expr, args_n);
   begin
     scalar fn;
-    fn := gensym();
+    fn := gensym1 'action;
     lambda_expr := 'lambda  . lalr_make_arglist args_n . lambda_expr;
     putd(fn, 'expr, lambda_expr) where !*pwrds = nil;
     return fn

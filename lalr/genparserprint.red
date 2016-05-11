@@ -81,15 +81,15 @@ symbolic procedure lalr_prin_action action;
 symbolic procedure lalr_prin_reduction code;
   begin
     scalar reduction_fn, reduction_rhs_length, reduction_lhs, fn;
-princ "reduction_info = "; print reduction_info; % @@@
     reduction_fn := first reduction_info; 
     reduction_rhs_length := second reduction_info;
     reduction_lhs := third reduction_info;
     princ "reduce by #"; prin code; princ ": ";
     lalr_prin_nonterminal getv16(reduction_lhs, code); 
     princ " -> ["; prin getv8(reduction_rhs_length, code); princ " symbols] ";
-    if (fn := getv(reduction_fn, code)) then
-      prin car cdddr getd fn;
+% He ha - if !*comp is set then the reduction function gets compiled and
+% its source is not readily visible for display here.
+    if (fn := getv(reduction_fn, code)) then prin cdr getd fn;
   end;
 
 symbolic procedure lalr_print_lr0_collection; 
