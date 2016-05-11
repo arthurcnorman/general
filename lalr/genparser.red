@@ -200,6 +200,59 @@ symbolic procedure lalr_productions x;
 %          tokens recognized by the core lexer: !:symbol, !:string, or !:number.  %% test and add the others
 %          Nonterminals are represented by symbols. 
 %
+% In addition it will be possible to write shorthand items on the right
+% hand side of a production:
+%        (opt X Y Z)
+%        (star X Y Z)
+%        (plus X Y Z)
+%        (list S X Y Z)
+%        (listplus S X Y Z)
+%        (or A B C)
+% where each are replaced by a new non-terminal G and a further rule(s)
+% are then added:
+%
+% (opt X Y Z) is either X Y Z or nothing
+%   (G (())              % value will be either nil or (list X Y Z)
+%      ((X Y Z)))        % or if only one item X then X.
+%
+% (star X Y Z) is zero or more repetitions of X Y Z, and the
+% value it returns is a list of whatever each X Y Z generated
+%   (G (())              % value is a list of items in the sequence
+%      ((G1 G) (cons !$1 !$2)))
+%   (G1 ((X Y Z))
+%
+% (plus X Y Z) is like (star X Y Z) except that it demands at least
+% one instance of X Y Z is present.
+%   (G  ((G1) (list !$1))
+%       ((G1 G) (cons !$1 !$2))) 
+%   (G1 ((X Y Z)))
+%
+% (list del X Y Z) gives a sequence of X Y Z entities with del as a
+% separator. A typical use might be in
+%   (funcall ((!:symbol "("
+%                       (list "," expression)
+%                       ")")) (cons !$1 !$3))
+% to recognise function calls such as "f(A,B,C)" in a typical language.  
+%   (G  (())
+%       ((G2 G1) (cons !$1 !$2))
+%   (G1 (())
+%       ((del G2 G1) (cons !$2 !$3)))
+%   (G2 ((X Y Z)))
+%
+% (listplus del X Y Z) is just like (list del X Y Z) except that it demands
+% at least one item.
+%   (G  ((G2 G1) (cons !$1 !$2))
+%   (G1 (())
+%       ((del G2 G1) (cons !$2 !$3)))
+%   (G2 ((X Y Z)))
+%
+% (or A B C) is for one of the given symbols
+%   (G ((A))
+%      ((B))
+%      ((C)))
+%
+%
+%
 % returns: a structure representing a complete LALR parser (and associated 
 %          lexer) for the given grammar. The structure is intended to be passed
 %          as the argument to yyparse() in yyparse.red. 
@@ -215,7 +268,7 @@ symbolic procedure lalr_create_parser (precedence_list, grammar);
     % Analyze the grammar, setting fluid variables and symbol properties
     % for further reference and modification. After this, we don't need to 
     % look at the arguments (precedence_list and grammar) again.
-    lalr_set_grammar(precedence_list, grammar);
+    lalr_set_grammar(precedence_list, lalr_expand_grammar grammar);
 
     % Generate the LR(0) itemset collection and then convert it to the final 
     % LALR(1) itemset collection. After this, all the fluid variables are in
@@ -247,6 +300,104 @@ symbolic procedure lalr_cleanup();
     put(symbol, 'lalr_produces, nil);
     put(symbol, 'lalr_first, nil);
     put(symbol, 'lalr_nonterminal_code, nil) >>;
+
+%==============================================================================
+
+%
+% Deal with the grammar features that can be covered by a form of macro
+% expansion. So for instance (star XXX) will expand into rules that
+% accept zero or more instances of whatever XXX would match.
+
+fluid '(pending_rules!*);
+
+symbolic procedure lalr_expand_grammar g;
+  begin
+    scalar pending_rules!*, w, r;
+    pending_rules!* := g;
+% The use of the fluid variable pending_rules!* here is because when I
+% expand one rule that may generate othersd which willl themselves in turn
+% need to be scanned.
+    while pending_rules!* do <<
+      w := car pending_rules!*;
+      pending_rules!* := cdr pending_rules!*;
+      r := (expand_rule w) . r >>;
+    return reverse r
+  end;
+
+symbolic procedure expand_rule u;
+  car u .
+    for each x in cdr u collect
+      ((for each y in car x collect expand_terminal y) . cdr x);
+
+symbolic procedure expand_terminal z;
+  begin
+    scalar g1, g2, g3;
+    if atom z then return z
+    else if eqcar(z, 'opt) then <<
+      g1 := gensym();
+      pending_rules!* :=
+        list(g1,
+             '(()),
+             list cdr z) . pending_rules!*;
+      return g1 >>
+    else if eqcar(z, 'star) then <<
+      g1 := gensym();
+      g2 := gensym();
+      if cdr z and null cddr z and atom cadr z then g2 := cadr z
+      else pending_rules!* := list(g2, list cdr z) . pending_rules!*;
+      pending_rules!* :=
+        list(g1,
+             '(()),
+             list(list(g2, g1), '(cons !$1 !$2))) . pending_rules!*;
+      return g1 >>
+    else if eqcar(z, 'plus) then <<
+      g1 := gensym();
+      g2 := gensym();
+      if cdr z and null cddr z and atom cadr z then g2 := cadr z
+      else pending_rules!* := list(g2, list cdr z) . pending_rules!*;
+      pending_rules!* :=
+        list(g1,
+             list(list g2, '(list !$1)),
+             list(list(g2, g1), '(cons !$1 !$2))) . pending_rules!*;
+      return g1 >>
+    else if eqcar(z, 'list) and cdr z then <<
+      g1 := gensym();
+      g2 := gensym();
+      g3 := gensym();
+      if cddr z and null cdddr z and atom caddr z then g2 := caddr z
+      else pending_rules!* := list(g2, list cddr z) . pending_rules!*;
+      pending_rules!* :=
+        list(g3,
+             '(()),
+             list(list(cadr z, g2, g3), '(cons !$2 !$3))) . pending_rules!*;
+      pending_rules!* :=
+        list(g1,
+             '(()),
+             list(list(g2, g3), '(cons !$1 !$2))) . pending_rules!*;
+      return g1 >>
+    else if eqcar(z, 'listplus) and cdr z then <<
+      g1 := gensym();
+      g2 := gensym();
+      g3 := gensym();
+      if cddr z and null cdddr z and atom caddr z then g2 := caddr z
+      else pending_rules!* := list(g2, list cddr z) . pending_rules!*;
+      pending_rules!* :=
+        list(g3,
+             '(()),
+             list(list(cadr z, g2, g3), '(cons !$2 !$3))) . pending_rules!*;
+      pending_rules!* :=
+        list(g1,
+             list(list(g2, g3), '(cons !$1 !$2))) . pending_rules!*;
+      return g1 >>
+    else if eqcar(z, 'or) then <<
+      g1 := gensym();
+      pending_rules!* :=
+        (g1 . for each q in cdr z collect list list q) . pending_rules!*;
+      return g1 >>
+    else error(0, "Invalid item in a rule")
+  end;
+
+
 
 %==============================================================================
 

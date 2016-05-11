@@ -198,7 +198,7 @@ pparse g$
 d d ;
 
 
-% Now switch off the tracing. It is useful whiloe debugging this
+% Now switch off the tracing. It is useful while debugging this
 % package but is typically rather over the top for normal use.
 
 off tracelex, lalr_verbose;
@@ -278,6 +278,9 @@ pparse g$
 a * (b/c + d/e/f) ^ 2 ^ g - "str" ;
 
 % Demonstrate various of the short-hand notations...
+
+on tracelex, lalr_verbose;
+tr lalr_expand_grammar;
 
 g := lalr_create_parser(nil, '(
  (s
