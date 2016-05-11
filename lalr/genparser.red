@@ -329,20 +329,28 @@ symbolic procedure expand_rule u;
     for each x in cdr u collect
       ((for each y in car x collect expand_terminal y) . cdr x);
 
+global '(expansion_count);
+expansion_count := 0;
+
+symbolic procedure expansion_name();
+  compress append(explode 'lalr_internal_,
+      explode (expansion_count := expansion_count + 1));
+  
+
 symbolic procedure expand_terminal z;
   begin
     scalar g1, g2, g3;
     if atom z then return z
     else if eqcar(z, 'opt) then <<
-      g1 := gensym();
+      g1 := expansion_name();
       pending_rules!* :=
         list(g1,
              '(()),
              list cdr z) . pending_rules!*;
       return g1 >>
     else if eqcar(z, 'star) then <<
-      g1 := gensym();
-      g2 := gensym();
+      g1 := expansion_name();
+      g2 := expansion_name();
       if cdr z and null cddr z and atom cadr z then g2 := cadr z
       else pending_rules!* := list(g2, list cdr z) . pending_rules!*;
       pending_rules!* :=
@@ -351,8 +359,8 @@ symbolic procedure expand_terminal z;
              list(list(g2, g1), '(cons !$1 !$2))) . pending_rules!*;
       return g1 >>
     else if eqcar(z, 'plus) then <<
-      g1 := gensym();
-      g2 := gensym();
+      g1 := expansion_name();
+      g2 := expansion_name();
       if cdr z and null cddr z and atom cadr z then g2 := cadr z
       else pending_rules!* := list(g2, list cdr z) . pending_rules!*;
       pending_rules!* :=
@@ -361,9 +369,9 @@ symbolic procedure expand_terminal z;
              list(list(g2, g1), '(cons !$1 !$2))) . pending_rules!*;
       return g1 >>
     else if eqcar(z, 'list) and cdr z then <<
-      g1 := gensym();
-      g2 := gensym();
-      g3 := gensym();
+      g1 := expansion_name();
+      g2 := expansion_name();
+      g3 := expansion_name();
       if cddr z and null cdddr z and atom caddr z then g2 := caddr z
       else pending_rules!* := list(g2, list cddr z) . pending_rules!*;
       pending_rules!* :=
@@ -376,9 +384,9 @@ symbolic procedure expand_terminal z;
              list(list(g2, g3), '(cons !$1 !$2))) . pending_rules!*;
       return g1 >>
     else if eqcar(z, 'listplus) and cdr z then <<
-      g1 := gensym();
-      g2 := gensym();
-      g3 := gensym();
+      g1 := expansion_name();
+      g2 := expansion_name();
+      g3 := expansion_name();
       if cddr z and null cdddr z and atom caddr z then g2 := caddr z
       else pending_rules!* := list(g2, list cddr z) . pending_rules!*;
       pending_rules!* :=
@@ -390,7 +398,7 @@ symbolic procedure expand_terminal z;
              list(list(g2, g3), '(cons !$1 !$2))) . pending_rules!*;
       return g1 >>
     else if eqcar(z, 'or) then <<
-      g1 := gensym();
+      g1 := expansion_name();
       pending_rules!* :=
         (g1 . for each q in cdr z collect list list q) . pending_rules!*;
       return g1 >>

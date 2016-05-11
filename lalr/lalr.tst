@@ -279,9 +279,6 @@ a * (b/c + d/e/f) ^ 2 ^ g - "str" ;
 
 % Demonstrate various of the short-hand notations...
 
-on tracelex, lalr_verbose;
-tr lalr_expand_grammar;
-
 g := lalr_create_parser(nil, '(
  (s
 % (opt ...) means that the included material is optional.
@@ -415,14 +412,12 @@ mini_language := '(
 (sequence
           (((list ";" expression)))))$
 
-% The grammar shown here can be processed, however at the moment the
-% code in genparser.red uses the "simple but inefficient" scheme from Aho
-% et al. to generate LALR parsing tables and a consequence is that even for
-% this apparently reasonable grammar it takes a remarkably long time and
-% way too much memory. When the parser-generator has been upgraded to
-% merge states as they are constructed it will only take seconds (rather than
-% many minutes) to deal with this and the example can be re-enabled.
-%                                                     ACN   January 2015
+% The grammar shown here used to fail for lack of space. It should now
+% behave. As of today something fails, but that is going to be a transient
+% blip not a serious problem. But I switch tracing on so I can debug a bit.
+%                                                       ACN   May 2016
+
+on tracelex, lalr_verbose;
 
 g := lalr_create_parser(p, mini_language);
 
