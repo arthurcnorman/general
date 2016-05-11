@@ -418,9 +418,21 @@ symbolic procedure expand_terminal z;
 %                      lists. 
 %==============================================================================
 
+symbolic procedure carrassoc(key, alist);
+  begin
+    scalar w;
+    if consp (w := rassoc(key, alist)) then return car w;
+    terpri();
+    princ "RASSOC trouble: "; prin key; princ " "; print alist;
+    rederr "rassoc trouble"
+  end;
+
 symbolic procedure lalr_set_grammar(precedence_list, grammar);
   begin
     scalar terminals; 
+    if !*lalr_verbose then <<
+      terpri();                 % extra trace put in by ACN
+      prettyprint grammar >>;
 
     grammar := lalr_augment_grammar grammar;
 
@@ -437,7 +449,7 @@ symbolic procedure lalr_set_grammar(precedence_list, grammar);
     lalr_precalculate_first_sets();
 
     terminals := for each terminal in terminals collect  
-                    car rassoc(intern terminal, terminal_codes);
+                    carrassoc(intern terminal, terminal_codes);
     symbols := append(nonterminals, terminals);
 
     if !*lalr_verbose then <<
@@ -505,7 +517,7 @@ symbolic procedure lalr_process_productions(grammar, lex_codes);
                   (if (intern symbol) member nonterminals then 
                      intern symbol
                    else
-                     car rassoc(intern symbol, lex_codes));
+                     carrassoc(intern symbol, lex_codes));
         production := rule . semantic_action;
         productions_processed := production . productions_processed >>;
       if (w := get(intern x, 'lalr_produces)) then
@@ -733,7 +745,7 @@ symbolic procedure lalr_generate_collection;
 
     % Add the special lookahead 0 (end-of-input character $) to the initial
     % item [S' -> S]. 
-    itemset0 := car rassoc(0, itemset_collection);
+    itemset0 := carrassoc(0, itemset_collection);
     lalr_add_lookahead(car itemset0, 0);
 
     % Propagate all lookaheads until the LALR collection is complete.
@@ -1153,13 +1165,22 @@ symbolic procedure lalr_process_reductions;
     return list(reduction_fn, reduction_rhs_length, reduction_lhs);
   end;
 
+symbolic procedure cdrassoc(key, alist);
+  begin
+    scalar w;
+    if consp (w := assoc(key, alist)) then return cdr w;
+    terpri();
+    princ "ASSOC trouble: "; prin key; princ " "; print alist;
+    rederr "assoc trouble"
+  end;
+
 
 
 symbolic procedure lalr_reduction_index rule;
   begin
     scalar x, rhs;
     x := car rule; rhs := cdr rule;
-    return cdr assoc(rhs, lalr_productions x)
+    return cdrassoc(rhs, lalr_productions x)
   end;
 
 
