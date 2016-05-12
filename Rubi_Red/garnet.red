@@ -89,9 +89,14 @@ symbolic procedure apply_rule(rule, a, x);
     rhs := caddr w;
     bindings := trymatch(list('!Int, a, x), lhs, nil);
     princ "Bindings = "; print bindings;
-% Right now I just bail out and do not even try pattern matching!
-    return nil;
+    if bindings = 'fail then return nil;
+% Here I need to check conditions
+    if conditions_fail(conditions, bindings) then return nil;
+    return subla(bindings, rhs);
   end;
+
+symbolic procedure conditions_fail(c, b);
+  nil;
 
 symbolic procedure trymatch(u, pattern, env);
   begin
@@ -140,5 +145,5 @@ garnet((u + v*z)^(-2), z);
 garnet((u + z)^(-2), z);
 
 
-quit;
+end;
 
