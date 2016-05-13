@@ -82,10 +82,14 @@ typedef uint64_t ENTRY;
 #define EMPTY     ((ENTRY)(-1))
 #define TOMBSTONE ((ENTRY)(-2))
 
-int LOGSIZE   = 18;
-int TABLESIZE = ((size_t)(1<<LOGSIZE));
 
+//
+// The following are the component5s that make up a hash table...
+//
 ENTRY *table = NULL;
+int shift_amount = 64-18;
+int table_size = ((size_t)(1<<(64-shift_amount)));
+uint64_t occupancy = 0;
 uint64_t multiplier = UINT64_C(0x9e3779b99e3779bd);
 
 static inline void update_multiplier()
@@ -110,12 +114,12 @@ void dumptable(const char *s, bool checkdups)
     size_t i;
     bool bad = false;
     printf("%s\n", s);
-    for (i=0; i<TABLESIZE; i++)
+    for (i=0; i<table_size; i++)
     {   ENTRY k = table[i];
         uint64_t h = HASH(k, multiplier);
-        int h1 = h >> (64-LOGSIZE);
-        int h2 = (multiplier*h) >> (64-LOGSIZE);
-        int h3 = (multiplier*multiplier*h) >> (64-LOGSIZE);
+        int h1 = h >> shift_amount;
+        int h2 = (multiplier*h) >> shift_amount;
+        int h3 = (multiplier*multiplier*h) >> shift_amount;
         if (k == EMPTY) printf("%3"PRIuMAX": EMPTY\n", (uintmax_t)i);
         else if (k == TOMBSTONE) printf("%3"PRIuMAX": TOMBSTONE\n", (uintmax_t)i);
         else
@@ -160,12 +164,12 @@ static void corrupted()
 void checktable()
 {
     size_t i;
-    for (i=0; i<TABLESIZE; i++)
+    for (i=0; i<table_size; i++)
     {   ENTRY k = table[i];
         uint64_t h = HASH(k, multiplier);
-        int h1 = h >> (64-LOGSIZE);
-        int h2 = (multiplier*h) >> (64-LOGSIZE);
-        int h3 = (multiplier*multiplier*h) >> (64-LOGSIZE);
+        int h1 = h >> shift_amount;
+        int h2 = (multiplier*h) >> shift_amount;
+        int h3 = (multiplier*multiplier*h) >> shift_amount;
         if (k != EMPTY && k != TOMBSTONE)
         {   if (h1 == i)
             {   if (h2 != i && table[h2] == k) corrupted();
@@ -208,7 +212,7 @@ int lookup(ENTRY key)
 // during lookup (though the presence of large numbers of them will tend to
 // hurt performance a little), but I will need to allow for them in the
 // insertion code.
-    if ((v = table[n = (h>>(64-LOGSIZE))]) == EMPTY) return -1;
+    if ((v = table[n = (h>>shift_amount)]) == EMPTY) return -1;
     else if (v != TOMBSTONE && COMPARE(v, key)) return n;
 // For the next second and third hash values I merely multiply the
 // first 64-bit value by a value that is essentially arbitrary so that some
@@ -216,12 +220,12 @@ int lookup(ENTRY key)
 // address that will be probed. If I keep my table lightly loaded I will
 // not need to do this terribly often.
     h *= multiplier;
-    if ((v = table[n = (h>>(64-LOGSIZE))]) == EMPTY) return -1;
+    if ((v = table[n = (h>>shift_amount)]) == EMPTY) return -1;
     else if (v != TOMBSTONE && COMPARE(v, key)) return n;
     h *= multiplier;
 // Even in the worst case a lookup (succesful or not) never takes more than
 // three probes.
-    if ((v = table[n = (h>>(64-LOGSIZE))]) == EMPTY) return -1;
+    if ((v = table[n = (h>>shift_amount)]) == EMPTY) return -1;
     else if (v != TOMBSTONE && COMPARE(v, key)) return n;
     else return -1;
 }
@@ -260,15 +264,13 @@ int instrumented_lookup(ENTRY key)
 // too empty. I have not implemented this yet and I will not want to be
 // to quick to shrink things.
 
-uint64_t occupancy = 0;
-
 bool discard(ENTRY key)
 {
     int n = lookup(key);
     if (n < 0) return false; // Item had not been present.
     table[n] = TOMBSTONE;
     occupancy--;
-    if (occupancy < TABLESIZE/5)
+    if (occupancy < table_size/5)
     {   //shrink_table();
     }
     return true;             // Item had been present. Now removed.
@@ -314,7 +316,6 @@ bool discard(ENTRY key)
 
 #define QSIZE 100
 
-
 int insert(ENTRY key)
 {
     int Qin, Qout;
@@ -326,9 +327,9 @@ int insert(ENTRY key)
 #ifdef TRACE
     printf("Insert %"PRIx64" %d %d %d\n",
         key,
-        (int)(h >> (64-LOGSIZE)),
-        (int)((multiplier*h) >> (64-LOGSIZE)),
-        (int)((multiplier*multiplier*h) >> (64-LOGSIZE)));
+        (int)(h >> shift_amount),
+        (int)((multiplier*h) >> shift_amount),
+        (int)((multiplier*multiplier*h) >> shift_amount));
 #endif
 // I have what seems a rather long-winded prelude to the general insert code.
 // If the key presented hashed to h1, h2 and h3 then I first check if h1 is
@@ -342,21 +343,21 @@ int insert(ENTRY key)
 // key comparisons. But I do have to perform a breadth-first search to seek
 // a way to rearrange data to fit the new key in. This can fail, in which
 // case I will return -1 leaving the table unchanged.
-    if ((v1 = table[n1 = (h>>(64-LOGSIZE))]) == EMPTY)                                // Gap found.
+    if ((v1 = table[n1 = (h>>shift_amount)]) == EMPTY)   // Gap found.
     {   table[n1] = key;
         occupancy++;
         return n1;
     }
     if (COMPARE(v1, key)) return n1;
     h *= multiplier;
-    if ((v2 = table[n2 = (h>>(64-LOGSIZE))]) == EMPTY)
+    if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY)
     {   table[n2] = key;
         occupancy++;
         return n2;
     }
     if (COMPARE(v2, key)) return n2;
     h *= multiplier;
-    if ((v3 = table[n3 = (h>>(64-LOGSIZE))]) == EMPTY)
+    if ((v3 = table[n3 = (h>>shift_amount)]) == EMPTY)
     {   table[n3] = key;
         occupancy++;
         return n3;
@@ -392,18 +393,18 @@ int insert(ENTRY key)
     Qout = 0;
     for (;;)
     {   ENTRY newkey;
-        if (Qout >= Qin) return -1; // Nothing left in queue.
+        if (Qout >= Qin) return -1; // Nothing left in queue. Failed.
         n = Q[Qout++];              // A currently occupied location.
         newkey = table[n];          // The key stored there.
         h = HASH(newkey, multiplier);
 #ifdef TRACE
         printf("Consider moving %d [%"PRIx64"] to %d %d %d\n",
            n, (uint64_t)newkey,
-           (int)(h>>(64-LOGSIZE)),
-           (int)((multiplier*h)>>(64-LOGSIZE)),
-           (int)((multiplier*multiplier*h)>>(64-LOGSIZE)));
+           (int)(h>>shift_amount),
+           (int)((multiplier*h)>>shift_amount),
+           (int)((multiplier*multiplier*h)>>shift_amount));
 #endif
-        if ((v1 = table[n1 = (h>>(64-LOGSIZE))]) == EMPTY ||
+        if ((v1 = table[n1 = (h>>shift_amount)]) == EMPTY ||
             v1 == TOMBSTONE)  // Success - have found a gap!
         {   table[n1] = newkey;
 #ifdef TRACE
@@ -412,7 +413,7 @@ int insert(ENTRY key)
             break;
         }
         h *= multiplier;
-        if ((v2 = table[n2 = (h>>(64-LOGSIZE))]) == EMPTY ||
+        if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY ||
             v2 == TOMBSTONE)
         {   table[n2] = newkey;
 #ifdef TRACE
@@ -421,7 +422,7 @@ int insert(ENTRY key)
             break;
         }
         h *= multiplier;
-        if ((v3 = table[n3 = (h>>(64-LOGSIZE))]) == EMPTY ||
+        if ((v3 = table[n3 = (h>>shift_amount)]) == EMPTY ||
             v3 == TOMBSTONE)
         {   table[n3] = newkey;
 #ifdef TRACE
@@ -461,7 +462,83 @@ int insert(ENTRY key)
     return Q[Qout];
 }
 
-// I will collect information about the code that inserts items in the
+// I will have a special version of insert() for use when I KNOW that the
+// item I am inserting is not already in the table. This can be used when
+// I am rehashing. This can report failure and it doe snot alter the
+// occupancy count.
+
+
+int insert_new(ENTRY key)
+{
+    int Qin, Qout;
+    uint64_t Qkey[QSIZE];
+    int Q[QSIZE];
+    uint64_t h = HASH(key, multiplier);
+    ENTRY v1, v2, v3;
+    int n, n1, n2, n3;
+    if ((v1 = table[n1 = (h>>shift_amount)]) == EMPTY ||
+         v1 == TOMBSTONE)
+    {   table[n1] = key;
+        return n1;
+    }
+    h *= multiplier;
+    if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY ||
+         v2 == TOMBSTONE)
+    {   table[n2] = key;
+        return n2;
+    }
+    h *= multiplier;
+    if ((v3 = table[n3 = (h>>shift_amount)]) == EMPTY ||
+         v3 == TOMBSTONE)
+    {   table[n3] = key;
+        return n3;
+    }
+    Q[0] = n1;
+    Q[1] = n2;
+    Q[2] = n3;
+    Qin = 3;
+    Qout = 0;
+    for (;;)
+    {   ENTRY newkey;
+        if (Qout >= Qin) return -1; // Nothing left in queue. Failed.
+        n = Q[Qout++];              // A currently occupied location.
+        newkey = table[n];          // The key stored there.
+        h = HASH(newkey, multiplier);
+        if ((v1 = table[n1 = (h>>shift_amount)]) == EMPTY ||
+            v1 == TOMBSTONE)  // Success - have found a gap!
+        {   table[n1] = newkey;
+            break;
+        }
+        h *= multiplier;
+        if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY ||
+            v2 == TOMBSTONE)
+        {   table[n2] = newkey;
+            break;
+        }
+        h *= multiplier;
+        if ((v3 = table[n3 = (h>>shift_amount)]) == EMPTY ||
+            v3 == TOMBSTONE)
+        {   table[n3] = newkey;
+            break;
+        }
+        if (Qin <= QSIZE-3)
+        {   Q[Qin++] = n1;
+            Q[Qin++] = n2;
+            Q[Qin++] = n3;
+        }
+    }
+// I have now just moved a key into a gap. 
+    Qout = Qout - 1;
+    while (Qout >= 3)
+    {  int j = Qout/3 - 1;   // parent
+       table[Q[Qout]] = table[Q[j]];
+       Qout = j;
+    }
+    table[Q[Qout]] = key;   // Note that this is the key being inserted.
+    return Q[Qout];
+}
+
+
 // table, separating figures as between cases that they key was already
 // present and when it was new. The cost of an insert operation when the key
 // is in fact already present should be the same as the cost of a lookup
@@ -511,11 +588,6 @@ int instrumented_insert(ENTRY key)
 // be in the hash but any leftovers will be in the array pending_for_rehash[].
 //
 
-bool reinsert(ENTRY k)
-{
-    return (insert(k) != -1); // for now!
-}
-
 #define MAXPENDING 10000
 
 static ENTRY pending_for_rehash[MAXPENDING+1];
@@ -525,7 +597,7 @@ bool rehash()
 {
     size_t i;
     npending = 0;
-    for (i=0; i<TABLESIZE; i++)
+    for (i=0; i<table_size; i++)
     {   ENTRY k = table[i];
 // TOMBSTONE values present at the start relate to the old hashing regime
 // and so are now irrelevant.
@@ -543,19 +615,20 @@ bool rehash()
         else if (npending < MAXPENDING)
         {   pending_for_rehash[npending++] = k;
             table[k] = EMPTY;
+            occupancy--;
             continue;
         }
 // For BIG tables I need to leave a TOMBSTONE where a key used to be before
 // being moved. 
         table[i] = TOMBSTONE;
-        if (!reinsert(k))
+        if (insert(k) == -1)
         {   pending_for_rehash[npending++] = k;
             return false;
         }
     }
     while (npending != 0)
     {   ENTRY k = pending_for_rehash[--npending];
-        if (!reinsert(k))
+        if (insert(k) == -1)
         {   pending_for_rehash[npending++] = k;
             return false;
         }
@@ -574,7 +647,7 @@ void showstats(size_t n)
 // To get an idea of the status of the table at this level of fullness
 // I will look up all the keys that are stored in it and an equal number
 // of random keys (that are not liable to be present).
-    for (i=0; i<TABLESIZE; i++)
+    for (i=0; i<table_size; i++)
     {   if (table[i] != EMPTY && table[i] != TOMBSTONE)
         {   int j = instrumented_lookup(table[i]); // should be there
             if (i != j) printf("??? i=%"PRIuMAX" j=%"PRIuMAX"\n",
@@ -583,7 +656,7 @@ void showstats(size_t n)
         }
     }
     printf("Table occupancy %"PRIuMAX"/%"PRIuMAX" = %.2f\n",
-        (uintmax_t)n, (uintmax_t)TABLESIZE, n/(double)TABLESIZE);
+        (uintmax_t)n, (uintmax_t)table_size, n/(double)table_size);
     if (found_n != 0)
     printf("lookup=yes %10" PRIu64 "  hash=%10" PRIu64 "  cmp=%10" PRIu64 " average cmp=%.2f\n",
         found_n, found_h, found_c, found_c/(double)found_n);
@@ -599,16 +672,16 @@ void showstats(size_t n)
 }
 
 #define NTRIALS 1
-//#define LIMIT 4
-#define LIMIT 24
+//#define LIMIT (64-4)
+#define LIMIT (64-24)
 
 
 int main(int argc, char *argv[])
 {
     srand48((long)time(NULL));
-    for (LOGSIZE=3; LOGSIZE<LIMIT; LOGSIZE++)
-    {   TABLESIZE = ((size_t)1)<<LOGSIZE;
-        table = (ENTRY *)malloc(sizeof(ENTRY)*TABLESIZE);
+    for (shift_amount=64-3; shift_amount>LIMIT; shift_amount--)
+    {   table_size = ((size_t)1)<<(64-shift_amount);
+        table = (ENTRY *)malloc(sizeof(ENTRY)*table_size);
         if (table == NULL)
         {   printf("malloc failed\n");
             exit(0);
@@ -617,13 +690,13 @@ int main(int argc, char *argv[])
         {   size_t n, n0, n1, n2, n3, n4;
             already_n=0, already_h=0, already_c=0;
             inserted_n=0, inserted_h=0, inserted_c=0;
-            for (n=0; n<TABLESIZE; n++) table[n] = EMPTY;
-            n0 = (3*TABLESIZE)/10;
-            n1 = (4*TABLESIZE)/10;
-            n2 = (5*TABLESIZE)/10;
-            n3 = (6*TABLESIZE)/10;
-            n4 = (7*TABLESIZE)/10;
-            for (n=0; n<TABLESIZE; n++)
+            for (n=0; n<table_size; n++) table[n] = EMPTY;
+            n0 = (3*table_size)/10;
+            n1 = (4*table_size)/10;
+            n2 = (5*table_size)/10;
+            n3 = (6*table_size)/10;
+            n4 = (7*table_size)/10;
+            for (n=0; n<table_size; n++)
             {   long key = lrand48();
                 if (instrumented_insert(key) == -1)
                 {
@@ -632,8 +705,8 @@ int main(int argc, char *argv[])
                     dumptable("insert failed", true);
 #endif
                     printf("Full at %"PRIuMAX"/%"PRIuMAX" (%.2f%%)\n",
-                        (uintmax_t)n, (uintmax_t)TABLESIZE,
-                        100.0*n/(double)TABLESIZE);
+                        (uintmax_t)n, (uintmax_t)table_size,
+                        100.0*n/(double)table_size);
                     showstats(n+1);
                     break;
                 }
@@ -650,8 +723,8 @@ int main(int argc, char *argv[])
                 }
             }
             printf("Ended at %"PRIuMAX"/%"PRIuMAX" (%.2f%%)\n",
-                (uintmax_t)n, (uintmax_t)TABLESIZE,
-                100.0*n/(double)TABLESIZE);
+                (uintmax_t)n, (uintmax_t)table_size,
+                100.0*n/(double)table_size);
             showstats(n+1);
             checktable();
         }
