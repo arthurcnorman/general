@@ -5,10 +5,16 @@
 #ifndef __FAKECSL_H
 #define __FAKECSL_H 1
 
+#ifndef __STDC_CONSTANT_MACROS__
 #define __STDC_CONSTANT_MACROS__ 1
+#endif
+#ifndef __STDC_FORMAT_MACROS__
 #define __STDC_FORMAT_MACROS__   1
+#endif
 
 #include <stdio.h>
+#include <ctype.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <inttypes.h>
 #include <string.h>
@@ -53,17 +59,6 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-
-//
-// These days I have make autoconf stuff check to see if the standard
-// header that defines known-size integer types is available. And then
-// in "headers.h" I patch things up for old systems where it is not present,
-// at least as best I can manage.
-//
-
-#if !defined HAVE_STDINT_H || !defined HAVE_INT32_T
-#error This system needs a 32-bit integer type.
-#endif
 
 #define SIXTY_FOUR_BIT (sizeof(intptr_t) == 8)
 
@@ -1098,7 +1093,7 @@ typedef struct Single_Float
 {   Header header;
     union float_or_int
     {   float f;
-        float32_t f32;
+//      float32_t f32;
         int32_t i;
     } f;
 } Single_Float;
@@ -1263,6 +1258,56 @@ extern LispObject intern(int len, bool escaped);
 extern LispObject iintern(LispObject str, int32_t h, LispObject p,
                           int str_is_ok /* NOT a bool */);
 
+
+// Now some ad hoc patch-ups
+
+#define onevalue(x) (x)
+#define nvalues(x, n) (x)
+#define errexit()
+#define errexitn(n)
+#define errexitv()
+#define argcheck(a, b, c);
+static LispObject aerror(const char *a) { return 0; }
+static LispObject aerror1(const char *a, LispObject b) { return 0; }
+static LispObject sys_hash_table;
+#define lisp_true 1
+static LispObject nil = 0;
+#define C_nil 0
+static LispObject mystack[30];
+static LispObject *mystackp = &mystack[0];
+#define push(x) *mystackp++ = (x);
+#define push2(x, y) { *mystackp++ = (x); *mystackp++ = (y); }
+#define push3(x, y, z) { *mystackp++ = (x); *mystackp++ = (y); *mystackp++ = (z); }
+#define push4(x, y, z, w) { *mystackp++ = (x); *mystackp++ = (y); *mystackp++ = (z); *mystackp++ = (w); }
+#define pop(x) (x) = *--mystackp;
+#define pop2(x, y) { (x) = *--mystackp; (y) = *--mystackp; }
+#define pop3(x, y, z) { (x) = *--mystackp; (y) = *--mystackp; (z) = *--mystackp; }
+#define pop4(x, y, z, w) { (x) = *--mystackp; (y) = *--mystackp; (z) = *--mystackp; (w) = *--mystackp; }
+static void simple_msg(const char *s, LispObject x) {}
+static LispObject mv_2;
+static LispObject work_0;
+static LispObject vfringe;
+static LispObject *vheaplimit;
+#define GC_VEC 1
+static LispObject reclaim(LispObject a, const char *s, int code, int size) { return a; }
+
+static LispObject rational(LispObject a) { return 0; }
+static LispObject ncons(LispObject a) { return 0; }
+static LispObject cons(LispObject a, LispObject b) { return 0; }
+static LispObject acons(LispObject a, LispObject b, LispObject c) { return 0; }
+static LispObject eql(LispObject a, LispObject b) { return 0; }
+static LispObject cl_equal(LispObject a, LispObject b) { return 0; }
+static LispObject equal(LispObject a, LispObject b) { return 0; }
+static LispObject equalp(LispObject a, LispObject b) { return 0; }
+static LispObject Lapply2(LispObject a, int n, LispObject b, LispObject c, LispObject d) { return 0; }
+
+static LispObject eq_hash_tables = 0;
+static LispObject string_char_sym = 3;
+static LispObject bit_symbol = 4;
+static LispObject pathname_symbol = 5;
+static int gc_number = 0;
+static double float_of_number(LispObject a) { return 0.0; }
+static char *bps_pages[10];
 
 #endif // __FAKECSL_H
 
