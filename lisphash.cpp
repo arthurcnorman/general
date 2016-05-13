@@ -41,6 +41,8 @@
 #include <stdlib.h>
 #include <time.h>
 
+#include "fakecsl.h"
+
 //
 // This is an implementation of hash tables intended to be used when the
 // keys in the table are structures of some sort. It might be useful for

@@ -401,7 +401,7 @@ mini_language := '(
 (closedexpression
           ((!:symbol))
           ((!:number))
-          ((plus !:string))  % Several strings in a row just concatenate
+          (((plus !:string))) % Several strings in a row just concatenate
           (("let" sequence "in" sequence "end") (list 'letstat !$2 !$4))
           (("(" exprlist ")") (cons 'paren !$2))
           (("(" sequence ")") (cons 'paren !$2))
@@ -413,8 +413,14 @@ mini_language := '(
           (((list ";" expression)))))$
 
 % The grammar shown here used to fail for lack of space. It should now
-% behave. As of today something fails, but that is going to be a transient
-% blip not a serious problem. But I switch tracing on so I can debug a bit.
+% behave.
+% One issue it reveals at right now is that the processing here does not
+% keep the types of terminal symbols under control carefully enough, so the
+% numeric values 22 and 33 in the sample text get transliterated back into
+% terminal symbols that happen to have ended up allocated numeric codes
+% 22 and 33. This NEEDS fixing, but is not really an issue for the
+% code that manufactures parsing tables.
+%
 %                                                       ACN   May 2016
 
 on tracelex, lalr_verbose;
@@ -425,7 +431,6 @@ pparse g$
 fun f(a,b) = a + b;
 f(22,33)
 eof
-
 
 end;
 

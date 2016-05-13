@@ -430,10 +430,6 @@ symbolic procedure carrassoc(key, alist);
 symbolic procedure lalr_set_grammar(precedence_list, grammar);
   begin
     scalar terminals; 
-    if !*lalr_verbose then <<
-      terpri();                 % extra trace put in by ACN
-      prettyprint grammar >>;
-
     grammar := lalr_augment_grammar grammar;
 
     nonterminals := lalr_collect_nonterminals grammar;
