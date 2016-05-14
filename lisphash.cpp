@@ -124,8 +124,9 @@ void dumptable(const char *s, bool checkdups)
     {   ENTRY k = table[i];
         uint64_t h = HASH(k, multiplier);
         int h1 = h >> shift_amount;
-        int h2 = (multiplier*h) >> shift_amount;
-        int h3 = (multiplier*multiplier*h) >> shift_amount;
+        uint64_t hx = ((h ^ (h>>32)) + 0x1234567)*multiplier;
+        int h2 = hx >> shift_amount;
+        int h3 = (multiplier*hx) >> shift_amount;
         if (k == EMPTY) printf("%3"PRIuMAX": EMPTY\n", (uintmax_t)i);
         else if (k == TOMBSTONE) printf("%3"PRIuMAX": TOMBSTONE\n", (uintmax_t)i);
         else
@@ -174,8 +175,9 @@ void checktable()
     {   ENTRY k = table[i];
         uint64_t h = HASH(k, multiplier);
         int h1 = h >> shift_amount;
-        int h2 = (multiplier*h) >> shift_amount;
-        int h3 = (multiplier*multiplier*h) >> shift_amount;
+        uint64_t hx = ((h ^ (h>>32)) + 0x1234567)*multiplier;
+        int h2 = hx >> shift_amount;
+        int h3 = (multiplier*hx) >> shift_amount;
         if (k != EMPTY && k != TOMBSTONE)
         {   if (h1 == i)
             {   if (h2 != i && table[h2] == k) corrupted();
@@ -220,16 +222,25 @@ int lookup(ENTRY key)
 // insertion code.
     if ((v = table[n = (h>>shift_amount)]) == EMPTY) return -1;
     else if (v != TOMBSTONE && COMPARE(v, key)) return n;
-// For the next second and third hash values I merely multiply the
-// first 64-bit value by a value that is essentially arbitrary so that some
-// of its lower bits come up to the top where they contribute to the
-// address that will be probed. If I keep my table lightly loaded I will
-// not need to do this terribly often.
-    h *= multiplier;
+// The second hash table is derived from the first by multiplication,
+// but before that by mixing in the effect of shifting right be 32 bits.
+// This is so that if a collection of keys all differ in just the top
+// bits of the 64-bits they involve that those bits get a chance to impact
+// on rather more bits of the second and third hash values. The use-case
+// that led me to worry about this was if character strings are hashed
+// doubleword-by-doubleword (on a big-endian machine) then one character
+// strings could all use an initial key of the form 0xNN00000000000000 and
+// simple multiplication only ever propagates information leftwards, so
+// if first choice hashes collide there is too high a prospect of second
+// choice ones doing so too. The same issue could perhaps arise with
+// floating point numbers where I can imagine use-cases where many values
+// that are hashed differ only in bits at one extreme end of the data.
+    h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
     if ((v = table[n = (h>>shift_amount)]) == EMPTY) return -1;
     else if (v != TOMBSTONE && COMPARE(v, key)) return n;
-    h *= multiplier;
-// Even in the worst case a lookup (succesful or not) never takes more than
+// The third choice hash uses merely simple multiplication.
+    h = h*multiplier;
+// Even in the worst case a lookup (sucessful or not) never takes more than
 // three probes.
     if ((v = table[n = (h>>shift_amount)]) == EMPTY) return -1;
     else if (v != TOMBSTONE && COMPARE(v, key)) return n;
@@ -331,11 +342,12 @@ int insert(ENTRY key)
     ENTRY v1, v2, v3;
     int n, n1, n2, n3;
 #ifdef TRACE
+    uint64_t hx = ((h ^ (h>>32)) + 0x1234567)*multiplier;
     printf("Insert %"PRIx64" %d %d %d\n",
         key,
         (int)(h >> shift_amount),
-        (int)((multiplier*h) >> shift_amount),
-        (int)((multiplier*multiplier*h) >> shift_amount));
+        (int)(hx >> shift_amount),
+        (int)((multiplier*hx) >> shift_amount));
 #endif
 // I have what seems a rather long-winded prelude to the general insert code.
 // If the key presented hashed to h1, h2 and h3 then I first check if h1 is
@@ -356,6 +368,7 @@ int insert(ENTRY key)
     }
     if (COMPARE(v1, key)) return n1;
     h *= multiplier;
+    h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
     if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY)
     {   table[n2] = key;
         occupancy++;
@@ -418,7 +431,7 @@ int insert(ENTRY key)
 #endif
             break;
         }
-        h *= multiplier;
+        h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
         if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY ||
             v2 == TOMBSTONE)
         {   table[n2] = newkey;
@@ -487,7 +500,7 @@ int insert_new(ENTRY key)
     {   table[n1] = key;
         return n1;
     }
-    h *= multiplier;
+    h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
     if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY ||
          v2 == TOMBSTONE)
     {   table[n2] = key;
@@ -515,7 +528,7 @@ int insert_new(ENTRY key)
         {   table[n1] = newkey;
             break;
         }
-        h *= multiplier;
+        h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
         if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY ||
             v2 == TOMBSTONE)
         {   table[n2] = newkey;
