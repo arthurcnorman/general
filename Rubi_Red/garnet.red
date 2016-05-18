@@ -267,6 +267,30 @@ symbolic procedure garnet_check_inside u;
   else if eqcar(u, 'int) then garnet_integrate(cadr u, caddr u)
   else car u . for each a in cdr u collect garnet_check_inside a;
 
+% A possibly useful function for noting constants. NOT TESTED AT ALL YET.
+
+fluid '(garnet_hash);
+garnet_hash := mkhash(15, 0, 2.0);
+
+symbolic procedure mark_constants(u, x);
+  begin
+    clrhash garnet_hash;
+    mark_constants_1(u, x)
+  end;
+
+symbolic procedure mark_constants_1(u, x);
+  if u = x then nil
+  else if atom u then << puthash(garnet_hash, u, t); t >>
+  else begin
+    scalar w;
+    w := cdr u;
+    while w and mark_constants_1(car w, x) do w := cdr w;
+    if null w then << puthash(garnet_hash, u, t); return t >>
+    else return nil
+  end;
+
+% check bu using "gethash(garnet_hash, u)"
+
 algebraic;
 
 % I now have some cases - where SOME of them should match the rule that
@@ -284,7 +308,6 @@ w := (u + v*z^1)^(-2); garnet(w, z);
 w := (u + z^1)^(-2); garnet(w, z);
 w := (u + v*z)^(-2); garnet(w, z);
 w := (u + z)^(-2); garnet(w, z);
-
 
 end;
 

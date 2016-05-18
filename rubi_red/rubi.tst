@@ -4,8 +4,6 @@ on time;
 
 lisp;
 
-prettyprint "Sean is here";
-
 %verbos 7;
 on ezgcd, time;
 
