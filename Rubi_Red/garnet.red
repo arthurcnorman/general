@@ -144,6 +144,8 @@ garnet((u + z^1)^(-2), z);
 garnet((u + v*z)^(-2), z);
 garnet((u + z)^(-2), z);
 
+ii := (u + v*z^1)^(-2);
+garnet(ii, z);
 
 end;
 
