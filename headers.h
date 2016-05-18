@@ -1,34 +1,9 @@
+// headers.h                                                A C Norman 2016
+
 // Used to allow me to build and test lisphash.cpp as a freestanding
 // package even though eventually it will want to live within the
 // full CSL sources;
 
-#ifndef __FAKECSL_H
-#define __FAKECSL_H 1
-
-#ifndef __STDC_CONSTANT_MACROS__
-#define __STDC_CONSTANT_MACROS__ 1
-#endif
-#ifndef __STDC_FORMAT_MACROS__
-#define __STDC_FORMAT_MACROS__   1
-#endif
-
-#include <stdio.h>
-#include <ctype.h>
-#include <stdarg.h>
-#include <stdint.h>
-#include <inttypes.h>
-#include <string.h>
-#include <stdlib.h>
-#include <time.h>
-
-// I put in a copy of "tags.h" because it is easier to copy the lot than to
-// work out just which bits I need. 
-
-//
-//   Data-structure and tag bit definitions, also common C macros
-//   for Lisp implementation.
-//
-//
 
 /**************************************************************************
  * Copyright (C) 2016, Codemist.                         A C Norman       *
@@ -59,6 +34,33 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
+#ifndef __HEADERS_H
+#define __HEADERS_H 1
+
+#ifndef __STDC_CONSTANT_MACROS__
+#define __STDC_CONSTANT_MACROS__ 1
+#endif
+#ifndef __STDC_FORMAT_MACROS__
+#define __STDC_FORMAT_MACROS__   1
+#endif
+
+#include <stdio.h>
+#include <ctype.h>
+#include <stdarg.h>
+#include <stdint.h>
+#include <inttypes.h>
+#include <string.h>
+#include <stdlib.h>
+#include <time.h>
+
+// I put in a copy of "tags.h" because it is easier to copy the lot than to
+// work out just which bits I need. 
+
+//
+//   Data-structure and tag bit definitions, also common C macros
+//   for Lisp implementation.
+//
+//
 
 #define SIXTY_FOUR_BIT (sizeof(intptr_t) == 8)
 
@@ -1267,8 +1269,6 @@ extern LispObject iintern(LispObject str, int32_t h, LispObject p,
 #define errexitn(n)
 #define errexitv()
 #define argcheck(a, b, c);
-static LispObject aerror(const char *a) { return 0; }
-static LispObject aerror1(const char *a, LispObject b) { return 0; }
 static LispObject sys_hash_table;
 #define lisp_true 1
 static LispObject nil = 0;
@@ -1283,7 +1283,7 @@ static LispObject *mystackp = &mystack[0];
 #define pop2(x, y) { (x) = *--mystackp; (y) = *--mystackp; }
 #define pop3(x, y, z) { (x) = *--mystackp; (y) = *--mystackp; (z) = *--mystackp; }
 #define pop4(x, y, z, w) { (x) = *--mystackp; (y) = *--mystackp; (z) = *--mystackp; (w) = *--mystackp; }
-static void simple_msg(const char *s, LispObject x) {}
+extern void simple_msg(const char *s, LispObject x);
 static LispObject mv_2;
 static LispObject work_0;
 static LispObject vfringe;
@@ -1309,6 +1309,67 @@ static int gc_number = 0;
 static double float_of_number(LispObject a) { return 0.0; }
 static char *bps_pages[10];
 
-#endif // __FAKECSL_H
+extern uint64_t found_n, found_h, found_c;
+extern uint64_t notfound_n, notfound_h, notfound_c;
 
-// end of fakecsl.h
+extern uint64_t already_n, already_h, already_c;
+extern uint64_t inserted_n, inserted_h, inserted_c;
+
+typedef uint64_t ENTRY;
+#define EMPTY     ((ENTRY)(-1))
+#define TOMBSTONE ((ENTRY)(-2))
+
+
+extern ENTRY *table;
+extern int shift_amount;
+extern int table_size;
+extern uint64_t occupancy;
+extern uint64_t multiplier;
+extern void checktable();
+extern void showstats(size_t n);
+extern int instrumented_lookup(ENTRY key);
+extern int instrumented_insert(ENTRY key);
+
+
+typedef struct setup_type
+{   const char *name;
+    one_args *one;
+    two_args *two;
+    n_args *n;
+} setup_type;
+
+typedef struct setup_type_1
+{   const char *name;
+    one_args *one;
+    two_args *two;
+    n_args *n;
+    uint32_t c1;
+    uint32_t c2;
+} setup_type_1;
+
+extern "C" LispObject interrupted(LispObject p);
+extern "C" LispObject error(int nargs, int code, ...);
+extern "C" LispObject cerror(int nargs, int code1, int code2, ...);
+extern "C" LispObject too_few_2(LispObject env, LispObject a1);
+extern "C" LispObject too_many_1(LispObject env, LispObject a1, LispObject a2);
+extern "C" LispObject wrong_no_0a(LispObject env, LispObject a1);
+extern "C" LispObject wrong_no_0b(LispObject env, LispObject a1, LispObject a2);
+extern "C" LispObject wrong_no_3a(LispObject env, LispObject a1);
+extern "C" LispObject wrong_no_3b(LispObject env, LispObject a1, LispObject a2);
+extern "C" LispObject wrong_no_na(LispObject env, LispObject a1);
+extern "C" LispObject wrong_no_nb(LispObject env, LispObject a1, LispObject a2);
+extern "C" LispObject wrong_no_1(LispObject env, int nargs, ...);
+extern "C" LispObject wrong_no_2(LispObject env, int nargs, ...);
+extern "C" LispObject bad_specialn(LispObject env, int nargs, ...);
+
+extern "C" LispObject aerror(const char *s);         // Called from C not Lisp
+extern "C" LispObject aerror0(const char *s);
+extern "C" LispObject aerror1(const char *s, LispObject a);
+extern "C" LispObject aerror2(const char *s, LispObject a, LispObject b);
+extern "C" void fatal_error(int code, ...);
+
+
+
+#endif // __HEADERS_H
+
+// end of headers.h
