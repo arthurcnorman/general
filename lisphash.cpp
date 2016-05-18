@@ -31,8 +31,12 @@
 
 // $Id$
 
+#ifndef __STDC_CONSTANT_MACROS__
 #define __STDC_CONSTANT_MACROS__ 1
+#endif
+#ifndef __STDC_FORMAT_MACROS__
 #define __STDC_FORMAT_MACROS__   1
+#endif
 
 #include <stdio.h>
 #include <stdint.h>

@@ -1,0 +1,664 @@
++++ Transcript to garnet.log started at Thu May 12 15:25:25 2016 +++
+Codemist Standard Lisp 8.00 revision 3639 for darwin15.3.0:x86_64: May  3 2016
+Created: Wed May  4 00:03:30 2016
+
+REDUCE (3632), 04-May-16 ...
+Memory allocation: 117 Mbytes
+There are 4 processors available
+
++++ About to read file "garnet.red"
+
+
+nil
+
+
+nil
+
+ % set some useful (I hope) options
+
+% The existing "rubi_red" package provides a way to access all the
+% Rubi rules... But in fact I will set up my own short list...
+
+% load_package rubi_red;
+
+fluid '(rubi_rules);
+nil
+
+
+
+% To stat with I will have just ONE rule!
+
+% (a + b*x^n)^p
+% where n*(p+1)=-1
+% eg let me try n=1, p=-2, so I get
+% (a + b*x^1)^(-2)
+
+rubi_rules := '(
+
+(!/!;
+   (!:!=
+      (!Int
+         (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+         (!_ x !Symbol))
+      (quotient (times x (expt (plus a (times b (expt x n))) (plus p 1))) a))
+   (and
+      (!Free!Q (bracelist a b n p) x)
+      (!Zero!Q (plus (times n (plus p 1)) 1))))
+
+
+)$
+
+
+
+algebraic operator unsimplified_int;
+
+
+symbolic procedure simpgarnet u;
+  begin
+    scalar a, x, r;
+    if length u neq 2 then rederr "garnet requires two arguments";
+    a := car u;
+    x := cadr u;
+    if posn() neq 0 then terpri();
+    princ "Integrate "; prin a; princ " wrt "; print x;
+    r := garnet_integrate(a, x);
+% I hand back a list of length 2 - the first item is the result that
+% garney generates, the secondis what the existing old Reduce integrator
+% makes of the example.
+    return simp list('list, r, list('int, a, x));
+  end;
++++ simpgarnet compiled, 52 + 48 bytes
+
+simpgarnet
+
+
+
+put('garnet, 'simpfn, 'simpgarnet);
+simpgarnet
+
+
+
+symbolic procedure garnet_integrate(a, x);
+  begin
+    scalar rules, w;
+    rules := rubi_rules;
+top:
+    if null rules then return list('unsimplified_int, a, x);
+    if w := apply_rule(car rules, a, x) then
+       return garnet_check_inside w;
+    rules := cdr rules;
+    go to top;
+  end;
++++ garnet_integrate compiled, 28 + 24 bytes
+
+garnet_integrate
+
+
+
+global '(trace_counter);
+nil
+
+
+trace_counter := 0;
+0
+
+
+
+symbolic procedure apply_rule(rule, a, x);
+  begin
+    scalar lhs, rhs, conditions, w, bindings;
+    if (trace_counter := trace_counter+1) < 5 then <<
+       if posn() neq 0 then terpri();
+       prin trace_counter; princ ": ";
+       princ "looking at "; prin a; princ " wrt "; print x;
+       princ "Try rule "; prettyprint rule; terpri() >>;
+    if not eqcar(rule, '!/!;) then <<
+       printc "Expecting /; at top of rule";
+       return nil >>;
+    w := cadr rule;
+    conditions := caddr rule;    
+    if not eqcar(w, '!:!=) then <<
+       printc "Expecting := at top of rewrite";
+       return nil >>;
+    lhs := cadr w;
+    rhs := caddr w;
+    bindings := trymatch(list('!Int, a, x), lhs, nil);
+    princ "Bindings = "; print bindings;
+% Right now I just bail out and do not even try pattern matching!
+    return nil;
+  end;
++++ apply_rule compiled, 95 + 68 bytes
+
+apply_rule
+
+
+
+symbolic procedure trymatch(u, pattern, env);
+  begin
+    princ "u = "; print u;
+    princ "pattern = "; print pattern;
+    princ "env = "; print env;
+    if eqcar(pattern, '!_) then
+       return (cadr pattern . u) . env
+    else if eqcar(pattern, '!_!.) then
+       return (cadr pattern . u) . env
+    else if u = pattern then return env
+    else if atom pattern or atom u then return 'fail
+    else if not (car u = car pattern) then return 'fail
+    else return trymatchlist(cdr u, cdr pattern, env)    
+  end;
++++ trymatch compiled, 62 + 36 bytes
+
+trymatch
+
+
+
+symbolic procedure trymatchlist(lu, lpattern, env);
+  if null lu and null lpattern then env
+  else if null lu or null lpattern then 'fail
+  else begin
+    scalar w;
+    w := trymatch(car lu, car lpattern, env);
+    if w = 'fail then return 'fail
+    else return trymatchlist(cdr lu, cdr lpattern, w)
+  end;
++++ trymatchlist compiled, 32 + 16 bytes
+
+trymatchlist
+
+
+
+% A rule may transform an integral into something where there is an
+% integral sign left within what is generated. Scan to spot such cases and
+% call garnet again to process that.
+
+symbolic procedure garnet_check_inside u;
+  if atom u then u
+  else if eqcar(u, 'int) then garnet_integrate(cadr u, caddr u)
+  else car u . for each a in cdr u collect garnet_check_inside a;
++++ garnet_check_inside compiled, 58 + 16 bytes
+
+garnet_check_inside
+
+
+
+algebraic;
+
+
+% I now have some cases - where SOME of them should match the rule that
+% I have got.
+
+tr trymatch, trymatchlist;
+(trymatch trymatchlist)
+
+
+
+garnet((u + v*z^1)^(-2), z);
+Integrate (expt (plus u (times v (expt z 1))) -2) wrt z
+1: looking at (expt (plus u (times v (expt z 1))) -2) wrt z
+Try rule (!/!;
+            (!:!=
+               (!Int
+                  (expt
+                     (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+                     (!_ p))
+                  (!_ x !Symbol))
+               (quotient
+                  (times x (expt (plus a (times b (expt x n))) (plus p 1)))
+                  a))
+            (and
+               (!Free!Q (bracelist a b n p) x)
+               (!Zero!Q (plus (times n (plus p 1)) 1))))
+
+Entering trymatch (3 args)
+Arg1: (!Int (expt (plus u (times v (expt z 1))) -2) z)
+Arg2: (!Int (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)) (
+!_ x !Symbol))
+Arg3: nil
+u = (!Int (expt (plus u (times v (expt z 1))) -2) z)
+pattern = (!Int (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)
+) (!_ x !Symbol))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: ((expt (plus u (times v (expt z 1))) -2) z)
+Arg2: ((expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)) (!_ x 
+!Symbol))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: (expt (plus u (times v (expt z 1))) -2)
+Arg2: (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+Arg3: nil
+u = (expt (plus u (times v (expt z 1))) -2)
+pattern = (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: ((plus u (times v (expt z 1))) -2)
+Arg2: ((plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: (plus u (times v (expt z 1)))
+Arg2: (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: nil
+u = (plus u (times v (expt z 1)))
+pattern = (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: (u (times v (expt z 1)))
+Arg2: ((!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: u
+Arg2: (!_ a)
+Arg3: nil
+u = u
+pattern = (!_ a)
+env = nil
+trymatch = ((a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: ((times v (expt z 1)))
+Arg2: ((times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: ((a . u))
+Entering trymatch (3 args)
+Arg1: (times v (expt z 1))
+Arg2: (times (!_!. b) (expt (!_ x) (!_ n)))
+Arg3: ((a . u))
+u = (times v (expt z 1))
+pattern = (times (!_!. b) (expt (!_ x) (!_ n)))
+env = ((a . u))
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: (v (expt z 1))
+Arg2: ((!_!. b) (expt (!_ x) (!_ n)))
+Arg3: ((a . u))
+Entering trymatch (3 args)
+Arg1: v
+Arg2: (!_!. b)
+Arg3: ((a . u))
+u = v
+pattern = (!_!. b)
+env = ((a . u))
+trymatch = ((b . v) (a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: ((expt z 1))
+Arg2: ((expt (!_ x) (!_ n)))
+Arg3: ((b . v) (a . u))
+Entering trymatch (3 args)
+Arg1: (expt z 1)
+Arg2: (expt (!_ x) (!_ n))
+Arg3: ((b . v) (a . u))
+u = (expt z 1)
+pattern = (expt (!_ x) (!_ n))
+env = ((b . v) (a . u))
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: (z 1)
+Arg2: ((!_ x) (!_ n))
+Arg3: ((b . v) (a . u))
+Entering trymatch (3 args)
+Arg1: z
+Arg2: (!_ x)
+Arg3: ((b . v) (a . u))
+u = z
+pattern = (!_ x)
+env = ((b . v) (a . u))
+trymatch = ((x . z) (b . v) (a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: (1)
+Arg2: ((!_ n))
+Arg3: ((x . z) (b . v) (a . u))
+Entering trymatch (3 args)
+Arg1: 1
+Arg2: (!_ n)
+Arg3: ((x . z) (b . v) (a . u))
+u = 1
+pattern = (!_ n)
+env = ((x . z) (b . v) (a . u))
+trymatch = ((n . 1) (x . z) (b . v) (a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: nil
+Arg2: nil
+Arg3: ((n . 1) (x . z) (b . v) (a . u))
+trymatch = ((n . 1) (x . z) (b . v) (a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: nil
+Arg2: nil
+Arg3: ((n . 1) (x . z) (b . v) (a . u))
+trymatch = ((n . 1) (x . z) (b . v) (a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: nil
+Arg2: nil
+Arg3: ((n . 1) (x . z) (b . v) (a . u))
+trymatch = ((n . 1) (x . z) (b . v) (a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: (-2)
+Arg2: ((!_ p))
+Arg3: ((n . 1) (x . z) (b . v) (a . u))
+Entering trymatch (3 args)
+Arg1: -2
+Arg2: (!_ p)
+Arg3: ((n . 1) (x . z) (b . v) (a . u))
+u = -2
+pattern = (!_ p)
+env = ((n . 1) (x . z) (b . v) (a . u))
+trymatch = ((p . -2) (n . 1) (x . z) (b . v) (a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: nil
+Arg2: nil
+Arg3: ((p . -2) (n . 1) (x . z) (b . v) (a . u))
+trymatch = ((p . -2) (n . 1) (x . z) (b . v) (a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: (z)
+Arg2: ((!_ x !Symbol))
+Arg3: ((p . -2) (n . 1) (x . z) (b . v) (a . u))
+Entering trymatch (3 args)
+Arg1: z
+Arg2: (!_ x !Symbol)
+Arg3: ((p . -2) (n . 1) (x . z) (b . v) (a . u))
+u = z
+pattern = (!_ x !Symbol)
+env = ((p . -2) (n . 1) (x . z) (b . v) (a . u))
+trymatch = ((x . z) (p . -2) (n . 1) (x . z) (b . v) (a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: nil
+Arg2: nil
+Arg3: ((x . z) (p . -2) (n . 1) (x . z) (b . v) (a . u))
+trymatch = ((x . z) (p . -2) (n . 1) (x . z) (b . v) (a . u))
+Bindings = ((x . z) (p . -2) (n . 1) (x . z) (b . v) (a . u))
+
+                            1
+{unsimplified_int(----------------------,z),
+                    2              2  2
+                   u  + 2*u*v*z + v *z
+
+      z
+ ------------}
+   2
+  u  + u*v*z
+
+
+garnet((u + z^1)^(-2), z);
+Integrate (expt (plus u (expt z 1)) -2) wrt z
+2: looking at (expt (plus u (expt z 1)) -2) wrt z
+Try rule (!/!;
+            (!:!=
+               (!Int
+                  (expt
+                     (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+                     (!_ p))
+                  (!_ x !Symbol))
+               (quotient
+                  (times x (expt (plus a (times b (expt x n))) (plus p 1)))
+                  a))
+            (and
+               (!Free!Q (bracelist a b n p) x)
+               (!Zero!Q (plus (times n (plus p 1)) 1))))
+
+Entering trymatch (3 args)
+Arg1: (!Int (expt (plus u (expt z 1)) -2) z)
+Arg2: (!Int (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)) (
+!_ x !Symbol))
+Arg3: nil
+u = (!Int (expt (plus u (expt z 1)) -2) z)
+pattern = (!Int (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)
+) (!_ x !Symbol))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: ((expt (plus u (expt z 1)) -2) z)
+Arg2: ((expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)) (!_ x 
+!Symbol))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: (expt (plus u (expt z 1)) -2)
+Arg2: (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+Arg3: nil
+u = (expt (plus u (expt z 1)) -2)
+pattern = (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: ((plus u (expt z 1)) -2)
+Arg2: ((plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: (plus u (expt z 1))
+Arg2: (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: nil
+u = (plus u (expt z 1))
+pattern = (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: (u (expt z 1))
+Arg2: ((!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: u
+Arg2: (!_ a)
+Arg3: nil
+u = u
+pattern = (!_ a)
+env = nil
+trymatch = ((a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: ((expt z 1))
+Arg2: ((times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: ((a . u))
+Entering trymatch (3 args)
+Arg1: (expt z 1)
+Arg2: (times (!_!. b) (expt (!_ x) (!_ n)))
+Arg3: ((a . u))
+u = (expt z 1)
+pattern = (times (!_!. b) (expt (!_ x) (!_ n)))
+env = ((a . u))
+trymatch = fail
+trymatch = fail
+trymatch = fail
+trymatch = fail
+Bindings = fail
+
+                          1                z
+{unsimplified_int(-----------------,z),----------}
+                    2            2       2
+                   u  + 2*u*z + z       u  + u*z
+
+
+garnet((u + v*z)^(-2), z);
+Integrate (expt (plus u (times v z)) -2) wrt z
+3: looking at (expt (plus u (times v z)) -2) wrt z
+Try rule (!/!;
+            (!:!=
+               (!Int
+                  (expt
+                     (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+                     (!_ p))
+                  (!_ x !Symbol))
+               (quotient
+                  (times x (expt (plus a (times b (expt x n))) (plus p 1)))
+                  a))
+            (and
+               (!Free!Q (bracelist a b n p) x)
+               (!Zero!Q (plus (times n (plus p 1)) 1))))
+
+Entering trymatch (3 args)
+Arg1: (!Int (expt (plus u (times v z)) -2) z)
+Arg2: (!Int (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)) (
+!_ x !Symbol))
+Arg3: nil
+u = (!Int (expt (plus u (times v z)) -2) z)
+pattern = (!Int (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)
+) (!_ x !Symbol))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: ((expt (plus u (times v z)) -2) z)
+Arg2: ((expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)) (!_ x 
+!Symbol))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: (expt (plus u (times v z)) -2)
+Arg2: (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+Arg3: nil
+u = (expt (plus u (times v z)) -2)
+pattern = (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: ((plus u (times v z)) -2)
+Arg2: ((plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: (plus u (times v z))
+Arg2: (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: nil
+u = (plus u (times v z))
+pattern = (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: (u (times v z))
+Arg2: ((!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: u
+Arg2: (!_ a)
+Arg3: nil
+u = u
+pattern = (!_ a)
+env = nil
+trymatch = ((a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: ((times v z))
+Arg2: ((times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: ((a . u))
+Entering trymatch (3 args)
+Arg1: (times v z)
+Arg2: (times (!_!. b) (expt (!_ x) (!_ n)))
+Arg3: ((a . u))
+u = (times v z)
+pattern = (times (!_!. b) (expt (!_ x) (!_ n)))
+env = ((a . u))
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: (v z)
+Arg2: ((!_!. b) (expt (!_ x) (!_ n)))
+Arg3: ((a . u))
+Entering trymatch (3 args)
+Arg1: v
+Arg2: (!_!. b)
+Arg3: ((a . u))
+u = v
+pattern = (!_!. b)
+env = ((a . u))
+trymatch = ((b . v) (a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: (z)
+Arg2: ((expt (!_ x) (!_ n)))
+Arg3: ((b . v) (a . u))
+Entering trymatch (3 args)
+Arg1: z
+Arg2: (expt (!_ x) (!_ n))
+Arg3: ((b . v) (a . u))
+u = z
+pattern = (expt (!_ x) (!_ n))
+env = ((b . v) (a . u))
+trymatch = fail
+trymatch = fail
+trymatch = fail
+trymatch = fail
+trymatch = fail
+Bindings = fail
+
+                            1
+{unsimplified_int(----------------------,z),
+                    2              2  2
+                   u  + 2*u*v*z + v *z
+
+      z
+ ------------}
+   2
+  u  + u*v*z
+
+
+garnet((u + z)^(-2), z);
+Integrate (expt (plus u z) -2) wrt z
+4: looking at (expt (plus u z) -2) wrt z
+Try rule (!/!;
+            (!:!=
+               (!Int
+                  (expt
+                     (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+                     (!_ p))
+                  (!_ x !Symbol))
+               (quotient
+                  (times x (expt (plus a (times b (expt x n))) (plus p 1)))
+                  a))
+            (and
+               (!Free!Q (bracelist a b n p) x)
+               (!Zero!Q (plus (times n (plus p 1)) 1))))
+
+Entering trymatch (3 args)
+Arg1: (!Int (expt (plus u z) -2) z)
+Arg2: (!Int (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)) (
+!_ x !Symbol))
+Arg3: nil
+u = (!Int (expt (plus u z) -2) z)
+pattern = (!Int (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)
+) (!_ x !Symbol))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: ((expt (plus u z) -2) z)
+Arg2: ((expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p)) (!_ x 
+!Symbol))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: (expt (plus u z) -2)
+Arg2: (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+Arg3: nil
+u = (expt (plus u z) -2)
+pattern = (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: ((plus u z) -2)
+Arg2: ((plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: (plus u z)
+Arg2: (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: nil
+u = (plus u z)
+pattern = (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+env = nil
+Tail calling trymatchlist (3 args) from trymatch
+Arg1: (u z)
+Arg2: ((!_ a) (times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: nil
+Entering trymatch (3 args)
+Arg1: u
+Arg2: (!_ a)
+Arg3: nil
+u = u
+pattern = (!_ a)
+env = nil
+trymatch = ((a . u))
+Tail calling trymatchlist (3 args) from trymatchlist
+Arg1: (z)
+Arg2: ((times (!_!. b) (expt (!_ x) (!_ n))))
+Arg3: ((a . u))
+Entering trymatch (3 args)
+Arg1: z
+Arg2: (times (!_!. b) (expt (!_ x) (!_ n)))
+Arg3: ((a . u))
+u = z
+pattern = (times (!_!. b) (expt (!_ x) (!_ n)))
+env = ((a . u))
+trymatch = fail
+trymatch = fail
+trymatch = fail
+trymatch = fail
+Bindings = fail
+
+                          1                z
+{unsimplified_int(-----------------,z),----------}
+                    2            2       2
+                   u  + 2*u*z + z       u  + u*z
+
+
+
+
+quit;
+
+End of Lisp run after 0.00+0.12 seconds
+
++++ Transcript closed at end of run +++
