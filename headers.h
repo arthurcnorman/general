@@ -37,11 +37,14 @@
 #ifndef __HEADERS_H
 #define __HEADERS_H 1
 
-#ifndef __STDC_CONSTANT_MACROS__
-#define __STDC_CONSTANT_MACROS__ 1
+#ifndef __STDC_CONSTANT_MACROS
+#define __STDC_CONSTANT_MACROS 1
 #endif
-#ifndef __STDC_FORMAT_MACROS__
-#define __STDC_FORMAT_MACROS__   1
+#ifndef __STDC_LIMIT_MACROS
+#define __STDC_LIMIT_MACROS 1
+#endif
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS   1
 #endif
 
 #include <stdio.h>
@@ -1319,16 +1322,18 @@ typedef uint64_t ENTRY;
 #define EMPTY     ((ENTRY)(-1))
 #define TOMBSTONE ((ENTRY)(-2))
 
+#define NOT_PRESENT ((size_t)(-1))
 
 extern ENTRY *table;
 extern int shift_amount;
-extern int table_size;
-extern uint64_t occupancy;
+extern size_t table_size;
+extern size_t occupancy;
 extern uint64_t multiplier;
 extern void checktable();
 extern void showstats(size_t n);
-extern int instrumented_lookup(ENTRY key);
-extern int instrumented_insert(ENTRY key);
+extern size_t instrumented_lookup(ENTRY key);
+extern size_t instrumented_insert(ENTRY key);
+extern void dumptable(const char *s, bool checkdups);
 
 
 typedef struct setup_type

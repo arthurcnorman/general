@@ -40,7 +40,8 @@ int main(int argc, char *argv[])
     srand48((long)time(NULL));
     for (shift_amount=64-3; shift_amount>LIMIT; shift_amount--)
     {   table_size = ((size_t)1)<<(64-shift_amount);
-        table = (ENTRY *)malloc(sizeof(ENTRY)*table_size);
+//      table = (ENTRY *)malloc(sizeof(ENTRY)*table_size);
+        table = (ENTRY *)malloc(sizeof(ENTRY)*32*1024*1024);
         if (table == NULL)
         {   printf("malloc failed\n");
             exit(0);
@@ -70,8 +71,9 @@ int main(int argc, char *argv[])
                     break;
                 }
 #ifdef TRACE
-                dumptable("keeping going", true);
+//              dumptable("keeping going", true);
 #endif
+//              checktable();
                 if (n+1==n0 ||
                     n+1==n1 ||
                     n+1==n2 ||

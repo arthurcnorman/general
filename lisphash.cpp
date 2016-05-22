@@ -52,13 +52,24 @@
 // 64-bit hash function on a key and derive the three probe positions from
 // it: for tables holding up to a couple of million entries those three
 // positions could be independent (because in effect they pick out different
-// subsets of the full 64-bit value). I arrange that if, as I inspect the
-// table, I encounter an empty slot that means that the key I was looking for
-// is not present. Thus in some cases I can verify that a key is not in the
-// table by computing one hash function and inspecting the table but not
-// performing any key comparisons at all. Similarly when I insert data into
-// a fairly empty table I will (reasonably often) not need key comparison
-// operations.
+// subsets of the full 64-bit value).
+// I arrange that if, as I inspect the table, I encounter an empty slot
+// that means that the key I was looking for is not present. Thus in some
+// cases I can verify that a key is not in the table by computing one hash
+// function and inspecting the table but not performing any key comparisons
+// at all. Similarly when I insert data into a fairly empty table I will
+// (reasonably often) not need key comparison operations, because if
+// when I probe in the seque3nce I would as for a lookup I happen on
+// and EMPTY slot I know the key is not present and I have just found where
+// I should insert it.
+// Note that the decision just described means that deletion must
+// insert tombstone values, and if too many of those are present it can
+// degrade lookup time (but pretty well at worst to an average of two probes
+// for a successful lookup and three for an unsuccessful one). Rehashing
+// large tables can also leave behind tombstones and I have a trade off
+// between time and space used during rehashing and the number of tombstones
+// left. I will arrange that for most tables of reasonable size things are
+// handled nicely!
 //
 // As with any general hash table implementation I occasionally need to
 // expand or contract the table and re-hash. For cuckoo hashing I sometimes
@@ -66,28 +77,36 @@
 // of hash conflicts. While those two have significant cost they should
 // both be uncommon and their amortised cost modest.
 //
-// I wtite HASH() for the code that will compute a hash function, and
+// I write HASH() for the code that will compute a hash function, and
 // COMPARE() for key comparison. COMPARE should never be called with an
-// EMPTY value, but might be with a TOMBSTONE.
+// EMPTY or TOMBSTONE value, and that may at times allow a minor optimisation
+// in its implementation.
 
 // Really ENTRY is liable to be LispObject and EMPTY and TOMBSTONE will
 // be a couple of SPID values...
 
 //
-// The following are the component5s that make up a hash table...
+// The following are the components that make up a hash table...
 //
 ENTRY *table = NULL;
 int shift_amount = 64-18;
-int table_size = ((size_t)(1<<(64-shift_amount)));
-uint64_t occupancy = 0;
+size_t table_size = ((size_t)(1<<(64-shift_amount)));
+size_t occupancy = 0;
 uint64_t multiplier = UINT64_C(0x9e3779b99e3779bd);
 
 static inline void update_multiplier()
 {
-// The constants here yield a linear congruential generator with full
-// period for 64-bit integers.
+// The constants 28...57 and 30..93 here yield a linear congruential
+// generator with full period when used with 64-bit integers. Here I
+// use them on 63-bits of the multiplier. I update in such as way that
+// my least significant bit remains as a "1". I want that so that
+// if I compute a hash value using "h=((multiplier*key)>>shift)" then
+// high bits in the key do not get multiplied out from where they can
+// influence the result. To see how bad things could be imagine if the
+// multipiler somehow ended up as having the value 2^62... then only
+// the very bottom bits of the key could contribute to the hash value!
     multiplier = UINT64_C(2862933555777941757)*multiplier +
-                 UINT64_C(3037000493);
+                 (2*UINT64_C(3037000493)-UINT64_C(2862933555777941757)+1);
 }
 
 static uint64_t hashcount=0, comparecount=0;
@@ -189,10 +208,11 @@ void checktable()
 // it encounters an empty hash table slot in its probe sequence.
 // Observe how very concise and fast this code is!
 
-int lookup(ENTRY key)
+size_t lookup(ENTRY key)
 {
-    uint64_t h = HASH(key, multiplier), v;
-    int n;
+    uint64_t h = HASH(key, multiplier);
+    ENTRY v;
+    size_t n;
 // I probe the table. I will arrange that if I see an empty table slot then
 // I can exit at once. The reason for making this extra test is that it
 // may be that comparing keys is expensive (for instance it could be
@@ -204,7 +224,7 @@ int lookup(ENTRY key)
 // during lookup (though the presence of large numbers of them will tend to
 // hurt performance a little), but I will need to allow for them in the
 // insertion code.
-    if ((v = table[n = (h>>shift_amount)]) == EMPTY) return -1;
+    if ((v = table[n = (h>>shift_amount)]) == EMPTY) return NOT_PRESENT;
     else if (v != TOMBSTONE && COMPARE(v, key)) return n;
 // The second hash table is derived from the first by multiplication,
 // but before that by mixing in the effect of shifting right be 32 bits.
@@ -220,15 +240,15 @@ int lookup(ENTRY key)
 // floating point numbers where I can imagine use-cases where many values
 // that are hashed differ only in bits at one extreme end of the data.
     h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
-    if ((v = table[n = (h>>shift_amount)]) == EMPTY) return -1;
+    if ((v = table[n = (h>>shift_amount)]) == EMPTY) return NOT_PRESENT;
     else if (v != TOMBSTONE && COMPARE(v, key)) return n;
 // The third choice hash uses merely simple multiplication.
     h = h*multiplier;
 // Even in the worst case a lookup (sucessful or not) never takes more than
 // three probes.
-    if ((v = table[n = (h>>shift_amount)]) == EMPTY) return -1;
+    if ((v = table[n = (h>>shift_amount)]) == EMPTY) return NOT_PRESENT;
     else if (v != TOMBSTONE && COMPARE(v, key)) return n;
-    else return -1;
+    else return NOT_PRESENT;
 }
 
 // I provide instrumented lookup and insert functions that count the
@@ -237,12 +257,12 @@ int lookup(ENTRY key)
 uint64_t found_n=0, found_h=0, found_c=0;
 uint64_t notfound_n=0, notfound_h=0, notfound_c=0;
 
-int instrumented_lookup(ENTRY key)
+size_t instrumented_lookup(ENTRY key)
 {
-    int r;
+    size_t r;
     hashcount = comparecount = 0;
     r = lookup(key);
-    if (r == -1)
+    if (r == NOT_PRESENT)
     {   notfound_n++;
         notfound_h += hashcount;
         notfound_c += comparecount;
@@ -267,8 +287,8 @@ int instrumented_lookup(ENTRY key)
 
 bool discard(ENTRY key)
 {
-    int n = lookup(key);
-    if (n < 0) return false; // Item had not been present.
+    size_t n = lookup(key);
+    if (n == NOT_PRESENT) return false; // Item had not been present.
     table[n] = TOMBSTONE;
     occupancy--;
     if (occupancy < table_size/5)
@@ -317,7 +337,7 @@ bool discard(ENTRY key)
 
 #define QSIZE 100
 
-int insert(ENTRY key)
+size_t insert(ENTRY key)
 {
     int Qin, Qout;
     uint64_t Qkey[QSIZE];
@@ -350,15 +370,14 @@ int insert(ENTRY key)
         occupancy++;
         return n1;
     }
-    if (COMPARE(v1, key)) return n1;
-    h *= multiplier;
+    if (v1 != TOMBSTONE && COMPARE(v1, key)) return n1;
     h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
     if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY)
     {   table[n2] = key;
         occupancy++;
         return n2;
     }
-    if (COMPARE(v2, key)) return n2;
+    if (v2 != TOMBSTONE && COMPARE(v2, key)) return n2;
     h *= multiplier;
     if ((v3 = table[n3 = (h>>shift_amount)]) == EMPTY)
     {   table[n3] = key;
@@ -372,6 +391,7 @@ int insert(ENTRY key)
         occupancy++;
         return n3;
     }
+// note that v3 is not TOMBSTONE here!
     if (COMPARE(v3, key)) return n3;
     occupancy++;
     if (v1 == TOMBSTONE)
@@ -396,7 +416,7 @@ int insert(ENTRY key)
     Qout = 0;
     for (;;)
     {   ENTRY newkey;
-        if (Qout >= Qin) return -1; // Nothing left in queue. Failed.
+        if (Qout >= Qin) return NOT_PRESENT; // Nothing left in queue. Failed.
         n = Q[Qout++];              // A currently occupied location.
         newkey = table[n];          // The key stored there.
         h = HASH(newkey, multiplier);
@@ -503,7 +523,7 @@ int insert_new(ENTRY key)
     Qout = 0;
     for (;;)
     {   ENTRY newkey;
-        if (Qout >= Qin) return -1; // Nothing left in queue. Failed.
+        if (Qout >= Qin) return NOT_PRESENT; // Nothing left in queue. Failed.
         n = Q[Qout++];              // A currently occupied location.
         newkey = table[n];          // The key stored there.
         h = HASH(newkey, multiplier);
@@ -551,9 +571,9 @@ int insert_new(ENTRY key)
 uint64_t already_n=0, already_h=0, already_c=0;
 uint64_t inserted_n=0, inserted_h=0, inserted_c=0;
 
-int instrumented_insert(ENTRY key)
+size_t instrumented_insert(ENTRY key)
 {
-    int r;
+    size_t r;
     uint64_t old_occupancy = occupancy;
     hashcount = comparecount = 0;
     r = insert(key);
@@ -624,14 +644,14 @@ bool rehash()
 // For BIG tables I need to leave a TOMBSTONE where a key used to be before
 // being moved. 
         table[i] = TOMBSTONE;
-        if (insert(k) == -1)
+        if (insert(k) == NOT_PRESENT)
         {   pending_for_rehash[npending++] = k;
             return false;
         }
     }
     while (npending != 0)
     {   ENTRY k = pending_for_rehash[--npending];
-        if (insert(k) == -1)
+        if (insert(k) == NOT_PRESENT)
         {   pending_for_rehash[npending++] = k;
             return false;
         }
@@ -2094,8 +2114,8 @@ void showstats(size_t n)
     for (i=0; i<table_size; i++)
     {   if (table[i] != EMPTY && table[i] != TOMBSTONE)
         {   int j = instrumented_lookup(table[i]); // should be there
-            if (i != j) printf("??? i=%"PRIuMAX" j=%"PRIuMAX"\n",
-                               (uintmax_t)i, (uintmax_t)j);
+            if (i != j) printf("??? i=%"PRIuMAX" j=%"PRIuMAX"(%"PRIxMAX")\n",
+                               (uintmax_t)i, (uintmax_t)j, (uintmax_t)j);
             instrumented_lookup(lrand48());        // probably not there
         }
     }
