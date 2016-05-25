@@ -195,12 +195,12 @@ symbolic procedure lalr_prin_symbol sym;
   if sym = 0 then 
     princ "$"
   else if numberp sym then
-    for each c in explode2 cdr assoc(sym, terminal_codes) do princ c
+    for each c in explode2 cdrassoc(sym, terminal_codes) do princ c
   else 
     for each c in explode2uc sym do princ c;
 
 symbolic procedure lalr_prin_nonterminal code;
-  for each c in explode2uc cdr assoc(code, nonterminal_codes) do princ c;
+  for each c in explode2uc cdrassoc(code, nonterminal_codes) do princ c;
 
 
 symbolic procedure lalr_warn_reduce_reduce_conflict(reduce1, reduce2, state);

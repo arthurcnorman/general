@@ -214,7 +214,7 @@ symbolic procedure yyparse parser;
         for i := 1:rhs_n do <<
           name := car sym_stack;
           if fixp name and assoc(name, terminal_codes) then
-            name := cdr assoc(name, terminal_codes);
+            name := cdrassoc(name, terminal_codes);
           w := name . w;
           sym_stack := cdr sym_stack;
           state_stack := cdr state_stack >>;

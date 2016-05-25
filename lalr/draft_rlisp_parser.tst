@@ -505,5 +505,8 @@ rlisp_grammar := '(
 )$
 
 
-lalr_construct_parser rlisp_grammar;
+lalr_create_parser(nil, rlisp_grammar);
+
+end;
+
 

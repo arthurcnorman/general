@@ -329,20 +329,28 @@ symbolic procedure expand_rule u;
     for each x in cdr u collect
       ((for each y in car x collect expand_terminal y) . cdr x);
 
+global '(expansion_count);
+expansion_count := 0;
+
+symbolic procedure expansion_name();
+  compress append(explode 'lalr_internal_,
+      explode (expansion_count := expansion_count + 1));
+  
+
 symbolic procedure expand_terminal z;
   begin
     scalar g1, g2, g3;
     if atom z then return z
     else if eqcar(z, 'opt) then <<
-      g1 := gensym();
+      g1 := expansion_name();
       pending_rules!* :=
         list(g1,
              '(()),
              list cdr z) . pending_rules!*;
       return g1 >>
     else if eqcar(z, 'star) then <<
-      g1 := gensym();
-      g2 := gensym();
+      g1 := expansion_name();
+      g2 := expansion_name();
       if cdr z and null cddr z and atom cadr z then g2 := cadr z
       else pending_rules!* := list(g2, list cdr z) . pending_rules!*;
       pending_rules!* :=
@@ -351,8 +359,8 @@ symbolic procedure expand_terminal z;
              list(list(g2, g1), '(cons !$1 !$2))) . pending_rules!*;
       return g1 >>
     else if eqcar(z, 'plus) then <<
-      g1 := gensym();
-      g2 := gensym();
+      g1 := expansion_name();
+      g2 := expansion_name();
       if cdr z and null cddr z and atom cadr z then g2 := cadr z
       else pending_rules!* := list(g2, list cdr z) . pending_rules!*;
       pending_rules!* :=
@@ -361,9 +369,9 @@ symbolic procedure expand_terminal z;
              list(list(g2, g1), '(cons !$1 !$2))) . pending_rules!*;
       return g1 >>
     else if eqcar(z, 'list) and cdr z then <<
-      g1 := gensym();
-      g2 := gensym();
-      g3 := gensym();
+      g1 := expansion_name();
+      g2 := expansion_name();
+      g3 := expansion_name();
       if cddr z and null cdddr z and atom caddr z then g2 := caddr z
       else pending_rules!* := list(g2, list cddr z) . pending_rules!*;
       pending_rules!* :=
@@ -376,9 +384,9 @@ symbolic procedure expand_terminal z;
              list(list(g2, g3), '(cons !$1 !$2))) . pending_rules!*;
       return g1 >>
     else if eqcar(z, 'listplus) and cdr z then <<
-      g1 := gensym();
-      g2 := gensym();
-      g3 := gensym();
+      g1 := expansion_name();
+      g2 := expansion_name();
+      g3 := expansion_name();
       if cddr z and null cdddr z and atom caddr z then g2 := caddr z
       else pending_rules!* := list(g2, list cddr z) . pending_rules!*;
       pending_rules!* :=
@@ -390,7 +398,7 @@ symbolic procedure expand_terminal z;
              list(list(g2, g3), '(cons !$1 !$2))) . pending_rules!*;
       return g1 >>
     else if eqcar(z, 'or) then <<
-      g1 := gensym();
+      g1 := expansion_name();
       pending_rules!* :=
         (g1 . for each q in cdr z collect list list q) . pending_rules!*;
       return g1 >>
@@ -410,10 +418,18 @@ symbolic procedure expand_terminal z;
 %                      lists. 
 %==============================================================================
 
+symbolic procedure carrassoc(key, alist);
+  begin
+    scalar w;
+    if consp (w := rassoc(key, alist)) then return car w;
+    terpri();
+    princ "RASSOC trouble: "; prin key; princ " "; print alist;
+    rederr "rassoc trouble"
+  end;
+
 symbolic procedure lalr_set_grammar(precedence_list, grammar);
   begin
     scalar terminals; 
-
     grammar := lalr_augment_grammar grammar;
 
     nonterminals := lalr_collect_nonterminals grammar;
@@ -429,7 +445,7 @@ symbolic procedure lalr_set_grammar(precedence_list, grammar);
     lalr_precalculate_first_sets();
 
     terminals := for each terminal in terminals collect  
-                    car rassoc(intern terminal, terminal_codes);
+                    carrassoc(intern terminal, terminal_codes);
     symbols := append(nonterminals, terminals);
 
     if !*lalr_verbose then <<
@@ -497,7 +513,7 @@ symbolic procedure lalr_process_productions(grammar, lex_codes);
                   (if (intern symbol) member nonterminals then 
                      intern symbol
                    else
-                     car rassoc(intern symbol, lex_codes));
+                     carrassoc(intern symbol, lex_codes));
         production := rule . semantic_action;
         productions_processed := production . productions_processed >>;
       if (w := get(intern x, 'lalr_produces)) then
@@ -725,7 +741,7 @@ symbolic procedure lalr_generate_collection;
 
     % Add the special lookahead 0 (end-of-input character $) to the initial
     % item [S' -> S]. 
-    itemset0 := car rassoc(0, itemset_collection);
+    itemset0 := carrassoc(0, itemset_collection);
     lalr_add_lookahead(car itemset0, 0);
 
     % Propagate all lookaheads until the LALR collection is complete.
@@ -1145,13 +1161,22 @@ symbolic procedure lalr_process_reductions;
     return list(reduction_fn, reduction_rhs_length, reduction_lhs);
   end;
 
+symbolic procedure cdrassoc(key, alist);
+  begin
+    scalar w;
+    if consp (w := assoc(key, alist)) then return cdr w;
+    terpri();
+    princ "ASSOC trouble: "; prin key; princ " "; print alist;
+    rederr "assoc trouble"
+  end;
+
 
 
 symbolic procedure lalr_reduction_index rule;
   begin
     scalar x, rhs;
     x := car rule; rhs := cdr rule;
-    return cdr assoc(rhs, lalr_productions x)
+    return cdrassoc(rhs, lalr_productions x)
   end;
 
 
