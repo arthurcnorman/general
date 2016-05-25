@@ -30,3 +30,16 @@ val overmlss'  =  [overline mlss']
 val out = ShipOut.shipOut
 fun test1 ()  =  out [disp mlar, line mlar, disp mleq, line mleq]
 fun test2 ()  =  out [disp mlss', disp overmlss', line mlss', line overmlss']
+
+
+
+val mlaccents = accent "check" (trans "a") :: trans "+" @ 
+                accent "check" (trans "T") :: trans "+" @
+                accent "hat" (trans "a")   :: trans "+" @
+                [accent "tilde" (trans  "g")]
+fun testaccents () = out [disp mlaccents, line mlaccents]
+
+val mlradical = sqrt (trans "a") :: trans "=" @
+                sqrt (trans "2x-3") :: trans "." @
+                [sqrt [(supsub (trans "y") one one)]]
+fun testradical () = out [disp mlradical, line mlradical]

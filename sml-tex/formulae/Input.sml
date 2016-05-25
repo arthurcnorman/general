@@ -13,6 +13,8 @@ sig
   val math       : MathTypes.kind -> MathTypes.mlist -> MathTypes.noad
   val style      : BasicTypes.style -> MathTypes.noad
   val choice     : MathTypes.mlist -> MathTypes.mlist -> MathTypes.mlist -> MathTypes.mlist -> MathTypes.noad
+  val accent     : string -> MathTypes.mlist -> MathTypes.noad
+  val sqrt       : MathTypes.mlist -> MathTypes.noad
 end
 (*----------*)
 
@@ -66,5 +68,12 @@ struct
   val style = Style
 
   fun choice d t s ss  =  Choice (fn D => d | T => t | S => s | SS => ss)
+
+  fun accent "hat"   base = Accent (RM, 94,  base)
+    | accent "check" base = Accent (RM, 20,  base)
+    | accent "tilde" base = Accent (RM, 126, base)
+    | accent _       _    = raise (BasicTypes.NotImplemented "math accent")
+
+  fun sqrt ml = Radical (112, ml)
 
 end
