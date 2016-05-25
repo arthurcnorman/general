@@ -109,9 +109,14 @@ symbolic procedure garnet!-simp!-plus l;
     for each x in l do
        if numberp x then n := n + x
        else r := x . r;
+% Puts any numeric constant as first item in result version.
     if not zerop n then r := n . reverse r
 % Sean-To-do: figure out why reverse
+% Arthur answer: the for-each loop builds up the result list r by putting
+% items on its front and that reverses the original input, so the reverese
+% here restores it.
     else r := reverse r;
+% If only one item left return it, otherwise return a sum.
     if null cdr r then return car r
     else return 'plus . r
   end;
@@ -217,6 +222,8 @@ symbolic procedure garnet_integrate(a, x);
     rules := rubi_rules;
 top:
     if null rules then return list('unsimplified_int, a, x);
+% apply_rules returns a non-nil answer if it finds an integral, or nil
+% if the rules will not apply.
     if w := apply_rule(car rules, a, x) then
        return garnet_check_inside w;
     rules := cdr rules;
@@ -235,6 +242,8 @@ symbolic procedure apply_rule(rule, a, x);
     scalar lhs, rhs, conditions, w, bindings;
     if (trace_counter := trace_counter+1) < 5 then <<
         %Sean-To-do: look up posn()
+        %Arthur: posn() tells you the current output column, so this
+        % forces a new line unless you are already at the start of a line.
        if posn() neq 0 then terpri(); 
        prin trace_counter; princ ": ";
        princ "looking at "; prin a; princ " wrt "; print x;
@@ -249,6 +258,8 @@ symbolic procedure apply_rule(rule, a, x);
        return nil >>;
     lhs := cadr w;
     rhs := caddr w;
+% trymatch will return either a list of bindings or the special symbol
+% 'fail to indicate that matching was not possible.
     bindings := trymatch(list('!Int, a, x), lhs, nil);
     princ "Bindings = "; print bindings;
     if bindings = 'fail then return nil;
@@ -349,18 +360,54 @@ symbolic procedure mark_constants(u, x);
     mark_constants_1(u, x)
   end;
 
+% The idea is that this will enter data into the hash table for every
+% part of the input that is "constant" in u (with respect to x). So complex
+% formulae like sin(pi/sqrt(a^2+b^2)) are constant with respect to x, in that
+% the given formula has no x in it. However exactly the same formula would not
+% be independent of a or b.
+% The functio also returns true it its argument u is independent of x,
+% This is to implement the InvolvesQ predicate.
+
 symbolic procedure mark_constants_1(u, x);
   if u = x then nil
-  else if atom u then << puthash(garnet_hash, u, t); t >>
+  else if atom u then << puthash(u, garnet_hash, t); t >>
   else begin
-    scalar w;
-    w := cdr u;
-    while w and mark_constants_1(car w, x) do w := cdr w;
-    if null w then << puthash(garnet_hash, u, t); return t >>
-    else return nil
+    scalar overall;
+    overall := t;
+% overall is going to tell if this whole expression seems constant.
+    for each s in cdr u do
+       if not mark_constants_1(s, x) then overall := nil;
+    if overall then puthash(u, garnet_hash, t);
+    return overall
   end;
 
-% check by using "gethash(garnet_hash, u)"
+% check by using "gethash(u, garnet_hash)"
+
+% Small test/demo of above
+
+symbolic procedure test_constants(u, x);
+  begin
+    mark_constants(u, x);
+    testconst u
+  end;
+
+symbolic procedure testconst u;
+  begin
+    prin u;
+    if posn() > 49 then terpri();
+    ttab 50;
+    print gethash(u, garnet_hash);
+    if atom u then return nil;
+    for each s in cdr u do testconst s
+  end;
+
+test_constants('(plus (times 2 x)
+                 (sin (quotient pi (sqrt (plus (expt a 2) (expt b 2)))))),
+               'x);
+
+
+
+
 
 algebraic;
 

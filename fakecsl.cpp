@@ -34,23 +34,20 @@ LispObject getvector_init(size_t n, LispObject k)
 //#define LIMIT (64-4)
 #define LIMIT (64-24)
 
+LispObject hashtab = 0;
 
 int main(int argc, char *argv[])
 {
     srand48((long)time(NULL));
+// Create a table of initial capacity about 4 that will have using EQ.
+    hashtab = Lmkhash2(nil, fixnum_of_int(4), fixnum_of_int(0));
     for (shift_amount=64-3; shift_amount>LIMIT; shift_amount--)
     {   table_size = ((size_t)1)<<(64-shift_amount);
-//      table = (ENTRY *)malloc(sizeof(ENTRY)*table_size);
-        table = (ENTRY *)malloc(sizeof(ENTRY)*32*1024*1024);
-        if (table == NULL)
-        {   printf("malloc failed\n");
-            exit(0);
-        }
+        Lclr_hash(nil, hashtab);
         for (int trials=0; trials<NTRIALS; trials++)
         {   size_t n, n0, n1, n2, n3, n4;
             already_n=0, already_h=0, already_c=0;
             inserted_n=0, inserted_h=0, inserted_c=0;
-            for (n=0; n<table_size; n++) table[n] = EMPTY;
             n0 = (3*table_size)/10;
             n1 = (4*table_size)/10;
             n2 = (5*table_size)/10;

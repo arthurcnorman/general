@@ -96,7 +96,7 @@ uint64_t multiplier = UINT64_C(0x9e3779b99e3779bd);
 
 static inline void update_multiplier()
 {
-// The constants 28...57 and 30..93 here yield a linear congruential
+// The constants (28...57) and (30..93) here yield a linear congruential
 // generator with full period when used with 64-bit integers. Here I
 // use them on 63-bits of the multiplier. I update in such as way that
 // my least significant bit remains as a "1". I want that so that
@@ -112,6 +112,7 @@ static inline void update_multiplier()
 static uint64_t hashcount=0, comparecount=0;
 
 #define HASH(key, multiplier) (hashcount++,((key)*multiplier))
+#define REHASH(h, multiplier) ((((h) ^ ((h)>>32)) + 0x1234567)*(multiplier))
 #define COMPARE(k1, k2)       (comparecount++,((k1) == (k2)))
 
 // dumptable() displys the contants of the hash table (for debugging
@@ -127,7 +128,7 @@ void dumptable(const char *s, bool checkdups)
     {   ENTRY k = table[i];
         uint64_t h = HASH(k, multiplier);
         int h1 = h >> shift_amount;
-        uint64_t hx = ((h ^ (h>>32)) + 0x1234567)*multiplier;
+        uint64_t hx = REHASH(h, multiplier);
         int h2 = hx >> shift_amount;
         int h3 = (multiplier*hx) >> shift_amount;
         if (k == EMPTY) printf("%3"PRIuMAX": EMPTY\n", (uintmax_t)i);
@@ -178,7 +179,7 @@ void checktable()
     {   ENTRY k = table[i];
         uint64_t h = HASH(k, multiplier);
         int h1 = h >> shift_amount;
-        uint64_t hx = ((h ^ (h>>32)) + 0x1234567)*multiplier;
+        uint64_t hx = REHASH(h, multiplier);
         int h2 = hx >> shift_amount;
         int h3 = (multiplier*hx) >> shift_amount;
         if (k != EMPTY && k != TOMBSTONE)
@@ -239,7 +240,7 @@ size_t lookup(ENTRY key)
 // choice ones doing so too. The same issue could perhaps arise with
 // floating point numbers where I can imagine use-cases where many values
 // that are hashed differ only in bits at one extreme end of the data.
-    h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
+    h = REHASH(h, multiplier);
     if ((v = table[n = (h>>shift_amount)]) == EMPTY) return NOT_PRESENT;
     else if (v != TOMBSTONE && COMPARE(v, key)) return n;
 // The third choice hash uses merely simple multiplication.
@@ -298,37 +299,83 @@ bool discard(ENTRY key)
 }
 
 
-// I will search for a place to insert using a breadth-first search. For that
-// purpose I will have a queue, where the items stored in it will be the
-// addresses in the table where I wish to put something.
+// When I insert an item I will always insert in one of the first two choice
+// locations. If neither of them is empty I will need to move away a value
+// presently stored, and it is these relocations that can move keys into
+// their third-choice place.
+// This scheme makes insertion just slightly more expensive but should tend
+// to keep more items in first or second choice locations and so slightly
+// speed up (successful) lookup.
 //
-// This queue can start off with three entries for the three locations that
+// When I need to relocate items I will use a breadth-first search. this
+// will use a queue that holds the locations where items could be stored.
+//
+// This queue can start off with two entries for the two locations that
 // the key to be inserted might be placed:
-//  0:  h1(k)
-//  1:  h2(k)
-//  2:  h3(h)
-// and I only get to this part of the search when each of those three
-// locations is busy.  So now starting from i=0 I take item i out of this
-// queue and can the value n. For instance the very first time i=0 and
-// n=h1(k). This means that n is the location I might wish to clear. I
-// let k=table[n] (ie the key that must be moved out of the way) and now
-// I append three more values to the queue (they will fall at positions
-// 3i+3, 3i+4 and 3i+5):
-//  3i+3: h1(k)
-//  3i+4: h2(k)
-//  3i+5: h3(h)
-// and as I do this I check that table[h1(k)] (etc) are not empty. If I
-// find an empty slot I can move on to the "unwind" phase. If while I am
-// doing this I fill up the limited space I allow for the queue then I
-// declare that I have failed to insert this key. I will have two options
-// to apply then. The first is to change the multiplier I use to create
-// hash values and try rehashing everything. That works around the possibility
-// that I am just unlucky with my hashing and too many keys have hash values
-// that collide. The second fall-back is to increase the size of the table
-// (eg to double it) and rehash. That will relieve pressure and greatly
-// increase the chances of fitting everything in. For now I will just return
-// a failure marker.
+//  2:  h1(k)
+//  3:  h2(k)
+// [remember I am not going to insert the new item in h3(k), its third choice
+// location]. If h1(k)==h2(k) then I put a NOT_PRESENT in entry 2 rather
+// then this duplicated value. That is to avoid wasteful repeated searches.
+// When processing the queue let h=q[n] be the entry recovered. Then let
+// k=table[h] - the item in the hash table that would need to be relocated
+// to free up that location. So I evaluate h1(k), h2(k) and h3(k). At least
+// one of these values must be h (because the key k was found at location h)
+// so discard that value. Also discard duplicates. You are left with 0, 1 or
+// hwo values. Pad that up to two values using NOT_PRESENT to fill in gaps
+// and store what you have at locations 2n and 2n+1.
 //
+// Well the above is explained from a perspective of pre-actively searching
+// alead. What I will actually do is to wait until I need an item from
+// queue position 2n and use that to trigger the processing of the item at
+// position n. I put my initial two seeds at queue locations 2 and 3 because
+// that leads to the simple arithmetic where the two offspring of entry n
+// are entries 2n and 2n+1.
+//
+// As I scan the table if I find table[q[n]]==EMPTY or TOMBSTONE then I have
+// found a way to complete the insertion, and the data left in the queue
+// is sufficient to let me perform the necessary rearrangement. This
+// need to go
+//      table[q[n]] = table[q[n/2]]
+//      n = n/2
+// to move the previously considered key to its new location. This step
+// is repeated until n < 4. Because then n should be either 2 or 3 and
+//      table[q[n]] = key_being_inserted;
+// can put the original key in a good place.
+//
+// If while performing this search the queue is about to overflow it is
+// necessary to report failure. When that happens no changes have been made
+// to the table, and the item being inserted has not been inserted.
+// The hashing scheme used here where each item has three potential homes
+// has the property that for hash table occupancies up to around 90% there is
+// a high probability that sufficiently exhaustive search will find a way to
+// fit keys in the table, while for occupancies over that threshold it
+// rapidly becomes very unlikely that insertion can succeed. If I set the
+// maximum size of my search queue to modest values failure to insert will
+// happen sooner. Depending on the precise interaction between the set of
+// kets used and the hash function adopted it is possible for there to be
+// an insert failure for even a very lightly loaded table.
+// When an insert fails it makes sense to look at the table occupancy.
+// My heuristic will be that if it is less than 60% I will first try
+// changing my hash multiplier. I will mark the table to the effect that
+// I have changed the multiplier so that if a subsequent insert also fails
+// I will not try that adjustment again.
+// If either the table was at least 60% full, or rehashing with a new
+// multiplier failed, or if a later insertion following an earlier change
+// of multiplier failed then I will double the table size. If on trying
+// to hash into the double-size table I get a failure I will try several
+// multiplier changes before failling back to re-doubling. When I have
+// successfully enlarged the table I will reset the flag that permits me
+// a multiplier change attempt again.
+// Some experimentation suggests that with the parameters I have here the
+// table will generally reach over 80% loading for tables of size up
+// to around 50K entries, and that that decreases to around 70% when the
+// table contains many million items. This decrease is reasonable since the
+// limited search depth I allow myself might become more limiting both for
+// larger search spaces of huge tables and the much larger number of times
+// searching is performed.
+
+
 // QSIZE is the size of the queue used in the breadth-first search. Higher
 // values make a few insert oparations more expensive but lead to better
 // ability to fit keys in. For most key inserts (even as you get towards
@@ -339,14 +386,14 @@ bool discard(ENTRY key)
 
 size_t insert(ENTRY key)
 {
-    int Qin, Qout;
+    int Qn;
     uint64_t Qkey[QSIZE];
     int Q[QSIZE];
     uint64_t h = HASH(key, multiplier);
     ENTRY v1, v2, v3;
     int n, n1, n2, n3;
 #ifdef TRACE
-    uint64_t hx = ((h ^ (h>>32)) + 0x1234567)*multiplier;
+    uint64_t hx = REHASH(h, multiplier);
     printf("Insert %"PRIx64" %d %d %d\n",
         key,
         (int)(h >> shift_amount),
@@ -355,12 +402,11 @@ size_t insert(ENTRY key)
 #endif
 // I have what seems a rather long-winded prelude to the general insert code.
 // If the key presented hashed to h1, h2 and h3 then I first check if h1 is
-// empty (if so the key is not preent). Then I check if h1 contains the
+// empty (if so the key is not present). Then I check if h1 contains the
 // key already. Next I check h2 and h3 similarly. If none of these
-// tests resolve the matter I check whether theer are tombstones at h1, h2
-// or h3 and I can insert into the first space shown available that way. So
-// that is 9 cases I need to check for. In VERY many cases those tests will
-// cover all I need. If they do not then I know that the key I am inserting
+// tests resolve the matter I check whether there are tombstones at h1 or h2
+// and I can insert into the first space shown available that way.
+// If this does not resolve matters then I know that the key I am inserting
 // is not already present in the table, and so I will never need any more
 // key comparisons. But I do have to perform a breadth-first search to seek
 // a way to rearrange data to fit the new key in. This can fail, in which
@@ -371,7 +417,7 @@ size_t insert(ENTRY key)
         return n1;
     }
     if (v1 != TOMBSTONE && COMPARE(v1, key)) return n1;
-    h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
+    h = REHASH(h, multiplier);
     if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY)
     {   table[n2] = key;
         occupancy++;
@@ -379,21 +425,13 @@ size_t insert(ENTRY key)
     }
     if (v2 != TOMBSTONE && COMPARE(v2, key)) return n2;
     h *= multiplier;
-    if ((v3 = table[n3 = (h>>shift_amount)]) == EMPTY)
-    {   table[n3] = key;
-        occupancy++;
-        return n3;
-    }
-    if (v3 == TOMBSTONE)
-    {   if (v1 == TOMBSTONE) table[n1] = key;
-        else if (v2 == TOMBSTONE) table[n2] = key;
-        else table[n3] = key;
-        occupancy++;
-        return n3;
-    }
-// note that v3 is not TOMBSTONE here!
-    if (COMPARE(v3, key)) return n3;
+    v3 = table[n3 = (h>>shift_amount)];
+    if (v3 != EMPTY && v3 != TOMBSTONE && COMPARE(v3, key)) return n3;
+// Here I have checked all three possible locations and the key is not
+// already present.
     occupancy++;
+// If in the investigation to date I have seen a TOMBSTONE I may re-use that
+// entry.
     if (v1 == TOMBSTONE)
     {   table[n1] = key;
         return n1;
@@ -409,14 +447,12 @@ size_t insert(ENTRY key)
 // item I am inserting is not in the table already I do not need to do any
 // comparisons against key values - all I need to do is to watch out for
 // EMPTY or TOMBSTONE values in the table.
-    Q[0] = n1;
-    Q[1] = n2;
-    Q[2] = n3;
-    Qin = 3;
-    Qout = 0;
+    Q[2] = n1;
+    Q[3] = (n1==n2) ? NOT_PRESENT : n2;
+    Qn = 4;
     for (;;)
     {   ENTRY newkey;
-        if (Qout >= Qin) return NOT_PRESENT; // Nothing left in queue. Failed.
+        if (Qout >= Qn) return NOT_PRESENT; // Nothing left in queue. Failed.
         n = Q[Qout++];              // A currently occupied location.
         newkey = table[n];          // The key stored there.
         h = HASH(newkey, multiplier);
@@ -435,7 +471,7 @@ size_t insert(ENTRY key)
 #endif
             break;
         }
-        h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
+        h = REHASH(h, multiplier);
         if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY ||
             v2 == TOMBSTONE)
         {   table[n2] = newkey;
@@ -453,19 +489,19 @@ size_t insert(ENTRY key)
 #endif
             break;
         }
-        if (Qin <= QSIZE-3)
-        {   Q[Qin++] = n1;
-            Q[Qin++] = n2;
-            Q[Qin++] = n3;
+        if (Qn <= QSIZE-3)
+        {   Q[Qn++] = n1;
+            Q[Qn++] = n2;
+            Q[Qn++] = n3;
         }
     }
 #ifdef TRACE
     printf("Have found a gap and moved something to it (%"PRIx64")\n",
            (uint64_t)key);
-    printf("before unwind Qin=%d Qout=%d\n", Qin, Qout);
+    printf("before unwind Qn=%d\n", Qn);
     dumptable("Before", false);
     {   int j;
-        for (j=0; j<Qin; j++) printf("%d: %d\n", j, Q[j]);
+        for (j=0; j<Qn; j++) printf("%d: %d\n", j, Q[j]);
     }
 #endif
 // I have now just moved a key into a gap. 
@@ -484,83 +520,6 @@ size_t insert(ENTRY key)
 #endif
     return Q[Qout];
 }
-
-// I will have a special version of insert() for use when I KNOW that the
-// item I am inserting is not already in the table. This can be used when
-// I am rehashing. This can report failure and it doe snot alter the
-// occupancy count.
-
-
-int insert_new(ENTRY key)
-{
-    int Qin, Qout;
-    uint64_t Qkey[QSIZE];
-    int Q[QSIZE];
-    uint64_t h = HASH(key, multiplier);
-    ENTRY v1, v2, v3;
-    int n, n1, n2, n3;
-    if ((v1 = table[n1 = (h>>shift_amount)]) == EMPTY ||
-         v1 == TOMBSTONE)
-    {   table[n1] = key;
-        return n1;
-    }
-    h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
-    if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY ||
-         v2 == TOMBSTONE)
-    {   table[n2] = key;
-        return n2;
-    }
-    h *= multiplier;
-    if ((v3 = table[n3 = (h>>shift_amount)]) == EMPTY ||
-         v3 == TOMBSTONE)
-    {   table[n3] = key;
-        return n3;
-    }
-    Q[0] = n1;
-    Q[1] = n2;
-    Q[2] = n3;
-    Qin = 3;
-    Qout = 0;
-    for (;;)
-    {   ENTRY newkey;
-        if (Qout >= Qin) return NOT_PRESENT; // Nothing left in queue. Failed.
-        n = Q[Qout++];              // A currently occupied location.
-        newkey = table[n];          // The key stored there.
-        h = HASH(newkey, multiplier);
-        if ((v1 = table[n1 = (h>>shift_amount)]) == EMPTY ||
-            v1 == TOMBSTONE)  // Success - have found a gap!
-        {   table[n1] = newkey;
-            break;
-        }
-        h = ((h ^ (h>>32)) + 0x1234567)*multiplier;
-        if ((v2 = table[n2 = (h>>shift_amount)]) == EMPTY ||
-            v2 == TOMBSTONE)
-        {   table[n2] = newkey;
-            break;
-        }
-        h *= multiplier;
-        if ((v3 = table[n3 = (h>>shift_amount)]) == EMPTY ||
-            v3 == TOMBSTONE)
-        {   table[n3] = newkey;
-            break;
-        }
-        if (Qin <= QSIZE-3)
-        {   Q[Qin++] = n1;
-            Q[Qin++] = n2;
-            Q[Qin++] = n3;
-        }
-    }
-// I have now just moved a key into a gap. 
-    Qout = Qout - 1;
-    while (Qout >= 3)
-    {  int j = Qout/3 - 1;   // parent
-       table[Q[Qout]] = table[Q[j]];
-       Qout = j;
-    }
-    table[Q[Qout]] = key;   // Note that this is the key being inserted.
-    return Q[Qout];
-}
-
 
 // table, separating figures as between cases that they key was already
 // present and when it was new. The cost of an insert operation when the key
