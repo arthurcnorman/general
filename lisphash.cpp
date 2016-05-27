@@ -115,11 +115,11 @@ static uint64_t hashcount=0, comparecount=0;
 #define REHASH(h, multiplier) ((((h) ^ ((h)>>32)) + 0x1234567)*(multiplier))
 #define COMPARE(k1, k2)       (comparecount++,((k1) == (k2)))
 
-// dumptable() displys the contants of the hash table (for debugging
+// dumptable() displays the contants of the hash table (for debugging
 // purposes), optionally checking to confirm that it seems to be
 // properly configured.
 
-void dumptable(const char *s, bool checkdups)
+void dumptable(LispObject tt, const char *s, bool checkdups)
 {
     size_t i;
     bool bad = false;
@@ -164,15 +164,15 @@ void dumptable(const char *s, bool checkdups)
     }
 }
 
-static void corrupted()
+static void corrupted(LispObject tt)
 {
     printf("Table is corrupted\n");
-    dumptable("Table is corrupted", true);
+    dumptable(tt, "Table is corrupted", true);
     fflush(stdout);
     abort();
 }
 
-void checktable()
+void checktable(LispObject tt)
 {
     size_t i;
     for (i=0; i<table_size; i++)
@@ -391,7 +391,7 @@ size_t insert(ENTRY key)
     int Q[QSIZE];
     uint64_t h = HASH(key, multiplier);
     ENTRY v1, v2, v3;
-    int n, n1, n2, n3;
+    size_t n, n1, n2, n3;
 #ifdef TRACE
     uint64_t hx = REHASH(h, multiplier);
     printf("Insert %"PRIx64" %d %d %d\n",
@@ -452,16 +452,23 @@ size_t insert(ENTRY key)
     Qn = 4;
     for (;;)
     {   ENTRY newkey;
-        if (Qout >= Qn) return NOT_PRESENT; // Nothing left in queue. Failed.
-        n = Q[Qout++];              // A currently occupied location.
+        if (Qn > QSIZE-2) return NOT_PRESENT; // Nothing left in queue. Failed.
+        n = Q[Qn/2];                // A currently occupied location.
+// The queue may have some entries in it that are "not present" and those are to
+// be ignored in the search.
+        if (n == NOT_PRESENT)
+        {   Q[Qn++] = n;
+            Q[Qn++] = n;
+            continue;
+        }
         newkey = table[n];          // The key stored there.
         h = HASH(newkey, multiplier);
 #ifdef TRACE
         printf("Consider moving %d [%"PRIx64"] to %d %d %d\n",
            n, (uint64_t)newkey,
            (int)(h>>shift_amount),
-           (int)((multiplier*h)>>shift_amount),
-           (int)((multiplier*multiplier*h)>>shift_amount));
+           (int)(REHASH(h, multiplier)>>shift_amount),
+           (int)((multiplier*REHASH(h,multiplier))>>shift_amount));
 #endif
         if ((v1 = table[n1 = (h>>shift_amount)]) == EMPTY ||
             v1 == TOMBSTONE)  // Success - have found a gap!
@@ -489,36 +496,46 @@ size_t insert(ENTRY key)
 #endif
             break;
         }
-        if (Qn <= QSIZE-3)
-        {   Q[Qn++] = n1;
-            Q[Qn++] = n2;
-            Q[Qn++] = n3;
+// Now I have three probe locations n1, n2 and n3. One will be the same as
+// n, and I want to discard that and then also discard any duplicates. This
+// feels like a rather messy sequence of tests!
+        if (n1 == n)
+        {   n1 = n3;    // Now I have (n1,n2) to look at
+            if (n1 == n) n1 == NOT_PRESENT;
+            if (n2 == n || n2 == n1) n2 == NOT_PRESENT;
         }
+        else
+        {   if (n2 == n || n2 == n1) n2 = NOT_PRESENT;
+            if (n3 == n || n3 == n1 || n3 == n2) n3 = NOT_PRESENT;
+            if (n2 == NOT_PRESENT) n2 = n3;
+        }
+        Q[Qn++] = n1;
+        Q[Qn++] = n2;
     }
 #ifdef TRACE
     printf("Have found a gap and moved something to it (%"PRIx64")\n",
            (uint64_t)key);
     printf("before unwind Qn=%d\n", Qn);
-    dumptable("Before", false);
+    dumptable(tt, "Before", false);
     {   int j;
         for (j=0; j<Qn; j++) printf("%d: %d\n", j, Q[j]);
     }
 #endif
-// I have now just moved a key into a gap. 
-    Qout = Qout - 1;
-    while (Qout >= 3)
-    {  int j = Qout/3 - 1;   // parent
+// I have now just moved a key into a gap.
+    Qn = Qn/2;
+    while (Qn > 3)
+    {  int j = Qn/2;   // parent
 #ifdef TRACE
        printf("move %"PRIx64" from %d to %d\n", table[Q[j]], Q[j], Q[Qout]);
 #endif
-       table[Q[Qout]] = table[Q[j]];
-       Qout = j;
+       table[Q[Qn]] = table[Q[j]];
+       Qn = j;
     }
-    table[Q[Qout]] = key;   // Note that this is the key being inserted.
+    table[Q[Qn]] = key;   // Note that this is the key being inserted.
 #ifdef TRACE
     dumptable("After", true);
 #endif
-    return Q[Qout];
+    return Q[Qn];
 }
 
 // table, separating figures as between cases that they key was already
@@ -549,31 +566,19 @@ size_t instrumented_insert(ENTRY key)
     return r;
 }
 
-// The rehash code is something that concerns me because a simple
-// implementation will leave almost all empty slots in the table
-// holding a TOMBSTONE value, and then will tend to hurt subsequent
-// lookups. I should explain the pain:
-// Given a key k lookup will inspect up to three locations, h1, h2 and h3
-// to seek the entry. If h1 is EMPTY it immediately reports that the key
-// is not present in the table. If h1 contained TOMBSTONE and h2 and h3 held
-// valid data then k would be compared against the items at h2 and h3 before
-// lookup could declare the iten not present in the table. So if checking for
-// items that are not present in tables happens frequently for lightly
-// loaded tables you can see that the presence of TOMBSTONE values may hurt
-// somewhat.
-//
-// A further pain here is that the nature of cuckoo hashing means that the
-// rehash operation here could fail. This could happen in the (new) hash
-// function being used led to a bad cluster of clashing keys. That is
-// generally very improbable, but it has to be allowed for. So rehash returns
-// a value that reports on its success. If it fails then some data will
-// be in the hash but any leftovers will be in the array pending_for_rehash[].
-//
-
-#define MAXPENDING 10000
+#define MAXPENDING 200
 
 static ENTRY pending_for_rehash[MAXPENDING+1];
 static int npending = 0;
+
+// When rehashing I will take items in the table one at a time in order
+// and remove them and then re-insert them. On the re-insert I am going to
+// insist that when the first k locations in the table have been rehashed
+// that on any insertion I only settle a key into a cell that is either its
+// first choice or is a one where its first choice has been within the
+// initial k table entried and it is in its second choice, or its
+// first two choices were in the first k entries, or it gets inserted in the
+// table at a location later than k. @@@@@
 
 bool rehash()
 {
@@ -589,20 +594,17 @@ bool rehash()
         }
 // EMPTY entries do not need anything done to them.
         else if (k == EMPTY) continue;
-// The first MAXPENDING keys that I encouter are liften out and stored
+// The first MAXPENDING keys that I encouter are lifted out and stored
 // for processing at the end. For tables with up to MAXPENDING items in
-// that is really good - if ensures that there will be no TOMBSTONE values
-// left after the rehash operation. It also means that most of the
-// reinsert steps happen into a mostly empty table and so will be fast.
+// that is really good - it makes most re-inserts be into a rather empty
+// table and that sppedd things up.
         else if (npending < MAXPENDING)
         {   pending_for_rehash[npending++] = k;
             table[k] = EMPTY;
             occupancy--;
             continue;
         }
-// For BIG tables I need to leave a TOMBSTONE where a key used to be before
-// being moved. 
-        table[i] = TOMBSTONE;
+        table[i] = EMPTY;
         if (insert(k) == NOT_PRESENT)
         {   pending_for_rehash[npending++] = k;
             return false;
@@ -610,6 +612,9 @@ bool rehash()
     }
     while (npending != 0)
     {   ENTRY k = pending_for_rehash[--npending];
+// In pathological cases this can fail to re-insert even the data that had been
+// previously present, and in that case the left-over stuff will be left in the
+// array pending_for_rehash.
         if (insert(k) == NOT_PRESENT)
         {   pending_for_rehash[npending++] = k;
             return false;
@@ -619,63 +624,6 @@ bool rehash()
 }
 
 /////////////////////////////////////////////////////////////////////
-
-//
-// Common Lisp and Standard Lisp disagree about vector sizes.  Common
-// Lisp counts the number of elements in a vector (with make-simple-vector
-// and vector-bound) while Standard Lisp uses the value n, where the
-// vector concerned will accept index values from 0 to n (inclusive)
-// (mkvect and upbv).  I provide the Standard Lisp versions always, so I
-// can use them even in Common Lisp mode.  The vectors are exactly the
-// same - it is just a different way of talking about them.
-//
-
-#define HASH_CHUNK_SIZE   (((uint32_t)1) << (PAGE_BITS-3))
-#define HASH_CHUNK_WORDS  (HASH_CHUNK_SIZE/CELL)
-
-static LispObject get_hash_vector(int32_t n)
-{   LispObject v, nil = C_nil;
-//
-// A major ugliness here is that I need to support hash tables that are
-// larger than the largest simple vector I can use (as limited by
-// CSL_PAGE_SIZE). To achieve this I will handle such huge tables using
-// a vector of vectors, with the higher level vector tagged as a STRUCT,
-// and the lower level vectors each sized at around 1/8 of a CSL page. The
-// modest chunk size is intended to limit the packing lossage I will see at
-// page boundaries. HASH_CHUNK_SIZE is the size (in bytes) used for data in
-// each such hash chunk. But "reasonably small" hash tables will be
-// kept as ordinary vectors, so I must ensure that they are a size that
-// could survive conversion between 32 and 64-bit images. To that effect
-// I have just changes the limit there to CSL_PAGE_SIZE/3. So some old
-// 32-bit images could hypothetically contain saves hash tables of size
-// just close to CAL_PAGE_SIZE/2 (the previous cut off) that would not be
-// re-loadable on a 64-bit system.
-//
-    if (n > CSL_PAGE_SIZE/3)   // A fairly arbitrary cut-off
-    {   int32_t chunks = (n + HASH_CHUNK_SIZE - 1)/HASH_CHUNK_SIZE;
-        int32_t i;
-        v = getvector_init(CELL*(chunks+3), nil);
-        errexit();
-// The next line tags the top level vector as a struct
-        vechdr(v) ^= (TYPE_SIMPLE_VEC ^ TYPE_STRUCTURE);
-        elt(v, 1) = fixnum_of_int(n);
-        for (i=0; i<chunks; i++)
-        {   LispObject v1;
-            push(v);
-//
-// In general the last of these chunks will be larger that it really needs
-// to be, but keeping all chunks the same standard size seems a useful
-// simplification right at present!
-//
-            v1 = getvector_init(HASH_CHUNK_SIZE+CELL, SPID_HASH0);
-            pop(v);
-            errexit();
-            elt(v, i+2) = v1;
-        }
-    }
-    else v = getvector_init(n, SPID_HASH0);
-    return v;
-}
 
 #ifdef DEBUG
 
@@ -746,6 +694,13 @@ void simple_msg(const char *s, LispObject x)
 
 #endif
 
+// A version of Lmkhash with just 2 arguments so you to not supply the
+// (unused and hence irrelevant) third argument.
+
+LispObject Lmkhash2(LispObject nil, LispObject a, LispObject b)
+{   return Lmkhash(nil, 3, a, b, nil);
+}
+
 LispObject Lmkhash(LispObject nil, int nargs, ...)
 //
 // (mkhash size flavour growth)
@@ -765,7 +720,7 @@ LispObject Lmkhash(LispObject nil, int nargs, ...)
 // items. [this facility may not be implemented at first]
 //
 {   va_list a;
-    int32_t size1, size2;
+    int32_t shift, size1, size2;
     LispObject v, v1, v2, size, flavour;
     argcheck(nargs, 3, "mkhash");
     va_start(a, nargs);
@@ -791,7 +746,11 @@ LispObject Lmkhash(LispObject nil, int nargs, ...)
 // especially given that there is a hash table header record. You will
 // only get this tiny table if you indicate an target size of 4 or less.
     size2 = 8;
-    while (size2 < size1) size2 *= 2;
+    shift = 64-3;
+    while (size2 < size1)
+    {   size2 *= 2;
+        shift--;
+    }
 // Huge hash tables will be stored (internally) in chunks.
 // get_hash_vector will allocate either a single vector of the
 // indicated size or an index vector with a number of subsidiary data ones.
@@ -807,14 +766,14 @@ LispObject Lmkhash(LispObject nil, int nargs, ...)
     errexit();
 #define HASH_FLAVOUR    0
 #define HASH_COUNT      1
-#define HASH_SIZE       2
+#define HASH_SHIFT      2
 #define HASH_KEYS       3
 #define HASH_VALUES     4
 #define HASH_MULTIPLIER 5
 #define HASH_DEFAULT_MULTIPLIER UINT64_C(0x9e3779b99e3779bd)
     elt(v, 0) = flavour;             // comparison method for hash operations.
     elt(v, 1) = fixnum_of_int(0);    // current number of items stored.
-    elt(v, 2) = fixnum_of_int(size2);// current size of table (in items).
+    elt(v, 2) = fixnum_of_int(shift);// 64-log2(table size)
     elt(v, 3) = v1;                  // key table.
     elt(v, 4) = v2;                  // value table.
     elt(v, 5) = nil;                 // current multiplier
@@ -825,114 +784,115 @@ LispObject Lmkhash(LispObject nil, int nargs, ...)
     return onevalue(v);
 }
 
-// Now a version with just 2 arguments so you to not supply the
-// (unused and hence irrelevant) third argument.
+typedef uint64_t hash_function_t(LispObject key);
+typedef bool hash_compare_t(LispObject key, LispObject hashentry);
 
-LispObject Lmkhash2(LispObject nil, LispObject a, LispObject b)
-{   return Lmkhash(nil, 3, a, b, nil);
+static uint64_t hash_multiplier;
+static uint64_t hash_function_t *hash_function;
+static bool hash_compare_t  *hash_compare; 
+
+static uint64_t hash_eq(LispObject key);
+static uint64_t hash_eql(LispObject key);
+static uint64_t hash_cl_equal(LispObject key);
+static uint64_t hash_equal(LispObject key);
+static uint64_t hash_equalp(LispObject key);
+static uint64_t hash_symtab(LispObject key);
+
+static bool hash_compare_eq(LispObject key, LispObject hashentry);
+static bool hash_compare_eql(LispObject key, LispObject hashentry);
+static bool hash_compare_cl_equal(LispObject key, LispObject hashentry);
+static bool hash_compare_equal(LispObject key, LispObject hashentry);
+static bool hash_compare_equalp(LispObject key, LispObject hashentry);
+static bool hash_compare_symtab(LispObject key, LispObject hashentry);
+
+static void set_hash_operations(LispObject flavour)
+{
+    switch (flavour)
+    {
+    default:
+    case fixnum_of_int(0):
+        hash_function = hash_eq;
+        hash_compare = hash_compare_eq;
+        break;
+    case fixnum_of_int(1):
+        hash_function = hash_eql;
+        hash_compare = hash_compare_eql;
+        break;
+    case fixnum_of_int(2):
+        hash_function = hash_cl_equal;
+        hash_compare = hash_compare_cl_equal;
+        break;
+    case fixnum_of_int(3):
+        hash_function = hash_equal;
+        hash_compare = hash_compare_equal;
+        break;
+    case fixnum_of_int(4):
+        hash_function = hash_equalp;
+        hash_compare = hash_compare_equalp;
+        break;
+    case fixnum_of_int(5):
+        hash_function = hash_symtab;
+        hash_compare = hash_compare_symtab;
+        break;
+    }
 }
 
-uint32_t update_hash(uint32_t a, uint32_t b)
-{   // This will be retired soon.
-    return a + b + 1;
+static uint64_t hash_eq(LispObject key)
+{
+    return hash_multiplier*(uint64_t)key;
 }
 
-static uint32_t hash_eql(LispObject key)
+static uint64_t hash_eql(LispObject key)
 //
 // Must return same code for two eql numbers.  This is remarkably
 // painful! I would like the value to be insensitive to fine details
 // of the machine I am running on.
 //
-{   simple_msg("hash_eql: ", key);
+{   uint64_t r;
     if (is_bfloat(key))
-    {   int32_t h = type_of_header(flthdr(key));
-//
-// For floating point values I look at the binary representation of
-// the number.
-//
-        union nasty
-        {   double fp;
-            uint32_t i[2];
-        } nasty_union;
-#if 0
-        union nasty2
-        {   float128_t fp;
-            uint32_t i[sizeof(float128_t)/4];
-        } nasty2_union;
-#endif
-        nasty_union.i[0] = nasty_union.i[1] = 0;
+    {   int h = type_of_header(flthdr(key));
         switch (h)
         {   case TYPE_SINGLE_FLOAT:
-                nasty_union.fp = (double)single_float_val(key);
-//
-// A *horrid* issue arises here in that (EQL 0.0 -0.0) will be true
-// hence 0.0 and -0.0 must hash to the same value. Hence the following
-// line even if at first sight it looks ridiculous!
-//
-                if (nasty_union.fp == -0.0) nasty_union.fp = 0.0;
+// There is a nasty here. I want +0.0f and -0.0f to hash to the same
+// value becase the two values will compare as equal.
+                if (single_float_val(key) == 0.0) return 1 + hash_multiplier;
+                else return 2 + hash_multiplier*intfloat32_t_val(key);
                 break;
-            case TYPE_DOUBLE_FLOAT:
-                nasty_union.fp = double_float_val(key);
-                if (nasty_union.fp == -0.0) nasty_union.fp = 0.0;
-                break;
-#if 0
-            case TYPE_LONG_FLOAT:
-                {   nasty2_union.fp = long_float_val(key);
-// Here I will leave +0.0 and -0.0 hashing differently!
-                    uint32_t h128 = 0;
-                    for (unsigned int i=0; i<sizeof(float128_t)/4; i++)
-                        h128 = update_hash(h128, nasty2_union.i[i]);
-                    return h128;
-                }
-#endif
             default:
-                nasty_union.fp = 0.0;
+            case TYPE_DOUBLE_FLOAT:
+                if (double_float_val(key) == 0.0) return 3 + hash_multiplier;
+                else return 4 + hash_multiplier*intfloat64_t_val(key);
+            case TYPE_LONG_FLOAT:
+// Here I will leave +0.0 and -0.0 hashing differently! That is just
+// laziness and needs fixing.
+                r = 5 + hash_multiplier*intfloat64_t_val0(key);
+                return 6 + hash_multiplier*(r + intfloat64_t_val1(key));
         }
-//
-// The following line is OK on any one computer, but will generate values
-// that are not portable across machines with different floating point
-// representation. This is not too important when the hash value is only
-// used with my built-in implementation of hash tables, since I arrange
-// to re-hash everything when an image file is re-loaded (as well as on
-// any garbage collection), so non-portable calculation here is corrected
-// for automatically.
-//
-        return update_hash(nasty_union.i[0], nasty_union.i[1]);
     }
     else if (is_numbers(key))
     {   Header h = numhdr(key);
-        uint32_t r = 9876543;
         size_t n;
+        r = (uint64_t)h;
         switch (type_of_header(h))
         {   case TYPE_BIGNUM:
                 n = length_of_header(h);
                 n = (n-CELL-4)/4;  // last index into the data
-//
-// This may be overkill - for very long bignums it is possibly a waste to
-// walk over ALL the digits when computing a hash value - I could do well
-// enough just looking at a few. But I still feel safer using all of them.
-// Note that all bignums have at least one word of data.
                 for (;;)
-                {   r = update_hash(r, bignum_digits(key)[n]);
+                {   r = 7 + hash_multiplier*(bignum_digits(key)[n] + r);
                     if (n == 0) break;
                     n--;
                 }
                 return r;
             case TYPE_RATNUM:
             case TYPE_COMPLEX_NUM:
-                return update_hash(hash_eql(numerator(key)),
-                                   hash_eql(denominator(key)));
+                r = hash_eql(numerator(key)),
+                return 8 + hash_multiplier*r + hash_eql(denominator(key));
             default:
-                return 0x12345678;  // unknown type of number?
+                return 9 + hash_multiplier;  // unknown type of number?
         }
     }
-//
-// For all things OTHER than messy numbers I just hand back the
-// representation of the object as a C pointer. Well, I scramble it a bit
-// because otherwise too often Lisp objects only differ in their low order
-// bits.
-//
-    else return update_hash(1, (uint32_t)key);
+// For non-numbers I hash as for EQ.
+    else return hash_multiplier*(uint64_t)key;
 }
 
 static uint32_t hash_cl_equal(LispObject key, bool descend)
@@ -1513,22 +1473,66 @@ static uint32_t hash_equalp(LispObject key)
     }
 }
 
-static uint32_t hashcode;
-static int hashsize, hashoffset, hashgap;
+// I make hash tables out of chunks each of which are vectors with
+// (up to) 128K elements. This means that on a 64-bit machine each
+// chunk occupies a megabyte. I can have two levels of structure, and
+// by the time the index level is that size I will be have a table
+// with 16G slots in it and occupying 256 Gbytes of memory. At present
+// (2016) I view the limits there are such that they will not embarass
+// me for some while.
 
-static bool large_hash_table;
+#define HASH_CHUNK_WORDS  ((size_t)0x20000)
+#define HASH_CHUNK_SIZE   (HASH_CHUNK_WORDS*CELL)
 
-#define words_in_hash_table(v)                        \
-    (((large_hash_table ? int_of_fixnum(elt(v, 1)) :  \
-       length_of_header(vechdr(v))) - 2*CELL)/CELL)
+// For this function I will expect n to be a power of 2.
+
+static LispObject get_hash_vector(size_t n)
+{   LispObject v, nil = C_nil;
+//
+// A major ugliness here is that I need to support hash tables that are
+// larger than the largest simple vector I can use (as limited by
+// CSL_PAGE_SIZE). To achieve this I will handle such huge tables using
+// a vector of vectors, with the higher level vector tagged as a INDEXVEC,
+// and the lower level vectors each reasonably sized. Note that I could
+// use the same sort of INDEXVEC hack to support all sorts of large
+// vectors...
+//
+    if (n > HASH_CHUNK_WORDS)
+    {   size_t chunks = n/HASH_CHUNK_WORDS;
+        size_t i;
+        v = getvector_init(CELL*(chunks+1), nil);
+        errexit();
+// The next line tags the top level vector as a struct
+        vechdr(v) ^= (TYPE_SIMPLE_VEC ^ TYPE_INDEXVEC);
+        for (i=0; i<chunks; i++)
+        {   LispObject v1;
+            push(v);
+            v1 = getvector_init(HASH_CHUNK_SIZE+CELL, SPID_HASH0);
+            pop(v);
+            errexit();
+            elt(v, i) = v1;
+        }
+    }
+    else v = getvector_init(n, SPID_HASH0);
+    return v;
+}
+
+// Number of slots in the table.
+
+#define words_in_hash_table(v)                                       \
+    (type_of_header(vechdr(v)) == TYPE_INDEXVEC ?                    \
+       HASH_CHUNK_WORDS*((length_of_header(vechdr(v))-CELL)/CELL) :  \
+       (length_of_header(vechdr(v)) - CELL)/CELL)
+
+// an lvalue for the nth item in the table.
 
 #define ht_elt(v, n)                                                 \
-    (*(large_hash_table ?                                            \
-      &elt(elt((v), 2+(n)/HASH_CHUNK_WORDS), (n)%HASH_CHUNK_WORDS) : \
+    (*(type_of_header(vechdr(v)) == TYPE_INDEXVEC ?                  \
+      &elt(elt((v), (n)/HASH_CHUNK_WORDS), (n)%HASH_CHUNK_WORDS) :   \
       &elt((v), (n))))
 
 LispObject Lget_hash(LispObject nil, int nargs, ...)
-{   int32_t size, p, flavour = -1, hashstride, nprobes;
+{   int flavour = -1;
     va_list a;
     LispObject v, key, tab, dflt;
     argcheck(nargs, 3, "gethash");
@@ -1538,13 +1542,21 @@ LispObject Lget_hash(LispObject nil, int nargs, ...)
     dflt = va_arg(a, LispObject);
     va_end(a);
     if (!is_vector(tab) || type_of_header(vechdr(tab)) != TYPE_HASH)
-        return aerror1("gethash", tab);
-    v = elt(tab, 0);
+    {   if (type_of_header(vechdr(tab)) == TYPE_HASHX) // must rehashing first
+        {   push2(key, dflt);
+            tab = rehash(tab);
+            pop2(dflt, key);
+            errexit();
+        }
+        else return aerror1("gethash", tab);
+    }
+    v = elt(tab, HASH_FLAVOUR);
     simple_msg("get_hash: ", key);
 // /* The code here needs to allow for user-specified hash functions
     if (is_fixnum(v)) flavour = int_of_fixnum(v);
+
     switch (flavour)
-{       default:
+    {   default:
             return aerror1("gethash", cons(v, tab));
         case 0:
             hashcode = update_hash(1, (uint32_t)key);
@@ -1572,7 +1584,6 @@ LispObject Lget_hash(LispObject nil, int nargs, ...)
             break;
     }
     v = elt(tab, 4);
-    large_hash_table = type_of_header(vechdr(v)) == TYPE_STRUCTURE;
     hashsize = size = words_in_hash_table(v);
     p = (hashcode % (uint32_t)(size >> 1))*2;
 //
@@ -1687,7 +1698,7 @@ static void reinsert_hash(LispObject v, int32_t size, int32_t flavour,
 // gap to put it in!  So I just have to look for a gap - no comparisons
 // are needed.
 //
-    large_hash_table = type_of_header(vechdr(v)) == TYPE_STRUCTURE;
+    type_of_header(vechdr(v)) == TYPE_INDEXVEC = type_of_header(vechdr(v)) == TYPE_INDEXVEC;
     for (;;)
     {   LispObject q = ht_elt(v, p+1);
         if (q == SPID_HASH0 || q == SPID_HASH1)
@@ -1724,11 +1735,9 @@ void rehash_this_table(LispObject v)
 // up serious trouble here.
 //
 {   int32_t size, i, j, flavour, many;
-    bool old_large = large_hash_table;
     LispObject pendkey[REHASH_AT_ONE_GO], pendval[REHASH_AT_ONE_GO];
     flavour = int_of_fixnum(elt(v, 0)); // Done this way always
 
-    large_hash_table = type_of_header(vechdr(v)) == TYPE_STRUCTURE;
     size = words_in_hash_table(v);
 //
 // The cycle count here is something I may want to experiment with.
@@ -1762,7 +1771,6 @@ void rehash_this_table(LispObject v)
         while (--many >= 0)
             reinsert_hash(v, size, flavour, pendkey[many], pendval[many]);
     }
-    large_hash_table = old_large;
 }
 
 LispObject Lmaphash(LispObject nil, LispObject fn, LispObject tab)
@@ -1777,7 +1785,6 @@ LispObject Lmaphash(LispObject nil, LispObject fn, LispObject tab)
     if (!is_vector(tab) || type_of_header(vechdr(tab)) != TYPE_HASH)
         return aerror1("maphash", tab);
     v = elt(tab, 4);
-    large_hash_table = type_of_header(vechdr(v)) == TYPE_STRUCTURE;
     size = words_in_hash_table(v)*CELL+2*CELL;
     push2(fn, tab);
     v1 = get_hash_vector(size);
@@ -1787,12 +1794,10 @@ LispObject Lmaphash(LispObject nil, LispObject fn, LispObject tab)
     for (i=0; i<size; i++) ht_elt(v1, i) = ht_elt(v, i);
     for (i=1; i<size; i+=2)
     {   LispObject key = ht_elt(v1, i), val = ht_elt(v1, i+1);
-        int save = large_hash_table;
         if (key == SPID_HASH0 || key == SPID_HASH1) continue;
         push2(v1, fn);
         Lapply2(nil, 3, fn, key, val);
         pop2(fn, v1);
-        large_hash_table = save;
         errexit();
     }
     return onevalue(nil);
@@ -1812,7 +1817,6 @@ LispObject Lhashcontents(LispObject nil, LispObject tab)
     if (!is_vector(tab) || type_of_header(vechdr(tab)) != TYPE_HASH)
         return aerror1("hashcontents", tab);
     v = elt(tab, 4);
-    large_hash_table = type_of_header(vechdr(v)) == TYPE_STRUCTURE;
     size = words_in_hash_table(v)*CELL+2*CELL;
     size = (size - CELL)/CELL;
 restart:
@@ -1924,21 +1928,15 @@ LispObject Lput_hash(LispObject nil, int nargs, ...)
                 else isize = isize + (isize/2) + 2;
             }
             else isize = isize + (isize/2) + 2;
-//
-// NB - Lmkhash() does not disturb large_hash_table, so I can still
-// access the old table happily even after this call...
-//
             newhash = Lmkhash(nil, 3, fixnum_of_int(isize),
                               elt(tab, 0), growth);
             pop2(val, tab);
             errexit();
             v = elt(tab, 4);
             for (i=0; i<=4; i++) elt(tab, i) = elt(newhash, i);
-            large_hash_table = type_of_header(vechdr(v)) == TYPE_STRUCTURE;
             isize = words_in_hash_table(v);
             for (i=0; i<isize; i+=2)
             {   LispObject key1 = ht_elt(v, i+1), val1 = ht_elt(v, i+2);
-                bool large = large_hash_table;
                 if (key1 == SPID_HASH0 || key1 == SPID_HASH1) continue;
 //
 // NB the new hash table is big enough to hold all the data that was in the
@@ -1949,7 +1947,6 @@ LispObject Lput_hash(LispObject nil, int nargs, ...)
 // Re-inserting will add to the counts for hash PUT operations.
                 Lput_hash(nil, 3, key1, tab, val1);
                 pop3(val, tab, v);
-                large_hash_table = large; // Maybe scrabled by put_hash
             }
         }
         return onevalue(val);
@@ -2002,7 +1999,6 @@ LispObject Lclr_hash(LispObject, LispObject tab)
         return aerror1("clrhash", tab);
     elt(tab, 1) = fixnum_of_int(0);
     v = elt(tab, 4);
-    large_hash_table = type_of_header(vechdr(v)) == TYPE_STRUCTURE;
     size = words_in_hash_table(v);
     for (i=1; i<size; i++) ht_elt(v, i) = SPID_HASH0;
     return tab;

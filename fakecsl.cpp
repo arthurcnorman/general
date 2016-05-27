@@ -55,38 +55,26 @@ int main(int argc, char *argv[])
             n4 = (7*table_size)/10;
             for (n=0; n<table_size; n++)
             {   long key = lrand48();
-                if (instrumented_insert(key) == -1)
-                {
-                    checktable();
+                Lput_hash(nil, 3, key, hashtab, nil);
 #ifdef TRACE
-                    dumptable("insert failed", true);
+//              dumptable(hashtab, "keeping going", true);
 #endif
-                    printf("Full at %"PRIuMAX"/%"PRIuMAX" (%.2f%%)\n",
-                        (uintmax_t)n, (uintmax_t)table_size,
-                        100.0*n/(double)table_size);
-                    showstats(n+1);
-                    break;
-                }
-#ifdef TRACE
-//              dumptable("keeping going", true);
-#endif
-//              checktable();
+                checktable(hashtab);
                 if (n+1==n0 ||
                     n+1==n1 ||
                     n+1==n2 ||
                     n+1==n3 ||
                     n+1==n4)
                 {   showstats(n+1);
-                    checktable();
+                    checktable(hashtab);
                 }
             }
             printf("Ended at %"PRIuMAX"/%"PRIuMAX" (%.2f%%)\n",
                 (uintmax_t)n, (uintmax_t)table_size,
                 100.0*n/(double)table_size);
             showstats(n+1);
-            checktable();
+            checktable(hashtab);
         }
-        free(table);
     }
     return 0;
 }
