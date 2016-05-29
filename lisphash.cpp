@@ -33,6 +33,8 @@
 
 #include "headers.h"
 
+
+
 //
 // This is an implementation of hash tables intended to be used when the
 // keys in the table are structures of some sort. It might be useful for
@@ -184,21 +186,21 @@ void checktable(LispObject tt)
         int h3 = (multiplier*hx) >> shift_amount;
         if (k != EMPTY && k != TOMBSTONE)
         {   if (h1 == i)
-            {   if (h2 != i && table[h2] == k) corrupted();
-                if (h3 != i && table[h3] == k) corrupted();
+            {   if (h2 != i && table[h2] == k) corrupted(tt);
+                if (h3 != i && table[h3] == k) corrupted(tt);
             }
             if (h2 == i)
-            {   if (h1 != i && table[h1] == k) corrupted();
-                if (h3 != i && table[h3] == k) corrupted();
-                if (h1 != i && table[h1] == EMPTY) corrupted();
+            {   if (h1 != i && table[h1] == k) corrupted(tt);
+                if (h3 != i && table[h3] == k) corrupted(tt);
+                if (h1 != i && table[h1] == EMPTY) corrupted(tt);
             }
             if (h3 == i)
-            {   if (h1 != i && table[h1] == k) corrupted();
-                if (h2 != i && table[h2] == k) corrupted();
+            {   if (h1 != i && table[h1] == k) corrupted(tt);
+                if (h2 != i && table[h2] == k) corrupted(tt);
                 if (h1 != i && h2 != i &&
-                    (table[h1] == EMPTY || table[h2] == EMPTY)) corrupted();
+                    (table[h1] == EMPTY || table[h2] == EMPTY)) corrupted(tt);
             }
-            if (h1 != i && h2 != i && h3 != i) corrupted();
+            if (h1 != i && h2 != i && h3 != i) corrupted(tt);
         }
     }
 }
@@ -701,6 +703,121 @@ LispObject Lmkhash2(LispObject nil, LispObject a, LispObject b)
 {   return Lmkhash(nil, 3, a, b, nil);
 }
 
+// I make hash tables out of chunks each of which are vectors with
+// (up to) 128K elements. This means that on a 64-bit machine each
+// chunk occupies a megabyte. I can have two levels of structure, and
+// by the time the index level is that size I will be have a table
+// with 16G slots in it and occupying 256 Gbytes of memory. At present
+// (2016) I view the limits there are such that they will not embarass
+// me for some while.
+
+#define VECTOR_CHUNK_WORDS  ((size_t)0x20000)
+
+// This fragment takes a 64-bit number that is a power of 2 and
+// finds its logarithm, ie the number of bits that 1 needs to be shifted
+// left to yield it. The function will return garbage if its input is
+// not a power of 2.
+//
+// This table works because it is of length 67 and that is a prime, so
+// the sequence 2^i mod 67 cycles through 1 .. 66 as I runs from 0 to 65,
+// and 2^66 = 2^0 (mod 67). To help show this I have annotated the items at
+// offsets 1, 2, 4, 8, 16, 32 and 64.
+
+static unsigned char intlog2_table[] =
+{
+    0,      0,/*1*/ 1,/*2*/ 39,     2,/*4*/ 15,     40,     23,
+    3,/*8*/ 12,     16,     59,     41,     19,     24,     54,
+    4,/*16*/0,      13,     10,     17,     62,     60,     28,
+    42,     30,     20,     51,     25,     44,     55,     47,
+    5,/*32*/32,     0,      38,     14,     22,     11,     58,
+    18,     53,     63,     9,      61,     27,     29,     50,
+    43,     46,     31,     37,     21,     57,     52,     8,
+    26,     49,     45,     36,     56,     7,      48,     35,
+    6,/*64*/34,     33
+};
+
+static inline int intlog2(uint64_t n)
+{
+    return intlog2_table[n % (sizeof(intlog2_table)/sizeof(intlog2_table[0]))];
+}
+
+static LispObject get_large_vector(size_t n, LispObject initval)
+{   LispObject v, nil = C_nil;
+//
+// A major ugliness here is that I need to support hash tables that are
+// larger than the largest simple vector I view as reasonable.  To achieve
+// this I will handle such huge tables using a vector of vectors, with
+// the higher level vector tagged as a INDEXVEC and the lower level vectors
+// each modestly sized. For hash tables this will only ever be used for
+// vectors whose total size is a power of 2, but looking forward to uses
+// elsewhere I will make this general.
+// So:
+//   A vector of size up to VECTOR_CHUNK_WORDS will be represented
+//     naturally as a single block of memory.
+//   Larger vectors will have an INDEXVEC most of whose contents are
+//     vectors of size VECTOR_CHUNK_WORDS but where the final item
+//     may be smaller.
+//
+// As coded here I can only only create "general" vectors that contain Lisp
+// objects - so variants such as strings, bignums and vectors that hold
+// bytes, various fixed width integers or floats would need this code
+// replicated.
+    if (n > VECTOR_CHUNK_WORDS)
+    {
+// If the number size is exactly a multiple of the chunk size I will not
+// need a special shorter final vector.
+        size_t chunks = (n + VECTOR_CHUNK_WORDS - 1)/VECTOR_CHUNK_WORDS;
+        size_t i;
+// The final chunk will be full size if I have a neat multiple of
+// VECTOR_CHUNK_WORDS, oterwise smaller.
+        size_t last_size = n % VECTOR_CHUNK_WORDS;
+        if (last_size == 0) last_size = VECTOR_CHUNK_WORDS;
+        v = getvector_init(CELL*(chunks+1), nil);
+        errexit();
+// The next line re-tags the top level vector as an index.
+        vechdr(v) ^= (TYPE_SIMPLE_VEC ^ TYPE_INDEXVEC);
+        for (i=0; i<chunks; i++)
+        {   LispObject v1;
+            int k = i==chunks-1 ? last_size : VECTOR_CHUNK_WORDS;
+            push(v);
+            v1 = getvector_init(CELL*(k+1), initval);
+            pop(v);
+            errexit();
+            elt(v, i) = v1;
+        }
+    }
+    else v = getvector_init(n, initval);
+    return v;
+}
+
+static inline size_t words_in_large_vector(LispObject v)
+{   if (type_of_header(vechdr(v)) == TYPE_INDEXVEC)
+    {   size_t n = (length_of_header(vechdr(v))-CELL)/CELL;
+// See that the final chunk has its length treated individually. This
+// adds to the cost, but the extrs cost only arises when the vector is
+// rather large to start with, and so I am not going to worry.
+        return VECTOR_CHUNK_WORDS*(n-1) +
+            (length_of_header(vechdr(elt(v, n-1))) - CELL)/CELL;
+    }
+    else return (length_of_header(vechdr(v)) - CELL)/CELL;
+}
+
+// an lvalue for the nth item in the table.
+
+static inline LispObject getv_large_vector(LispObject v, size_t n)
+{
+    if (type_of_header(vechdr(v)) == TYPE_INDEXVEC)
+        return elt(elt((v), (n)/VECTOR_CHUNK_WORDS), (n)%VECTOR_CHUNK_WORDS);
+    else return elt(v, n);
+}
+
+static inline void putv_large_vector(LispObject v, size_t n, LispObject val)
+{
+    if (type_of_header(vechdr(v)) == TYPE_INDEXVEC)
+        elt(elt((v), (n)/VECTOR_CHUNK_WORDS), (n)%VECTOR_CHUNK_WORDS) = val;
+    else elt(v, n) = val;
+}
+
 LispObject Lmkhash(LispObject nil, int nargs, ...)
 //
 // (mkhash size flavour growth)
@@ -751,14 +868,10 @@ LispObject Lmkhash(LispObject nil, int nargs, ...)
     {   size2 *= 2;
         shift--;
     }
-// Huge hash tables will be stored (internally) in chunks.
-// get_hash_vector will allocate either a single vector of the
-// indicated size or an index vector with a number of subsidiary data ones.
-// The size is passed as a cell-count.
-    v1 = get_hash_vector(size2);
+    v1 = get_large_vector(size2, SPID_HASHEMPTY);
     errexit();
     push(v1);
-    v2 = get_hash_vector(size2);
+    v2 = get_large_vector(size2, nil);
     errexitn(1);
     push(v2);
     v = getvector_init(7*CELL, nil);
@@ -1473,64 +1586,6 @@ static uint32_t hash_equalp(LispObject key)
     }
 }
 
-// I make hash tables out of chunks each of which are vectors with
-// (up to) 128K elements. This means that on a 64-bit machine each
-// chunk occupies a megabyte. I can have two levels of structure, and
-// by the time the index level is that size I will be have a table
-// with 16G slots in it and occupying 256 Gbytes of memory. At present
-// (2016) I view the limits there are such that they will not embarass
-// me for some while.
-
-#define HASH_CHUNK_WORDS  ((size_t)0x20000)
-#define HASH_CHUNK_SIZE   (HASH_CHUNK_WORDS*CELL)
-
-// For this function I will expect n to be a power of 2.
-
-static LispObject get_hash_vector(size_t n)
-{   LispObject v, nil = C_nil;
-//
-// A major ugliness here is that I need to support hash tables that are
-// larger than the largest simple vector I can use (as limited by
-// CSL_PAGE_SIZE). To achieve this I will handle such huge tables using
-// a vector of vectors, with the higher level vector tagged as a INDEXVEC,
-// and the lower level vectors each reasonably sized. Note that I could
-// use the same sort of INDEXVEC hack to support all sorts of large
-// vectors...
-//
-    if (n > HASH_CHUNK_WORDS)
-    {   size_t chunks = n/HASH_CHUNK_WORDS;
-        size_t i;
-        v = getvector_init(CELL*(chunks+1), nil);
-        errexit();
-// The next line tags the top level vector as a struct
-        vechdr(v) ^= (TYPE_SIMPLE_VEC ^ TYPE_INDEXVEC);
-        for (i=0; i<chunks; i++)
-        {   LispObject v1;
-            push(v);
-            v1 = getvector_init(HASH_CHUNK_SIZE+CELL, SPID_HASH0);
-            pop(v);
-            errexit();
-            elt(v, i) = v1;
-        }
-    }
-    else v = getvector_init(n, SPID_HASH0);
-    return v;
-}
-
-// Number of slots in the table.
-
-#define words_in_hash_table(v)                                       \
-    (type_of_header(vechdr(v)) == TYPE_INDEXVEC ?                    \
-       HASH_CHUNK_WORDS*((length_of_header(vechdr(v))-CELL)/CELL) :  \
-       (length_of_header(vechdr(v)) - CELL)/CELL)
-
-// an lvalue for the nth item in the table.
-
-#define ht_elt(v, n)                                                 \
-    (*(type_of_header(vechdr(v)) == TYPE_INDEXVEC ?                  \
-      &elt(elt((v), (n)/HASH_CHUNK_WORDS), (n)%HASH_CHUNK_WORDS) :   \
-      &elt((v), (n))))
-
 LispObject Lget_hash(LispObject nil, int nargs, ...)
 {   int flavour = -1;
     va_list a;
@@ -1584,7 +1639,7 @@ LispObject Lget_hash(LispObject nil, int nargs, ...)
             break;
     }
     v = elt(tab, 4);
-    hashsize = size = words_in_hash_table(v);
+    hashsize = size = words_in_large_vector(v);
     p = (hashcode % (uint32_t)(size >> 1))*2;
 //
 // I want to take my single 32-bit hash value and produce a secondary
@@ -1738,7 +1793,7 @@ void rehash_this_table(LispObject v)
     LispObject pendkey[REHASH_AT_ONE_GO], pendval[REHASH_AT_ONE_GO];
     flavour = int_of_fixnum(elt(v, 0)); // Done this way always
 
-    size = words_in_hash_table(v);
+    size = words_in_large_vector(v);
 //
 // The cycle count here is something I may want to experiment with.
 //
@@ -1785,9 +1840,9 @@ LispObject Lmaphash(LispObject nil, LispObject fn, LispObject tab)
     if (!is_vector(tab) || type_of_header(vechdr(tab)) != TYPE_HASH)
         return aerror1("maphash", tab);
     v = elt(tab, 4);
-    size = words_in_hash_table(v)*CELL+2*CELL;
+    size = words_in_large_vector(v)*CELL+2*CELL;
     push2(fn, tab);
-    v1 = get_hash_vector(size);
+    v1 = get_large_vector(size);
     pop2(tab, fn);
     v = elt(tab, 4);
     size = (size - CELL)/CELL;
@@ -1817,7 +1872,7 @@ LispObject Lhashcontents(LispObject nil, LispObject tab)
     if (!is_vector(tab) || type_of_header(vechdr(tab)) != TYPE_HASH)
         return aerror1("hashcontents", tab);
     v = elt(tab, 4);
-    size = words_in_hash_table(v)*CELL+2*CELL;
+    size = words_in_large_vector(v)*CELL+2*CELL;
     size = (size - CELL)/CELL;
 restart:
     r = nil;
@@ -1934,7 +1989,7 @@ LispObject Lput_hash(LispObject nil, int nargs, ...)
             errexit();
             v = elt(tab, 4);
             for (i=0; i<=4; i++) elt(tab, i) = elt(newhash, i);
-            isize = words_in_hash_table(v);
+            isize = words_in_large_vector(v);
             for (i=0; i<isize; i+=2)
             {   LispObject key1 = ht_elt(v, i+1), val1 = ht_elt(v, i+2);
                 if (key1 == SPID_HASH0 || key1 == SPID_HASH1) continue;
@@ -1999,7 +2054,7 @@ LispObject Lclr_hash(LispObject, LispObject tab)
         return aerror1("clrhash", tab);
     elt(tab, 1) = fixnum_of_int(0);
     v = elt(tab, 4);
-    size = words_in_hash_table(v);
+    size = words_in_large_vector(v);
     for (i=1; i<size; i++) ht_elt(v, i) = SPID_HASH0;
     return tab;
 }
