@@ -1333,7 +1333,7 @@ extern void checktable();
 extern void showstats(size_t n);
 extern size_t instrumented_lookup(ENTRY key);
 extern size_t instrumented_insert(ENTRY key);
-extern void dumptable(const char *s, bool checkdups);
+extern void dumptable(LispObject table, const char *s, bool checkdups);
 
 
 typedef struct setup_type
@@ -1373,6 +1373,28 @@ extern "C" LispObject aerror1(const char *s, LispObject a);
 extern "C" LispObject aerror2(const char *s, LispObject a, LispObject b);
 extern "C" void fatal_error(int code, ...);
 
+extern void checktable(LispObject table);
+extern void simple_msg(const char *s, LispObject x);
+extern LispObject Lmkhash2(LispObject nil, LispObject a, LispObject b);
+extern LispObject Lmkhash(LispObject nil, int nargs, ...);
+extern uint32_t update_hash(uint32_t a, uint32_t b);
+extern uint32_t hash_equal(LispObject key);
+extern LispObject Lget_hash(LispObject nil, int nargs, ...);
+extern void rehash_this_table(LispObject v);
+extern LispObject Lmaphash(LispObject nil, LispObject fn, LispObject tab);
+extern LispObject Lhashcontents(LispObject nil, LispObject tab);
+extern LispObject Lget_hash_1(LispObject nil, LispObject key);
+extern LispObject Lget_hash_2(LispObject nil, LispObject key, LispObject tab);
+extern LispObject Lput_hash(LispObject nil, int nargs, ...);
+extern LispObject Lput_hash_2(LispObject nil, LispObject a, LispObject b);
+extern LispObject Lrem_hash(LispObject nil, LispObject key, LispObject tab);
+extern LispObject Lrem_hash_1(LispObject nil, LispObject a);
+extern LispObject Lclr_hash(LispObject, LispObject tab);
+extern LispObject Lclr_hash_0(LispObject nil, int nargs, ...);
+extern LispObject Lsxhash(LispObject nil, LispObject key);
+extern LispObject Leqlhash(LispObject nil, LispObject key);
+extern LispObject Lequalhash(LispObject nil, LispObject key);
+extern LispObject Lhash_flavour(LispObject nil, LispObject tab);
 
 
 #endif // __HEADERS_H
