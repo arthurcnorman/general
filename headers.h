@@ -245,6 +245,8 @@ typedef intptr_t LispObject;
 
 #define int_of_fixnum(x) (((int32_t)(x) & ~(int32_t)15)/16)
 
+#define sixty_four_bits(a) ((int64_t)int_of_fixnum(a)) // Ugh!
+
 //
 // The garbage collector needs a spare bit in EVERY word at present. I hope
 // to remove that need soon.
@@ -1299,10 +1301,6 @@ static LispObject rational(LispObject a) { return 0; }
 static LispObject ncons(LispObject a) { return 0; }
 static LispObject cons(LispObject a, LispObject b) { return 0; }
 static LispObject acons(LispObject a, LispObject b, LispObject c) { return 0; }
-static LispObject eql(LispObject a, LispObject b) { return 0; }
-static LispObject cl_equal(LispObject a, LispObject b) { return 0; }
-static LispObject equal(LispObject a, LispObject b) { return 0; }
-static LispObject equalp(LispObject a, LispObject b) { return 0; }
 static LispObject Lapply2(LispObject a, int n, LispObject b, LispObject c, LispObject d) { return 0; }
 
 static LispObject eq_hash_tables = 0;
@@ -1312,29 +1310,6 @@ static LispObject pathname_symbol = 5;
 static int gc_number = 0;
 static double float_of_number(LispObject a) { return 0.0; }
 static char *bps_pages[10];
-
-extern uint64_t found_n, found_h, found_c;
-extern uint64_t notfound_n, notfound_h, notfound_c;
-
-extern uint64_t already_n, already_h, already_c;
-extern uint64_t inserted_n, inserted_h, inserted_c;
-
-typedef uint64_t ENTRY;
-#define EMPTY     ((ENTRY)(-1))
-#define TOMBSTONE ((ENTRY)(-2))
-
-#define NOT_PRESENT ((size_t)(-1))
-
-extern ENTRY *table;
-extern int shift_amount;
-extern size_t table_size;
-extern size_t occupancy;
-extern uint64_t multiplier;
-extern void checktable();
-extern void showstats(size_t n);
-extern size_t instrumented_lookup(ENTRY key);
-extern size_t instrumented_insert(ENTRY key);
-extern void dumptable(LispObject table, const char *s, bool checkdups);
 
 
 typedef struct setup_type
@@ -1379,7 +1354,6 @@ extern void simple_msg(const char *s, LispObject x);
 extern LispObject Lmkhash2(LispObject nil, LispObject a, LispObject b);
 extern LispObject Lmkhash(LispObject nil, int nargs, ...);
 extern uint32_t update_hash(uint32_t a, uint32_t b);
-extern uint32_t hash_equal(LispObject key);
 extern LispObject Lget_hash(LispObject nil, int nargs, ...);
 extern void rehash_this_table(LispObject v);
 extern LispObject Lmaphash(LispObject nil, LispObject fn, LispObject tab);
@@ -1397,6 +1371,22 @@ extern LispObject Leqlhash(LispObject nil, LispObject key);
 extern LispObject Lequalhash(LispObject nil, LispObject key);
 extern LispObject Lhash_flavour(LispObject nil, LispObject tab);
 
+// Internal for new hash model...
+
+// Temporary just while I need to gather p1;5rerformance data...
+extern uint64_t found_n, found_h, found_c;
+extern uint64_t notfound_n, notfound_h, notfound_c;
+
+extern uint64_t already_n, already_h, already_c;
+extern uint64_t inserted_n, inserted_h, inserted_c;
+
+#define NOT_PRESENT ((size_t)(-1))
+
+extern void checktable();
+extern void showstats(size_t n);
+extern size_t instrumented_lookup(LispObject key);
+extern size_t instrumented_insert(LispObject key);
+extern void dumptable(LispObject table, const char *s, bool checkdups);
 
 #endif // __HEADERS_H
 
