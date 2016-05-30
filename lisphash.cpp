@@ -431,7 +431,7 @@ size_t instrumented_lookup(LispObject key)
 // too empty. I have not implemented this yet and I will not want to be
 // to quick to shrink things.
 
-bool discard(LispObject key)
+bool hash_remove(LispObject key)
 {
     size_t n = hash_lookup(key);
     if (n == NOT_PRESENT) return false; // Item had not been present.
@@ -1862,6 +1862,7 @@ static int biggest_hash = 0;
 LispObject Lput_hash(LispObject nil, int nargs, ...)
 {   va_list a;
     LispObject key, tab, val;
+    size_t pos;
     va_start(a, nargs);
     key = va_arg(a, LispObject);
     tab = va_arg(a, LispObject);
@@ -1871,119 +1872,32 @@ LispObject Lput_hash(LispObject nil, int nargs, ...)
     if (!is_vector(tab) || type_of_header(vechdr(tab)) != TYPE_HASH)
         return aerror1("puthash", tab);
     push3(key, tab, val);
-// I call Lget_hash here and that updates the GET statistics. So I fiddle
-// things a bit to arrange that the GET numbers do not end up changed after
-// and and that I know how many probes were performed.
-#ifdef HASH_STATISTICS
-    Nhputtmp = Nhgetp;
-#endif
-    Lget_hash(nil, 3, key, tab, nil);
-#ifdef HASH_STATISTICS
-    Nhputtmp = Nhgetp - Nhputtmp;
-    Nhgetp -= Nhputtmp;
-    Nhget--;
-#endif
+    set_hash_operations(tab);
+    pos = hash_insert(key);
     pop3(val, tab, key);
     errexit();
-    if (mv_2 == nil)    // Not found, thus I point at an empty slot
-    {   //@@printf("Item not already present %d %d\n", hashgap, hashoffset);
-#ifdef HASH_STATISTICS
-        Nhputp1 += Nhputtmp;
-        Nhput1++;               // adding a NEW item
-#endif
-        if (hashgap >= 0) hashoffset = hashgap;
-        ht_elt(work_0, hashoffset+1) = key;
-        ht_elt(work_0, hashoffset+2) = val;
-        elt(tab, 1) += 0x10;    // increment count of used entries
-#ifdef DEBUG
-        if (elt(tab, 1) > biggest_hash+10000)
-        {   err_printf("Hash size now %d\n", (int)int_of_fixnum(elt(tab, 1)));
-            biggest_hash = elt(tab, 1);
-        }
-#endif
-        if (elt(tab, 1) > elt(tab, 2))
-        {   LispObject size = elt(tab, 2),
-                           growth = elt(tab, 3),
-                           newhash, v;
-            int32_t isize = int_of_fixnum(size), i;
-            push2(tab, val);
-            if (is_fixnum(growth))
-            {   int32_t w1 = int_of_fixnum(growth);
-                if (w1 > 0) isize = isize + w1;
-                else isize = isize + (isize/2);
-            }
-            else if (is_float(growth))
-            {   double w2 = float_of_number(growth);
-                int32_t newsize = isize;
-                if (1.0 < w2 && w2 < 10.0)
-                    newsize = (int32_t)(w2 * (double)isize + 2.0);
-                if (newsize > isize) isize = newsize;
-                else isize = isize + (isize/2) + 2;
-            }
-            else isize = isize + (isize/2) + 2;
-            newhash = Lmkhash(nil, 3, fixnum_of_int(isize),
-                              elt(tab, 0), growth);
-            pop2(val, tab);
-            errexit();
-            v = elt(tab, 4);
-            for (i=0; i<=4; i++) elt(tab, i) = elt(newhash, i);
-            isize = words_in_large_vector(v);
-            for (i=0; i<isize; i+=2)
-            {   LispObject key1 = ht_elt(v, i+1), val1 = ht_elt(v, i+2);
-                if (key1 == SPID_HASHEMPTY || key1 == SPID_HASHTOMB) continue;
-//
-// NB the new hash table is big enough to hold all the data that was in the
-// old one, so inserting stuff into it can not cause a (recursive)
-// enlargement here....
-//
-                push3(v, tab, val);
-// Re-inserting will add to the counts for hash PUT operations.
-                Lput_hash(nil, 3, key1, tab, val1);
-                pop3(val, tab, v);
-            }
-        }
-        return onevalue(val);
-    }
-    else
-    {
-#ifdef HASH_STATISTICS
-        Nhputp2 += Nhputtmp; // Count cases wheer an existing item is updated.
-        Nhput2++;
-#endif
-        ht_elt(work_0, hashoffset+2) = val;
-//@@    printf("hash entry updated\n");
-        return onevalue(val);
-    }
+    putv_large_vector(elt(tab, HASH_VALUES), pos, val);
+    return onevalue(val);
 }
-
 
 LispObject Lput_hash_2(LispObject nil, LispObject a, LispObject b)
 {   return Lput_hash(nil, 3, a, sys_hash_table, b);
 }
 
 LispObject Lrem_hash(LispObject nil, LispObject key, LispObject tab)
-{   push2(key, tab);
-    Lget_hash(nil, 3, key, tab, nil);
-    pop2(tab, key);
-    errexit();
-    if (mv_2 == nil) return onevalue(nil);
-    else
-    {   ht_elt(work_0, hashoffset+1) = SPID_HASHTOMB;
-        ht_elt(work_0, hashoffset+2) = SPID_HASHEMPTY;
-        elt(tab, 1) -= 0x10;
-//
-// Some folk would believe that if the table shrank too much I should
-// shrink it, or at the very least re-hash it.
-//
-        return onevalue(lisp_true);
-    }
+{   set_hash_operations(tab);
+    size_t pos = hash_lookup(key);
+    if (pos == NOT_PRESENT) return onevalue(nil);
+    putv_large_vector(elt(tab, HASH_KEYS), pos, SPID_HASHTOMB);
+    putv_large_vector(elt(tab, HASH_VALUES), pos, nil);
+    return onevalue(lisp_true);
 }
 
 LispObject Lrem_hash_1(LispObject nil, LispObject a)
 {   return Lrem_hash(nil, a, sys_hash_table);
 }
 
-LispObject Lclr_hash(LispObject, LispObject tab)
+LispObject Lclr_hash(LispObject nil, LispObject tab)
 {   LispObject v;
     size_t size, i;
     if (!is_vector(tab) ||
@@ -1996,7 +1910,7 @@ LispObject Lclr_hash(LispObject, LispObject tab)
     for (i=0; i<size; i++) putv_large_vector(v, i, SPID_HASHEMPTY);
     v = elt(tab, HASH_VALUES);
     size = words_in_large_vector(v);
-    for (i=0; i<size; i++) putv_large_vector(v, i, C_nil);
+    for (i=0; i<size; i++) putv_large_vector(v, i, nil);
     return tab;
 }
 
