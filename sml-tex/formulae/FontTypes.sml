@@ -4,7 +4,7 @@ struct
   type fontNr  =  int
   type varCharInfo  =  {top: charCode option,
                         bot: charCode option,
-                        rep: charCode option}
+                        rep: charCode}
   type charInfo  =  {width:    dist,
                      height:   dist,
                      depth:    dist,

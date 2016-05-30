@@ -19,7 +19,7 @@ struct
   fun dig ch  =  ord ch - ord #"0"
 
   fun varChar NONE NONE NONE  =  NONE
-  |   varChar t    b    r     =  SOME {top = t, bot = b, rep = r}
+  |   varChar t    b    r     =  SOME {top = t, bot = b, rep = valOf r}
 
 (* BEGIN destructive file reading *)
 
