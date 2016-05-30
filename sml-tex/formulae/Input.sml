@@ -15,6 +15,7 @@ sig
   val choice     : MathTypes.mlist -> MathTypes.mlist -> MathTypes.mlist -> MathTypes.mlist -> MathTypes.noad
   val accent     : string -> MathTypes.mlist -> MathTypes.noad
   val sqrt       : MathTypes.mlist -> MathTypes.noad
+  val delim      : string -> BasicTypes.delim
 end
 (*----------*)
 
@@ -48,10 +49,10 @@ struct
   val underline  =  Underline
 
   fun fraction num den  =
-  GenFraction {num = num, den = den, thickness = NONE,   left = 0, right = 0}
+  GenFraction {num = num, den = den, thickness = NONE,   left = NONE, right = NONE}
 
   fun atop top bot  =
-  GenFraction {num = top, den = bot, thickness = SOME 0, left = 0, right = 0}
+  GenFraction {num = top, den = bot, thickness = SOME 0, left = NONE, right = NONE}
 
   fun sup    a b    =  Script {nucleus = a, supOpt = SOME b, subOpt = NONE}
   fun sub    a b    =  Script {nucleus = a, supOpt = NONE,   subOpt = SOME b}
@@ -75,6 +76,14 @@ struct
     | accent "widehat" base = Accent (EX, 98,  base)
     | accent _         _    = raise (BasicTypes.NotImplemented "math accent")
 
-  fun sqrt ml = Radical (112, ml)
+  fun sqrt ml = Radical (SOME (SY, 112, EX, 112), ml)
+
+  fun delim "lparen"   = SOME (RM, 40, EX, 0)
+    | delim "rparen"   = SOME (RM, 41, EX, 1)
+    | delim "lbracket" = SOME (RM, 91, EX, 2)
+    | delim "rbracket" = SOME (RM, 93, EX, 3)
+    | delim "langle"   = SOME (SY, 104, EX, 10)
+    | delim "rangle"   = SOME (SY, 105, EX, 11)
+    | delim "null"     = NONE
 
 end

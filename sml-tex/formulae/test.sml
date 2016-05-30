@@ -56,3 +56,10 @@ val mlradical = sqrt (trans "a") :: trans "=" @
                 sqrt (trans "2x-3") :: trans "." @
                 [sqrt [(supsub (trans "y") one one)]]
 fun testradical () = out [disp mlradical]
+
+val mltall' = [atop [atop mlar mlar] [atop mlar mlar]]
+val mltall = [atop mltall' mltall'] 
+val mldelims = MathTypes.LeftRight (delim "lparen", mlar, delim "rparen") :: trans "+" @
+               MathTypes.LeftRight (delim "langle", mleq, delim "rangle") :: trans "+" @
+               [MathTypes.LeftRight (delim "lbracket", mltall, delim "rbracket")]
+fun testdelims () = out [line mldelims, disp mldelims]

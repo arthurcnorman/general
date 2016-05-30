@@ -6,6 +6,11 @@ sig
   val charItalic : FontTypes.fontNr * BasicTypes.charCode -> BasicTypes.dist
   val charLarger : FontTypes.fontNr * BasicTypes.charCode -> BasicTypes.charCode option
   val charAccentSkew : FontTypes.fontNr * BasicTypes.charCode -> BasicTypes.dist
+  val charExtensible : FontTypes.fontNr * BasicTypes.charCode -> bool
+  val charExtensibleTop : FontTypes.fontNr * BasicTypes.charCode -> BasicTypes.charCode option
+  val charExtensibleRep : FontTypes.fontNr * BasicTypes.charCode -> BasicTypes.charCode
+  val charExtensibleBot : FontTypes.fontNr * BasicTypes.charCode -> BasicTypes.charCode option 
+
 end  (* signature CHAR_INFO *)
 (*----------*)
 
@@ -24,4 +29,9 @@ struct
   fun charItalic  pair  =  #itCorr (charInfo pair)
   fun charLarger  pair  =  #larger (charInfo pair)
   fun charAccentSkew pair = #accentSkew (charInfo pair)
+  fun charExtensible pair = (isSome o #varChar) (charInfo pair)
+  fun charExtensibleTop pair = (#top o valOf o #varChar) (charInfo pair)
+  fun charExtensibleRep pair = (#rep o valOf o #varChar) (charInfo pair)
+  fun charExtensibleBot pair = (#bot o valOf o #varChar) (charInfo pair)
+
 end  (* structure CharInfo *)
