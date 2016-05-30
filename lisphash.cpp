@@ -172,6 +172,18 @@ static inline void putv_large_vector(LispObject v, size_t n, LispObject val)
 //
 // The following are the components that make up a hash table...
 //
+
+#define HASH_FLAVOUR    0
+#define HASH_COUNT      1
+#define HASH_SHIFT      2
+#define HASH_KEYS       3
+#define HASH_VALUES     4
+#define HASH_MULTIPLIER 5
+#define HASH_DEFAULT_MULTIPLIER UINT64_C(0x9e3779b99e3779bd)
+
+// While performing operations on a table I will often load its components
+// info some of the following static variables.
+
 static LispObject h_table, v_table;
 static int h_shift = 64-18;
 static uint64_t h_multiplier = UINT64_C(0x9e3779b99e3779bd);
@@ -342,7 +354,7 @@ void checktable(LispObject tt)
 // it encounters an empty hash table slot in its probe sequence.
 // Observe how very concise and fast this code is!
 
-size_t lookup(LispObject key)
+size_t hash_lookup(LispObject key)
 {
     uint64_t h = HASH(key);
     LispObject v;
@@ -395,7 +407,7 @@ size_t instrumented_lookup(LispObject key)
 {
     size_t r;
     hashcount = comparecount = 0;
-    r = lookup(key);
+    r = hash_lookup(key);
     if (r == NOT_PRESENT)
     {   notfound_n++;
         notfound_h += hashcount;
@@ -421,7 +433,7 @@ size_t instrumented_lookup(LispObject key)
 
 bool discard(LispObject key)
 {
-    size_t n = lookup(key);
+    size_t n = hash_lookup(key);
     if (n == NOT_PRESENT) return false; // Item had not been present.
     setht(n, SPID_HASHTOMB);
     occupancy--;
@@ -517,11 +529,11 @@ bool discard(LispObject key)
 
 #define QSIZE 100
 
-// The code for insert() can shuffle existing items in the hash table.
+// The code for hash_insert() can shuffle existing items in the hash table.
 // When it does so it will need to so a matcing rearrangement on the
 // associated values. @@@ Not done yet @@@
 
-size_t insert(LispObject key)
+size_t hash_insert(LispObject key)
 {
     int Qn;
     uint64_t Qkey[QSIZE];
@@ -689,7 +701,7 @@ size_t instrumented_insert(LispObject key)
     size_t r;
     uint64_t old_occupancy = occupancy;
     hashcount = comparecount = 0;
-    r = insert(key);
+    r = hash_insert(key);
     if (occupancy == old_occupancy)
     {   already_n++;
         already_h += hashcount;
@@ -774,14 +786,14 @@ bool hash_rehash(LispObject tab)
 /// time scanning blank bits of it and finally (c) that when I rehash
 // the table will not be 100% full and so I will find space for the data
 // concerned.
-        if (insert(key) == NOT_PRESENT) return restore_pending(key);
+        if (hash_insert(key) == NOT_PRESENT) return restore_pending(key);
     }
     while (npending != 0)
     {   LispObject key = pending_for_rehash[--npending];
 // In pathological cases this can fail to re-insert even the data that had been
 // previously present, and in that case the left-over stuff will be left in the
 // array pending_for_rehash.
-        if (insert(key) == NOT_PRESENT) return restore_pending(key);
+        if (hash_insert(key) == NOT_PRESENT) return restore_pending(key);
     }
 // Rehashing should only ever be started when the table is of type
 // HASHX rather than HASH, so when it has succeeded I can turn it back into
@@ -796,35 +808,35 @@ bool hash_rehash(LispObject tab)
 
 static void hash_double_size(LispObject tab)
 {   LispObject nil = C_nil;
-    LispObject ok = elt(tan, HASH_KEYS);
-    LispObject ov = elt(tan, HASH_VALUES);
-    LispObjecn nk, nv;
+    LispObject ok = elt(tab, HASH_KEYS);
+    LispObject ov = elt(tab, HASH_VALUES);
+    LispObject nk, nv;
     size_t i, n = words_in_large_vector(ok), n2, p;
     push3(tab, ok, ov);
 // If the table is already large then I can expand it by just doubling
 // the size of the index vectors.
-    if (type_of_header(vechdr(v)) == TYPE_INDEXVEC)
+    if (type_of_header(vechdr(ok)) == TYPE_INDEXVEC)
     {   n = n/VECTOR_CHUNK_WORDS;
         n2 = 2*n;
         nk = getvector_init(CELL*(n2+1), nil);
         errexitn(3);
-        vechdr(nk) ^= (TYPE_SIMPLE_VECTOR ^ TYPE_INDEXVEC);
+        vechdr(nk) ^= (TYPE_SIMPLE_VEC ^ TYPE_INDEXVEC);
         push(nk);
-        nv = getvector_init(CELL*(n1+1), nil);
+        nv = getvector_init(CELL*(n2+1), nil);
         pop4(nk, ov, ok, tab);
         errexit();
-        vechdr(nv) ^= (TYPE_SIMPLE_VECTOR ^ TYPE_INDEXVEC);
+        vechdr(nv) ^= (TYPE_SIMPLE_VEC ^ TYPE_INDEXVEC);
         for (i=0; i<n; i++)
         {   LispObject w;
             elt(nk, i) = elt(ok, i);
             elt(nv, i) = elt(ov, i);
             push3(tab, nk, nv);
-            w = getvector_init(CELL*(VECTOR_VHUNK_WORDS+1), SPID_HASHEMPTY);
+            w = getvector_init(CELL*(VECTOR_CHUNK_WORDS+1), SPID_HASHEMPTY);
             pop3(nv, nk, tab);
             errexit();
             elt(nk, n+i) = w;
             push3(tab, nk, nv);
-            w = getvector_init(CELL*(VECTOR_VHUNK_WORDS+1), nil);
+            w = getvector_init(CELL*(VECTOR_CHUNK_WORDS+1), nil);
             pop3(nv, nk, tab);
             errexit();
             elt(nv, n+i) = w;
@@ -841,7 +853,7 @@ static void hash_double_size(LispObject tab)
         pop4(nk, ov, ok, tab);
         errexit();
         elt(tab, HASH_KEYS) = nk;
-        elt(tan, HASH_VALUES) = nv;
+        elt(tab, HASH_VALUES) = nv;
         p = 0;
         for (i=0; i<n; i++)
         {   LispObject k = elt(ok, i);
@@ -1006,13 +1018,6 @@ LispObject Lmkhash(LispObject nil, int nargs, ...)
     v = getvector_init(7*CELL, nil);
     pop2(v1, v2);
     errexit();
-#define HASH_FLAVOUR    0
-#define HASH_COUNT      1
-#define HASH_SHIFT      2
-#define HASH_KEYS       3
-#define HASH_VALUES     4
-#define HASH_MULTIPLIER 5
-#define HASH_DEFAULT_MULTIPLIER UINT64_C(0x9e3779b99e3779bd)
     elt(v, 0) = flavour;             // comparison method for hash operations.
     elt(v, 1) = fixnum_of_int(0);    // current number of items stored.
     elt(v, 2) = fixnum_of_int(shift);// 64-log2(table size)
@@ -1715,6 +1720,7 @@ LispObject Lget_hash(LispObject nil, int nargs, ...)
 {   int flavour = -1;
     va_list a;
     LispObject v, key, tab, dflt;
+    size_t pos;
     argcheck(nargs, 3, "gethash");
     va_start(a, nargs);
     key = va_arg(a, LispObject);
@@ -1722,9 +1728,10 @@ LispObject Lget_hash(LispObject nil, int nargs, ...)
     dflt = va_arg(a, LispObject);
     va_end(a);
     if (!is_vector(tab) || type_of_header(vechdr(tab)) != TYPE_HASH)
-    {   if (type_of_header(vechdr(tab)) == TYPE_HASHX) // must rehashing first
-        {   push2(key, dflt);
-            set_hash_operations(tab);
+    {   if (type_of_header(vechdr(tab)) != TYPE_HASHX)
+            return aerror1("gethash", tab);
+        push2(key, dflt);
+        set_hash_operations(tab);
 // Here I have a table that at some stage had all fitted into the table, and
 // I am not adding new data. I need to rehash it because garbage collection
 // may have shuffled memory and so hash values that are based on memory
@@ -1736,274 +1743,59 @@ LispObject Lget_hash(LispObject nil, int nargs, ...)
 // Now garbage collection has messed things up it might be in a much nastier
 // state and expansion may be the only realistic option. OK I will allow
 // for that!
-            for (;;)
-            {   if (hash_rehash(tab)) break; // OK now
-                update_multiplier();
-                if (hash_rehash(tab)) break; // OK with new multiplier
-                update_multiplier();
-                if (hash_rehash(tab)) break; // One more try before I enlarge.
+        for (;;)
+        {   if (hash_rehash(tab)) break; // OK now
+            update_multiplier();
+            if (hash_rehash(tab)) break; // OK with new multiplier
+            update_multiplier();
+            if (hash_rehash(tab)) break; // One more try before I enlarge.
 // Now I should double the table size. I make hash_double_size double the
 // table size but leave the keys in incorrect locations, and so after it has
 // been called I need to use rehash() to restore them. But note that the
 // memory allocation might fail, and in that case I will have to give up.
-                push(tab);
-                hash_double_size(tab);
-                pop(tab);
-                errexitn(2);
-            }
-            pop2(dflt, key);
-            errexit();
+            push(tab);
+            hash_double_size(tab);
+            pop(tab);
+            errexitn(2);
         }
-        else return aerror1("gethash", tab);
+        pop2(dflt, key);
+        errexit();
     }
-    else set_hash_operations(tab);
-    v = elt(tab, HASH_FLAVOUR);
-// /* The code here needs to allow for user-specified hash functions
-    if (is_fixnum(v)) flavour = int_of_fixnum(v);
-
-    switch (flavour)
-    {   default:
-            return aerror1("gethash", cons(v, tab));
-        case 0:
-            hashcode = update_hash(1, (uint32_t)key);
-            break;
-        case 1:
-            hashcode = hash_eql(key);  // can never fail
-            break;
-        case 2:
-            push3(key, tab, dflt);
-            hashcode = hash_cl_equal(key, true);
-            pop3(dflt, tab, key);
-            errexit();
-            break;
-        case 3:
-            push3(key, tab, dflt);
-            hashcode = hash_equal(key);
-            pop3(dflt, tab, key);
-            errexit();
-            break;
-        case 4:
-            push3(key, tab, dflt);
-            hashcode = hash_equalp(key);
-            pop3(dflt, tab, key);
-            errexit();
-            break;
+// Extract details of the (possibly updated) hash table. This will leave
+// hash calculation and value checking set up nicely.
+    set_hash_operations(tab);
+    pos = hash_lookup(key);
+    if (pos == NOT_PRESENT)
+    {   mv_2 = nil;
+        return nvalues(dflt, 2);
     }
-    v = elt(tab, 4);
-    hashsize = size = words_in_large_vector(v);
-    p = (hashcode % (uint32_t)(size >> 1))*2;
-//
-// I want to take my single 32-bit hash value and produce a secondary
-// hash value that is a stride for the search. I can just take the
-// remainder by 1 less than the hash table size (and add 1 so I get
-// a non-zero stride).
-//
-    hashstride = (1 + (hashcode % (uint32_t)((size >> 1)-1)))*2;
-    hashgap = -1;
-//
-// I now know how to do better than this!
-//
-    for (nprobes=0; nprobes<size; nprobes++)
-    {   LispObject q = ht_elt(v, p+1);
-        bool cf;
-//@@    printf("probe %d at %d\n", nprobes, p);
-        if (q == SPID_HASHEMPTY)
-        {   mv_2 = nil;
-            work_0 = v;
-            hashoffset = p;
-#ifdef HASH_STATISTICS
-            Nhget++;              // item not present
-#endif
-            return nvalues(dflt, 2);
-        }
-        if (q == SPID_HASHTOMB)
-        {   hashgap = p;
-            cf = false;  // vacated slot
-        }
-// /* again user-specified hash functions need insertion here
-        else switch (flavour)
-        {       default: // case 0:
-                    cf = (q == key);
-                    break;
-                case 1: cf = eql(q, key);
-                    break;
-                case 2: push4(key, tab, dflt, v);
-                    if (q == key) cf = true;
-                    else cf = cl_equal(q, key);
-                    pop4(v, dflt, tab, key);
-                    errexit();
-                    break;
-                case 3: push4(key, tab, dflt, v);
-                    if (q == key) cf = true;
-                    else cf = equal(q, key);
-                    pop4(v, dflt, tab, key);
-                    errexit();
-                    break;
-                case 4: push4(key, tab, dflt, v);
-                    if (q == key) cf = true;
-                    else cf = equalp(q, key);
-                    pop4(v, dflt, tab, key);
-                    errexit();
-                    break;
-            }
-#ifdef HASH_STATISTICS
-        Nhgetp++;
-#endif
-        if (cf)
-        {   mv_2 = lisp_true;
-            work_0 = v;
-            hashoffset = p;
-#ifdef HASH_STATISTICS
-            Nhget++;              // item found
-#endif
-            return nvalues(ht_elt(v, p+2), 2);
-        }
-        p = p + hashstride;
-        if (p >= size) p = p - size;
-    }
-    return aerror("too many probes in hash look-up");
-}
-
-static void reinsert_hash(LispObject v, int32_t size, int32_t flavour,
-                          LispObject key, LispObject val)
-{   int32_t p;
-    uint32_t hcode, hstride;
-    LispObject nil = C_nil;
-//@@printf("hash_reinsert\n");
-    switch (flavour)
-{       default: // case 0:
-            hcode = update_hash(1, (uint32_t)key);
-            break;
-        case 1:
-            hcode = hash_eql(key);  // can never fail
-            break;
-        case 2:
-            push3(key, v, val);
-            hcode = hash_cl_equal(key, true);
-            pop3(val, v, key);
-            errexitv();
-            break;
-        case 3:
-            push3(key, v, val);
-            hcode = hash_equal(key);
-            pop3(val, v, key);
-            errexitv();
-            break;
-        case 4:
-            push3(key, v, val);
-            hcode = hash_equalp(key);
-            pop3(val, v, key);
-            errexitv();
-            break;
-    }
-    p = (hcode % (uint32_t)(size >> 1))*2;
-    hstride = (1 + (hcode % (uint32_t)((size >> 1)-1)))*2;
-//
-// When I re-insert the item into the table life is especially easy -
-// I know it is not there already and I know I will be able to find a
-// gap to put it in!  So I just have to look for a gap - no comparisons
-// are needed.
-//
-    type_of_header(vechdr(v)) == TYPE_INDEXVEC = type_of_header(vechdr(v)) == TYPE_INDEXVEC;
-    for (;;)
-    {   LispObject q = ht_elt(v, p+1);
-        if (q == SPID_HASHEMPTY || q == SPID_HASHTOMB)
-        {   ht_elt(v, p+1) = key;
-            ht_elt(v, p+2) = val;
-            return;
-        }
-        p = p + hstride;
-        if (p >= size) p = p - size;
-    }
-}
-
-#define REHASH_CYCLES    2
-#define REHASH_AT_ONE_GO 64
-
-void rehash_this_table(LispObject v)
-//
-// Hash tables where the hash function depends on absolute memory addresses
-// will sometimes need rehashing - I do this by removing items from the
-// table one at a time and re-inserting them. This does not guarantee that
-// the table is left in a perfect state, but for modest loading will be
-// adequate.  I reason that if I extract 64 (say) items at a time and
-// then re-insert them then (especially for smallish tables) I have a
-// better chance of things ending up in the ideal place. The problem is that
-// items that have not yet been moved may be sitting in places where a
-// re-hashed item ought to go. The effect will be that the newly re-inserted
-// item sees a clash and moves to a second-choice position. When the other
-// item is (later on) processed it will then vacate the place I would have
-// liked to use, leaving a "tombstone" marker behind.  If at the end of all
-// re-hashing there are too many tombstones left around lookup performance
-// in the table will degrade. I attempt to counter this effect by performing
-// the whole re-hashing procedure several times. But I have neither analysed
-// nore measured what happens! I will do so if practical applications show
-// up serious trouble here.
-//
-{   int32_t size, i, j, flavour, many;
-    LispObject pendkey[REHASH_AT_ONE_GO], pendval[REHASH_AT_ONE_GO];
-    flavour = int_of_fixnum(elt(v, 0)); // Done this way always
-
-    size = words_in_large_vector(v);
-//
-// The cycle count here is something I may want to experiment with.
-//
-    for (i=0; i<REHASH_CYCLES; i++)
-    {
-//
-// Change all slots in the table that are empty just because something has
-// been deleted to indicate that they are truly not in use. This makes some
-// items inaccessible by normal hash searches (because a void will be placed
-// earlier than them on a search trajectory) but this does not matter because
-// everything is about to be taken out of the table and reinserted properly.
-//
-
-        for (j=0; j<size; j+=2)
-            if (ht_elt(v, j+1) == SPID_HASHTOMB) ht_elt(v, j+1) = SPID_HASHEMPTY;
-        many = 0;
-        for (j=0; j<size; j+=2)
-        {   LispObject key = ht_elt(v, j+1), val = ht_elt(v, j+2);
-            if (key == SPID_HASHEMPTY || key == SPID_HASHTOMB) continue;
-            pendkey[many] = key;      pendval[many++] = val;
-            ht_elt(v, j+1) = SPID_HASHTOMB; ht_elt(v, j+2) = SPID_HASHEMPTY;
-            if (many >= REHASH_AT_ONE_GO)
-            {   while (many > 0)
-                {   many--;
-                    reinsert_hash(v, size, flavour,
-                                  pendkey[many], pendval[many]);
-                }
-            }
-        }
-        while (--many >= 0)
-            reinsert_hash(v, size, flavour, pendkey[many], pendval[many]);
-    }
+    mv_2 = lisp_true;
+    return nvalues(getv_large_vector(elt(tab, HASH_VALUES), pos), 2);
 }
 
 LispObject Lmaphash(LispObject nil, LispObject fn, LispObject tab)
 //
-// There is a big worry here if the table is re-hashed because of
-// a garbage collection while I am in the middle of things. To
-// avoid utter shambles I will make a copy of the vector early
-// on and work from that.
+// I should consider what happens if there is a garbage collection while
+// I am performing this scan of the hash table. Well the table contents are
+// not rearranged by garnage collection - the main thing that happens is that
+// the table is re-tagged from TYPE_HASH to TYPE_HASHX. So I believe that
+// provided nobody tries either lookup or set operations on the table I
+// will be OK.
 //
 {   int32_t size, i;
     LispObject v, v1;
     if (!is_vector(tab) || type_of_header(vechdr(tab)) != TYPE_HASH)
         return aerror1("maphash", tab);
-    v = elt(tab, 4);
-    size = words_in_large_vector(v)*CELL+2*CELL;
-    push2(fn, tab);
-    v1 = get_large_vector(size);
-    pop2(tab, fn);
-    v = elt(tab, 4);
-    size = (size - CELL)/CELL;
-    for (i=0; i<size; i++) ht_elt(v1, i) = ht_elt(v, i);
-    for (i=1; i<size; i+=2)
-    {   LispObject key = ht_elt(v1, i), val = ht_elt(v1, i+1);
+    v = elt(tab, HASH_KEYS);
+    v1 = elt(tab, HASH_VALUES);
+    size = words_in_large_vector(v);
+    for (i=0; i<size; i++)
+    {   LispObject key = getv_large_vector(v, i),
+                   val = getv_large_vector(v1, i);
         if (key == SPID_HASHEMPTY || key == SPID_HASHTOMB) continue;
-        push2(v1, fn);
+        push3(v, v1, fn);
         Lapply2(nil, 3, fn, key, val);
-        pop2(fn, v1);
+        pop3(fn, v1, v);
         errexit();
     }
     return onevalue(nil);
@@ -2011,33 +1803,29 @@ LispObject Lmaphash(LispObject nil, LispObject fn, LispObject tab)
 
 LispObject Lhashcontents(LispObject nil, LispObject tab)
 //
-// There is a big worry here if the table is re-hashed because of
-// a garbage collection while I am in the middle of things. To
-// avoid utter shambles I will restart if a GC happens while I
-// am unfolding the hash table. And fail if that happens twice
-// in a row.
+// As for maphash I believe that garbage collection is pretty benign here.
 //
-{   int32_t size, i, ogcnum;
-    int n_gc = 0;
-    LispObject v, r;
-    if (!is_vector(tab) || type_of_header(vechdr(tab)) != TYPE_HASH)
+{   size_t size, i;
+    LispObject v, v1, r;
+    if (!is_vector(tab) ||
+        (type_of_header(vechdr(tab)) != TYPE_HASH &&
+         type_of_header(vechdr(tab)) != TYPE_HASHX))
         return aerror1("hashcontents", tab);
-    v = elt(tab, 4);
-    size = words_in_large_vector(v)*CELL+2*CELL;
-    size = (size - CELL)/CELL;
-restart:
+    v = elt(tab, HASH_KEYS);
+    v1 = elt(tab, HASH_VALUES);
+    size = words_in_large_vector(v);
     r = nil;
-    if (++n_gc > 2) return aerror("hashcontents");
-    ogcnum = gc_number;
-    for (i=1; i<size; i+=2)
-    {   LispObject k1 = ht_elt(v, i), v1 = ht_elt(v, i+1);
-        if (k1 == SPID_HASHEMPTY || k1 == SPID_HASHTOMB) continue;
-        push(v);
-        r = acons(k1, v1, r);
-        pop(v);
+    for (i=0; i<size; i++)
+    {   LispObject key = getv_large_vector(v, i),
+                   val = getv_large_vector(v1, i);
+        if (key == SPID_HASHEMPTY || key == SPID_HASHTOMB) continue;
+        push2(v, v1);
+        r = acons(key, val, r);
+        pop2(v1, v);
         errexit();
-        if (gc_number != ogcnum) goto restart;
     }
+// The ordering of items in the result a-list is unpredictable.
+// That is probably quite reasonable.
     return onevalue(r);
 }
 
