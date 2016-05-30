@@ -37,9 +37,22 @@ val mlaccents = accent "check" (trans "a") :: trans "+" @
                 accent "check" (trans "T") :: trans "+" @
                 accent "hat" (trans "a")   :: trans "+" @
                 [accent "tilde" (trans  "g")]
-fun testaccents () = out [disp mlaccents, line mlaccents]
+val mlwidehat = accent "widehat" (trans "a")   :: trans "+" @ 
+                accent "widehat" (trans "aa")  :: trans "+" @
+                [accent "widehat" (trans "aaa")]
+val two = trans "2";
+val mlaccentscripts = accent "check" (trans "a")           :: trans "+" @ 
+                      trans "a+" @ 
+                      sup [accent "check" (trans "a")] two :: trans "+" @
+                      sup (trans "a") two :: trans "+" @
+                      sub [accent "check" (trans "a")] two :: trans "+" @
+                      sub (trans "a") two :: trans "+" @ 
+                      supsub [accent "check" (trans  "a")] two two :: trans "+" @
+                      [supsub (trans "a") two two]               
+
+fun testaccents () = out [line mlwidehat, line mlaccents, line mlaccentscripts]
 
 val mlradical = sqrt (trans "a") :: trans "=" @
                 sqrt (trans "2x-3") :: trans "." @
                 [sqrt [(supsub (trans "y") one one)]]
-fun testradical () = out [disp mlradical, line mlradical]
+fun testradical () = out [disp mlradical]

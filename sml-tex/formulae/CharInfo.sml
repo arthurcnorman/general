@@ -5,6 +5,7 @@ sig
   val charDepth  : FontTypes.fontNr * BasicTypes.charCode -> BasicTypes.dist
   val charItalic : FontTypes.fontNr * BasicTypes.charCode -> BasicTypes.dist
   val charLarger : FontTypes.fontNr * BasicTypes.charCode -> BasicTypes.charCode option
+  val charAccentSkew : FontTypes.fontNr * BasicTypes.charCode -> BasicTypes.dist
 end  (* signature CHAR_INFO *)
 (*----------*)
 
@@ -22,4 +23,5 @@ struct
   fun charDepth   pair  =  #depth  (charInfo pair)
   fun charItalic  pair  =  #itCorr (charInfo pair)
   fun charLarger  pair  =  #larger (charInfo pair)
+  fun charAccentSkew pair = #accentSkew (charInfo pair)
 end  (* structure CharInfo *)

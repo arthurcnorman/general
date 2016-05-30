@@ -29,6 +29,9 @@ struct
   open MakeLine;  open GenFraction;  open MakeScripts;  open MakeLimOp
   open IListTranslate
 
+  fun isSingleChar [MathChar _] = true
+    | isSingleChar _            = false
+
   fun cleanBox st cr ml  =
       boxList (MListToHList st cr false (* no penalties! *) ml)
 
@@ -63,7 +66,7 @@ struct
   and NoadToHList st cr  =
   fn MathChar(_, fam, ch)  =>  makeChar st fam ch
   |  Radical    (del, ml)  =>  HL (makeRadical st del    (cleanBox st true ml))
-  |  Accent (fam, ch, ml)  =>  HL (makeAccent  st fam ch (cleanBox st true ml))
+  |  Accent (fam, ch, ml)  =>  HL (makeAccent (isSingleChar ml) st fam ch (cleanBox st true ml))
   |  VCenter    ml  =>  [axisCenter   st (cleanBox st cr ml)]
   |  Overline   ml  =>  HL (makeOver  st (cleanBox st true ml))
   |  Underline  ml  =>  HL (makeUnder st (cleanBox st cr ml))
