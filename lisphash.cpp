@@ -88,7 +88,9 @@ static LispObject get_large_vector(size_t n, LispObject initval)
             elt(v, i) = v1;
         }
     }
-    else v = getvector_init(n, initval);
+    else v = getvector_init(CELL*(n+1), initval);
+    printf("large vector at %" PRIxPTR "\n", (uintptr_t)v);
+    printf("%x  %x  %x\n", (int)elt(v, 0), (int)elt(v, 1), (int)elt(v, 2));
     return v;
 }
 
@@ -186,9 +188,9 @@ static inline void putv_large_vector(LispObject v, size_t n, LispObject val)
 
 static LispObject h_table, v_table;
 static int h_shift = 64-18;
-static uint64_t h_multiplier = UINT64_C(0x9e3779b99e3779bd);
+static uint64_t h_multiplier = HASH_DEFAULT_MULTIPLIER;
 
-static size_t table_size = ((size_t)(1<<(64-h_shift)));
+static size_t h_table_size = ((size_t)(1<<(64-h_shift)));
 static size_t occupancy = 0;
 
 static inline void update_multiplier()
@@ -262,15 +264,16 @@ static inline void setht(size_t n, LispObject v)
 // purposes), optionally checking to confirm that it seems to be
 // properly configured.
 
-
+static void set_hash_operations(LispObject tt);
 
 void dumptable(LispObject tt, const char *s, bool checkdups)
 {
     size_t i;
     bool bad = false;
     printf("%s\n", s);
-    for (i=0; i<table_size; i++)
-    {   LispObject k = ht(i);
+    set_hash_operations(tt);
+    for (i=0; i<h_table_size; i++)
+    {   LispObject k = getv_large_vector(h_table, i);
         uint64_t h = HASH(k);
         int h1 = h >> h_shift;
         uint64_t hx = REHASH(h);
@@ -280,6 +283,7 @@ void dumptable(LispObject tt, const char *s, bool checkdups)
         else if (k == SPID_HASHTOMB) printf("%3"PRIuMAX": TOMBSTONE\n", (uintmax_t)i);
         else
         {   const char *s1=" ", *s2 = " ", *s3 = " ", *s4 = "";
+            uintptr_t vv = getv_large_vector(v_table, i);
             if (h1 == i)
             {   s1 = "=";
                 if (h2 != i && ht(h2) == k) { s2 = "?"; bad = true; }
@@ -299,8 +303,8 @@ void dumptable(LispObject tt, const char *s, bool checkdups)
                 if (ht(h2) == SPID_HASHEMPTY) s4 = " @@@";
             }
             if (h1 != i && h2 != i && h3 != i) s4 = "@@@";
-            printf("%3"PRIuMAX": [%"PRIx64"] %s%d %s%d %s%d%s\n",
-                (uintmax_t)i, (uint64_t)k, s1, h1, s2, h2, s3, h3, s4);
+            printf("%3"PRIuMAX": [%"PRIx64"] %s%d %s%d %s%d%s (%"PRIx64")\n",
+                (uintmax_t)i, (uint64_t)k, s1, h1, s2, h2, s3, h3, s4, (uintmax_t)vv);
         }
     }
     if (bad && checkdups)
@@ -320,7 +324,7 @@ static void corrupted(LispObject tt)
 void checktable(LispObject tt)
 {
     size_t i;
-    for (i=0; i<table_size; i++)
+    for (i=0; i<h_table_size; i++)
     {   LispObject k = ht(i);
         uint64_t h = HASH(k);
         int h1 = h >> h_shift;
@@ -437,7 +441,7 @@ bool hash_remove(LispObject key)
     if (n == NOT_PRESENT) return false; // Item had not been present.
     setht(n, SPID_HASHTOMB);
     occupancy--;
-    if (occupancy < table_size/5)
+    if (occupancy < h_table_size/5)
     {   //shrink_table();
     }
     return true;             // Item had been present. Now removed.
@@ -754,7 +758,7 @@ static bool restore_pending(LispObject key)
 bool hash_rehash(LispObject tab)
 {   size_t k;
     npending = 0;
-    for (k=0; k<table_size; k++)
+    for (k=0; k<h_table_size; k++)
     {   LispObject key = ht(k);
 // TOMBSTONE values present at the start relate to the old hashing regime
 // and so are now irrelevant.
@@ -1009,6 +1013,7 @@ LispObject Lmkhash(LispObject nil, int nargs, ...)
     {   size2 *= 2;
         shift--;
     }
+printf("size2 = %d\n", (int)size2);
     v1 = get_large_vector(size2, SPID_HASHEMPTY);
     errexit();
     push(v1);
@@ -1016,14 +1021,14 @@ LispObject Lmkhash(LispObject nil, int nargs, ...)
     errexitn(1);
     push(v2);
     v = getvector_init(7*CELL, nil);
-    pop2(v1, v2);
+    pop2(v2, v1);
     errexit();
-    elt(v, 0) = flavour;             // comparison method for hash operations.
-    elt(v, 1) = fixnum_of_int(0);    // current number of items stored.
-    elt(v, 2) = fixnum_of_int(shift);// 64-log2(table size)
-    elt(v, 3) = v1;                  // key table.
-    elt(v, 4) = v2;                  // value table.
-    elt(v, 5) = nil;                 // current multiplier
+    elt(v, HASH_FLAVOUR) = flavour;         // comparison method1;5n
+    elt(v, HASH_COUNT) = fixnum_of_int(0);  // current number of items stored.
+    elt(v, HASH_SHIFT) = fixnum_of_int(shift);  // 64-log2(table size)
+    elt(v, HASH_KEYS) = v1;                 // key table.
+    elt(v, HASH_VALUES) = v2;               // value table.
+    elt(v, HASH_MULTIPLIER) = nil;          // current multiplier
 // If the "multiplier" is stored as NIL then a default value will be used.
 // Otherwise there will be a 64-bit integer stored in this location, and
 // extracting it for use will be an unwelcome extra cost.
@@ -1076,23 +1081,68 @@ static void set_hash_operations(LispObject tab)
         break;
     }
     h_shift = int_of_fixnum(elt(tab, HASH_SHIFT));
+    h_table_size = ((size_t)(1<<(64-h_shift)));
+    printf("shift = %d size = %u\n", (int)h_shift, (unsigned int)h_table_size);
     h_table = elt(tab, HASH_KEYS);
     v_table = elt(tab, HASH_VALUES);
+    printf("h_table = %" PRIxPTR "\n", h_table);
+    printf("%x %x %x\n", (int)elt(h_table, 0), (int)elt(h_table, 1), (int)elt(h_table, 2));
+    printf("v_table = %" PRIxPTR "\n", v_table);
     if (elt(tab, HASH_MULTIPLIER) == C_nil)
         h_multiplier = HASH_DEFAULT_MULTIPLIER;
     else h_multiplier = (uint64_t)sixty_four_bits(elt(tab, HASH_MULTIPLIER));
 }
+
+#define HASH_OFFSET1  UINT64_C(0x1000000000000000)
+#define HASH_OFFSET2  UINT64_C(0x2000000000000000)
+#define HASH_OFFSET3  UINT64_C(0x3000000000000000)
+#define HASH_OFFSET4  UINT64_C(0x4000000000000000)
+#define HASH_OFFSET5  UINT64_C(0x5000000000000000)
+#define HASH_OFFSET6  UINT64_C(0x6000000000000000)
+#define HASH_OFFSET7  UINT64_C(0x7000000000000000)
+#define HASH_OFFSET8  UINT64_C(0x8000000000000000)
+#define HASH_OFFSET9  UINT64_C(0x9000000000000000)
+#define HASH_OFFSETa  UINT64_C(0xa000000000000000)
+#define HASH_OFFSETb  UINT64_C(0xb000000000000000)
+#define HASH_OFFSETc  UINT64_C(0xc000000000000000)
+#define HASH_OFFSETd  UINT64_C(0xd000000000000000)
+#define HASH_OFFSETe  UINT64_C(0xe000000000000000)
+#define HASH_OFFSETf  UINT64_C(0xf000000000000000)
 
 static uint64_t hash_eq(LispObject key)
 {
     return h_multiplier*(uint64_t)key;
 }
 
+// For the symbol table I will pass a fake symbol to the hashing code,
+// and the hash value needs to be based on its print-name.
+
+static uint64_t hash_symtab(LispObject key)
+{   uint64_t r;
+    size_t n;
+    uintptr_t *p;
+    key = qpname(key);
+// Find number of bytes in use, and start the hash code off with the
+// header word which involves the length.
+    r = vechdr(key);
+    n = length_of_byteheader(vechdr(key));
+    p = (uintptr_t *)&celt(key, 0);
+// Hash the string 32 or 64-bits at a time depending on word-length.
+    while (n >= sizeof(uintptr_t))
+    {   r = h_multiplier*r ^ *p++;
+        n -= sizeof(uintptr_t);
+    }
+// Any part-filled word at the end MUST be zero-padded.
+    if (n != 0) r = h_multiplier*r ^ *p;
+    return HASH_OFFSET1+h_multiplier*r;
+}
+    
 static uint64_t hash_eql(LispObject key)
 //
-// Must return same code for two eql numbers.  This is remarkably
-// painful! I would like the value to be insensitive to fine details
-// of the machine I am running on.
+// Must return same code for two eql numbers. This regime views
+// numbers as equal if they have the same type aned the same value, so
+// apatr from an ugly dispatch to cope with all the different sorts of
+// number this is not too bad.
 //
 {   uint64_t r;
     if (is_bfloat(key))
@@ -1101,18 +1151,20 @@ static uint64_t hash_eql(LispObject key)
         {   case TYPE_SINGLE_FLOAT:
 // There is a nasty here. I want +0.0f and -0.0f to hash to the same
 // value becase the two values will compare as equal.
-                if (single_float_val(key) == 0.0) return 1 + h_multiplier;
-                else return 2 + h_multiplier*intfloat32_t_val(key);
+                if (single_float_val(key) == 0.0)
+                    return HASH_OFFSET2 + h_multiplier;
+                else return HASH_OFFSET3 + h_multiplier*intfloat32_t_val(key);
                 break;
             default:
             case TYPE_DOUBLE_FLOAT:
-                if (double_float_val(key) == 0.0) return 3 + h_multiplier;
-                else return 4 + h_multiplier*intfloat64_t_val(key);
+                if (double_float_val(key) == 0.0)
+                    return HASH_OFFSET4 + h_multiplier;
+                else return HASH_OFFSET5 + h_multiplier*intfloat64_t_val(key);
             case TYPE_LONG_FLOAT:
 // Here I will leave +0.0 and -0.0 hashing differently! That is just
 // laziness and needs fixing.
-                r = 5 + h_multiplier*intfloat128_t_val0(key);
-                return 6 + h_multiplier*(r + intfloat128_t_val1(key));
+                r = HASH_OFFSET6 + h_multiplier*intfloat128_t_val0(key);
+                return HASH_OFFSET7 + h_multiplier*(r + intfloat128_t_val1(key));
         }
     }
     else if (is_numbers(key))
@@ -1124,7 +1176,7 @@ static uint64_t hash_eql(LispObject key)
                 n = length_of_header(h);
                 n = (n-CELL-4)/4;  // last index into the data
                 for (;;)
-                {   r = 7 + h_multiplier*(bignum_digits(key)[n] + r);
+                {   r = HASH_OFFSET8 + h_multiplier*(bignum_digits(key)[n] + r);
                     if (n == 0) break;
                     n--;
                 }
@@ -1132,23 +1184,36 @@ static uint64_t hash_eql(LispObject key)
             case TYPE_RATNUM:
             case TYPE_COMPLEX_NUM:
                 r = hash_eql(numerator(key));
-                return 8 + h_multiplier*r + hash_eql(denominator(key));
+                return HASH_OFFSET9 + h_multiplier*r + hash_eql(denominator(key));
             default:
-                return 9 + h_multiplier;  // unknown type of number?
+                return HASH_OFFSETa + h_multiplier;  // unknown type of number?
         }
     }
 // For non-numbers I hash as for EQ.
     else return h_multiplier*(uint64_t)key;
 }
 
-static uint64_t hash_cl_equal(LispObject key, bool descend)
+#define update_hash(a, b) 99999999
+
+static uint64_t hash_cl_equal(LispObject key)
 //
 // This function is the one used hashing things under EQUAL, and note
 // that Common Lisp expects that EQUAL will NOT descend vectors or
 // structures, so this code had better not. But it is supposed to
 // descend path-names and it must treat non-simple strings and bitvectors
-// as if they were like ordinary strings and bitvectors.  If descend is
-// false this will not descend through lists.
+// as if they were like ordinary strings and bitvectors.
+// Something that I view as ABSURD about Common Lisp is that this
+// is supposed to treat an ordinary simple general vector that happens to
+// to have character items in each position as if it was EQUAL to a
+// string made up from those characters. It is supposed to treat arrays
+// with displacements and fill pointers as mere containers and only
+// compare the items eventually stored. Well the Common Lisp Committee give
+// themselves s sort of get-out by explaining that they do not think there
+// is any globally sensible concept of "equality" so they provide EQUAL
+// and EQUALP and instruct anybody who does not approve to implement yet
+// a different version and give them a break. They say that this will hardly
+// cost anybody anything, imagining that extra lines of code in a Common Lisp
+// implementation are cost-free.
 //
 {   uint32_t r = 1, c;
     LispObject nil = C_nil, w;
@@ -1165,7 +1230,7 @@ static uint64_t hash_cl_equal(LispObject key, bool descend)
     for (;;)
     {   switch (TAG_BITS & (int32_t)key)
         {   case TAG_CONS:
-                if (key == C_nil || !descend) return r;
+                if (key == C_nil) return r;
                 r = update_hash(r, hash_cl_equal(qcar(key), true));
                 nil = C_nil;
                 if (exception_pending()) return 0;
@@ -1245,8 +1310,7 @@ static uint64_t hash_cl_equal(LispObject key, bool descend)
 // all components of the pathname.
 //
                 else if (len == TYPE_STRUCTURE &&
-                         elt(key, 0) == pathname_symbol &&
-                         descend)
+                         elt(key, 0) == pathname_symbol)
                 {   len = doubleword_align_up(length_of_header(ha));
                     while ((len -= CELL) != 0)
                     {   LispObject ea =
@@ -1716,6 +1780,35 @@ static uint64_t hash_equalp(LispObject key)
     }
 }
 
+static bool hash_compare_eq(LispObject key, LispObject hashentry)
+{   return (key == hashentry);
+}
+
+// The following are all deficient at present, but are here to allow me to
+// test things @@@.
+
+static bool hash_compare_eql(LispObject key, LispObject hashentry)
+{   return (key == hashentry);
+}
+
+static bool hash_compare_cl_equal(LispObject key, LispObject hashentry)
+{   return (key == hashentry);
+}
+
+static bool hash_compare_equal(LispObject key, LispObject hashentry)
+{   return (key == hashentry);
+}
+
+static bool hash_compare_equalp(LispObject key, LispObject hashentry)
+{   return (key == hashentry);
+}
+
+static bool hash_compare_symtab(LispObject key, LispObject hashentry)
+{   return (key == hashentry);
+}
+
+//==========================================================================
+
 LispObject Lget_hash(LispObject nil, int nargs, ...)
 {   int flavour = -1;
     va_list a;
@@ -1931,31 +2024,29 @@ LispObject Lclr_hash_0(LispObject nil, int nargs, ...)
 // obliged to be a positive fixnum. All this means that it is going to be
 // only slightly related to the hash functions used with the main hashing
 // scheme here -- where cooperation with the garbage collector can trigger
-// rehashing when items move in memory.
+// rehashing when items move in memory. SO THIS VERSION IS WRONG @@@@
 
 LispObject Lsxhash(LispObject nil, LispObject key)
-{
-//
-// Does not descend vectors
-//
-    uint64_t h = hash_cl_equal(key, true);
+{   uint64_t h = hash_cl_equal(key);
     errexit();
     h = h ^ (h >> 32);
     h = (h ^ (h >> 16)) & 0x03ffffff; // ensure it will be a positive fixnum
     return onevalue(fixnum_of_int(h));
 }
 
+// The values returned here will also become out of date when garbage
+// collection moves things around. Of hear.
+
 LispObject Leqlhash(LispObject nil, LispObject key)
-{
-//
-// Only handles atoms
-//
-    uint64_t h = hash_cl_equal(key, false);
+{   uint64_t h = hash_eql(key);
     errexit();
     h = h ^ (h >> 32);
     h = (h ^ (h >> 16)) & 0x03ffffff; // ensure it will be a positive fixnum
     return onevalue(fixnum_of_int(h));
 }
+
+// The values returned here will also become out of date when garbage
+// collection moves things around. Of hear.
 
 LispObject Lequalhash(LispObject nil, LispObject key)
 {
@@ -1977,7 +2068,9 @@ LispObject Lhash_flavour(LispObject nil, LispObject tab)
          type_of_header(vechdr(tab)) != TYPE_HASHX))
         return aerror1("hashtable-flavour", tab);
     v = elt(tab, 0);
-//  The code here needs to allow for user-specified hash functions
+// The code here needs to allow for user-specified hash functions. Well the
+// word "needs" there depends on the level of enthusiasm you have for the
+// dark corners of the Common Lisp specification!
     if (is_fixnum(v)) flavour = v;
     return onevalue(flavour);
 }
@@ -1992,7 +2085,7 @@ void showstats(size_t n)
 // To get an idea of the status of the table at this level of fullness
 // I will look up all the keys that are stored in it and an equal number
 // of random keys (that are not liable to be present).
-    for (i=0; i<table_size; i++)
+    for (i=0; i<h_table_size; i++)
     {   if (ht(i) != SPID_HASHEMPTY && ht(i) != SPID_HASHTOMB)
         {   int j = instrumented_lookup(ht(i)); // should be there
             if (i != j) printf("??? i=%"PRIuMAX" j=%"PRIuMAX"(%"PRIxMAX")\n",
@@ -2001,7 +2094,7 @@ void showstats(size_t n)
         }
     }
     printf("Table occupancy %"PRIuMAX"/%"PRIuMAX" = %.2f\n",
-        (uintmax_t)n, (uintmax_t)table_size, n/(double)table_size);
+        (uintmax_t)n, (uintmax_t)h_table_size, n/(double)h_table_size);
     if (found_n != 0)
     printf("lookup=yes %10" PRIu64 "  hash=%10" PRIu64 "  cmp=%10" PRIu64 " average cmp=%.2f\n",
         found_n, found_h, found_c, found_c/(double)found_n);

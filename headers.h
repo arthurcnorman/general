@@ -1353,7 +1353,6 @@ extern void checktable(LispObject table);
 extern void simple_msg(const char *s, LispObject x);
 extern LispObject Lmkhash2(LispObject nil, LispObject a, LispObject b);
 extern LispObject Lmkhash(LispObject nil, int nargs, ...);
-extern uint32_t update_hash(uint32_t a, uint32_t b);
 extern LispObject Lget_hash(LispObject nil, int nargs, ...);
 extern void rehash_this_table(LispObject v);
 extern LispObject Lmaphash(LispObject nil, LispObject fn, LispObject tab);
