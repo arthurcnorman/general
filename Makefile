@@ -1,5 +1,11 @@
 # Trivial Makefile for lisphash
 
+# I want to tee stderr as well as stdout, and the notation "|&" works
+# nicely for me, but is bash specific. So I need to ask "make" to use it
+# rather than a more standard version of "sh". Also PIPESTATUS.
+
+SHELL=bash
+
 # CFLAGS=-DTRACE=1
 CFLAGS=
 

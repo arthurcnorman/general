@@ -19,14 +19,16 @@ LispObject getvector_init(size_t n, LispObject k)
 {   LispObject p, nil;
     push(k);
     p = getvector(TAG_VECTOR, TYPE_SIMPLE_VEC, n);
-    printf("vector allocated at %" PRIxPTR "\n", (intptr_t)p);
     pop(k);
     errexit();
     if (!SIXTY_FOUR_BIT && ((n & 4) != 0))
         n += 4;   // Ensure last doubleword is tidy
+// Note that on a 32-bit machine this will often round the size of the
+// vector up so that (including its header word) it is an even number of
+// 32-bit words long, and it will put the initial contents k into not just
+// the useful parts of the array but also into any padding words at the end.
     while (n > CELL)
     {   n -= CELL;
-        printf("Set at offset %d to %" PRIxPTR "\n", (int)n, (intptr_t)k);
         *(LispObject *)((char *)p - TAG_VECTOR + n) = k;
     }
     return p;
@@ -65,8 +67,24 @@ int main(int argc, char *argv[])
     hashtab = Lmkhash2(nil, fixnum_of_int(4), fixnum_of_int(0));
 // As a very initial check just dump the table, insert one item and re-dump.
     dumptable(hashtab, "empty", true);
-    Lput_hash(nil, 3, 100, hashtab, 200);
+    Lput_hash(nil, 3, 100, hashtab, 1000);
     dumptable(hashtab, "only one entry", true);
+    Lput_hash(nil, 3, 200, hashtab, 2000);
+    dumptable(hashtab, "two entries", true);
+    Lput_hash(nil, 3, 300, hashtab, 3000);
+    dumptable(hashtab, "three entries", true);
+    Lput_hash(nil, 3, 400, hashtab, 4000);
+    dumptable(hashtab, "four entries", true);
+    Lput_hash(nil, 3, 500, hashtab, 5000);
+    dumptable(hashtab, "five entries", true);
+    Lput_hash(nil, 3, 600, hashtab, 6000);
+    dumptable(hashtab, "six entries", true);
+    Lput_hash(nil, 3, 700, hashtab, 7000);
+    dumptable(hashtab, "seven entries", true);
+    Lput_hash(nil, 3, 800, hashtab, 8000);
+    dumptable(hashtab, "eight entries", true);
+    Lput_hash(nil, 3, 900, hashtab, 9000);
+    dumptable(hashtab, "nine entries", true);
     return 0;
 
     for (shift_amount=64-3; shift_amount>LIMIT; shift_amount--)
