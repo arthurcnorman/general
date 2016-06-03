@@ -542,6 +542,9 @@ symbolic procedure trymatchlist(lu, lpattern, env);
   else begin
     scalar w;
     w := trymatch(car lu, car lpattern, env);
+
+    % If using original expression fails to match, try rewriting our 
+    % expression to match the the pattern
     if w = 'fail then <<
       if eqcar(car lpattern, 'expt) then <<
         w := trymatch_expt(lu, lpattern, env);
@@ -561,28 +564,17 @@ symbolic procedure trymatchlist(lu, lpattern, env);
 % To-do: some redundant logic, will fix it when I have a clear mind
 
 symbolic procedure trymatch_expt(lu, lpattern, env);
-  begin
-    scalar w;
-    if eqcar(caddr car lpattern, '!_ ) then <<
-%      princ "Attempting to add exponent 1.";
-      w := trymatch(list('expt, car lu, 1), car lpattern, env);
-      if w = 'fail then return 'fail
-      else return trymatchlist(cdr lu, cdr lpattern, w);
-    >>
-    else return 'fail;
-  end;
+% princ "Attempting to add exponent 1.";
+    if eqcar(caddr car lpattern, '!_ ) then 
+      trymatch(list('expt, car lu, 1), car lpattern, env)
+    else 'fail;
+
 
 symbolic procedure trymatch_times(lu, lpattern, env);
-  begin
-    scalar w;
-    if eqcar(cadr car lpattern, '!_!. ) then <<
-%      princ "Attempting to add coefficient/times 1.";
-      w := trymatch(list('times, 1, car lu), car lpattern, env);
-      if w = 'fail then return 'fail
-      else return trymatchlist(cdr lu, cdr lpattern, w);
-      >>
-    else return 'fail;
-  end;
+% princ "Attempting to add coefficient/times 1.";
+  if eqcar(cadr car lpattern, '!_!. ) then 
+   trymatch(list('times, 1, car lu), car lpattern, env)
+  else 'fail;
 
 %======================Try Match with Options End================
 
