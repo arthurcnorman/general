@@ -17,11 +17,11 @@ end  (* signature CHAR_INFO *)
 structure CharInfo: CHAR_INFO  =
 struct
   open Vector
-  infix 8 sub
+(* infix 8 sub *)
   open BasicTypes;  open FontTypes
   open FontVector
 
-  fun charInfo (fontNr, ch)  =  (fontVector sub fontNr sub ch): charInfo
+  fun charInfo (fontNr, ch)  =  sub(sub(fontVector, fontNr), ch): charInfo
 
   fun charWidth   pair  =  #width  (charInfo pair)
   fun charHeight  pair  =  #height (charInfo pair)
