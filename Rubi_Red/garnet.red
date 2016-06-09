@@ -110,10 +110,6 @@ symbolic procedure garnet!-simp!-plus l;
        else r := x . r;
 % Puts any numeric constant as first item in result version.
     if not zerop n then r := n . reverse r
-% Sean-To-do: figure out why reverse
-% Arthur answer: the for-each loop builds up the result list r by putting
-% items on its front and that reverses the original input, so the reverese
-% here restores it.
     else r := reverse r;
 % If only one item left return it, otherwise return a sum.
     if null cdr r then return car r
@@ -246,7 +242,7 @@ trace_counter := 0;
 %
 symbolic procedure apply_rule(rule, a, x);
   begin
-    scalar lhs, rhs, conditions, w, bindings;
+    scalar lhs, rhs, conditions, w, bindings, condition;
     if (trace_counter := trace_counter+1) < 5 then <<
         %Sean-To-do: look up posn()
         %Arthur: posn() tells you the current output column, so this
@@ -270,6 +266,11 @@ symbolic procedure apply_rule(rule, a, x);
     bindings := trymatch(list('!Int, a, x), lhs, nil);
     princ "Bindings = "; print bindings;
     if bindings = 'fail then return nil;
+
+    % following is a little test for check_fraction_q
+    condition := '(!Fraction!Q (bracelist n p));
+    single_condition_pass(condition, bindings, rhs);
+
 % Here I need to check conditions
 % Sean: do subla before checking conditions??
     if conditions_pass(conditions, bindings, rhs) then return subla(bindings, rhs)
@@ -380,7 +381,7 @@ symbolic procedure conditions_pass(c, b, r);
 
 symbolic procedure single_condition_pass(c, b, r);
   begin
-% Passing cdr c for now to preserve the integrity for various cases
+% Passing (cdr c) for now to preserve structural integrity for various cases
     if eqcar(c, '!Free!Q) then return check_free_q(cdr c, b, r)
     else if eqcar(c, '!Zero!Q) then return check_zero_q(cdr c, b)
     else if eqcar(c, '!Nonzero!Q) then return check_non_zero_q(cdr c, b)
@@ -434,6 +435,9 @@ symbolic procedure single_condition_pass(c, b, r);
   end;
 
 % To-do: test it thoroughly - most frequent condition
+% c: condition, in the form of ((bracelist a b c ...) x)
+% b: binding
+% r: right hand side
 symbolic procedure check_free_q(c, b, r);
   begin
     d := subla(b, c);
@@ -447,14 +451,11 @@ top_free:
   end;
 
 symbolic procedure check_zero_q(c, b);
-  begin
-    d := subla(b, c);
-    if zerop reval(car d) then return t
-    else return nil;
-  end;
+  zerop reval(car subla(b,c));
 
 symbolic procedure check_non_zero_q(c, b);
-  'fail;
+  not check_zero_q(c,b);
+
 symbolic procedure check_equal(c, b);
   'fail;  
 symbolic procedure check_not_equal(c, b);
@@ -492,8 +493,38 @@ symbolic procedure check_integers_q(c, b);
   'fail;
 symbolic procedure check_rational_q(c, b);
   'fail;
+
 symbolic procedure check_fraction_q(c, b);
-  'fail;
+% !Fraction!Q can be either called on a single atom or a bracelist
+% for eg. (!Fraction!Q n) and (!Fraction!Q (bracelist n p))
+  begin
+    scalar d;
+    % Sean: not sure what happens to the 'bracelist' when we do subla
+    d := subla(b,c); 
+    if atom car c then
+      return check_fraction_q_atom car d
+    else
+      return check_fraction_q_list cdr car d;
+  end;
+
+symbolic procedure check_fraction_q_atom a;
+% do a reval to force 'quotient to come to car of the list
+% seems generally work but can't guarantee
+  if atom a then nil
+  else car reval a = 'quotient;
+
+symbolic procedure check_fraction_q_list l;
+  begin
+    if null l then return t
+    else if check_fraction_q_atom (car l) then <<
+      l := cdr l;
+      return check_fraction_q_list l;
+      >>
+    else return nil;
+  end;
+
+tr check_fraction_q, check_fraction_q_atom, check_fraction_q_list;
+
 symbolic procedure check_polynomial_q(c, b);
   'fail;
 symbolic procedure check_linear_q(c, b);
@@ -657,16 +688,16 @@ algebraic;
 
 % tr trymatch, trymatchlist;
 
- garnet((u + v*z^1)^(-2), z);
- garnet((u + z^1)^(-2), z);
- garnet((u + v*z)^(-2), z);
- garnet((u + z)^(-2), z);
+ garnet((u + v*z^(1/2))^(-1/2), z);
+%garnet((u + z^1)^(-2), z);
+%garnet((u + v*z)^(-2), z);
+%garnet((u + z)^(-2), z);
 
 % Now the same four but with a level of indirection...
-w := (u + v*z^1)^(-2); garnet(w, z);
-w := (u + z^1)^(-2); garnet(w, z);
-w := (u + v*z)^(-2); garnet(w, z);
-w := (u + z)^(-2); garnet(w, z);
+% w := (u + v*z^1)^(-1/3); garnet(w, z);
+%w := (u + z^1)^(-2); garnet(w, z);
+%w := (u + v*z)^(-2); garnet(w, z);
+%w := (u + z)^(-2); garnet(w, z);
 
 
 end;
