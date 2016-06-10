@@ -273,26 +273,28 @@ symbolic procedure apply_rule(rule, a, x);
 
 % Here I need to check conditions
 % Sean: do subla before checking conditions??
-    if conditions_pass(conditions, bindings, rhs) then return subla(bindings, rhs)
+% Sean: doing subla on conditions before checking conditions
+% I see no incidence of using the original conditions
+
+    if conditions_pass(subla(bindings, conditions), subla(bindings, rhs)) 
+      then return subla(bindings, rhs) % redundant call to subla
     else return nil;
   end;
 
 % ===================== Conditions Section ======================
-symbolic procedure conditions_pass(c, b, r);
+symbolic procedure conditions_pass(c, r);
   begin
     scalar first_cond, second_cond;
-%    princ "Conditions are: "; print c; 
-%    princ "Bindings are: "; print b;
     if eqcar(c, 'and) then << 
 %      printc "AND: checking if both conditions are true"; 
 
-      first_cond := conditions_pass(cadr c, b, r);
+      first_cond := conditions_pass(cadr c, r);
       if first_cond = 'fail then <<
           princ "Condition test not implemented: "; prin car cadr c;
           return nil;
           >>
       else if first_cond then <<
-        second_cond := conditions_pass(caddr c, b, r);
+        second_cond := conditions_pass(caddr c, r);
         if second_cond = 'fail then <<
           princ "Condition test not implemented: "; prin car caddr c;
           return nil;
@@ -303,14 +305,14 @@ symbolic procedure conditions_pass(c, b, r);
       >>
     else if eqcar(c, 'or) then << 
 %      printc "OR: checking if one of the two conditions are true"; 
-      first_cond := conditions_pass(cadr c, b, r);
+      first_cond := conditions_pass(cadr c, r);
       if first_cond = 'fail then <<
           princ "Condition test not implemented: "; prin car cadr c;
           return nil;
           >>
       else if first_cond then return t
       else  <<
-        second_cond := conditions_pass(caddr c, b, r);
+        second_cond := conditions_pass(caddr c, r);
         if second_cond = 'fail then <<
           princ "Condition test not implemented: "; prin car caddr c;
           return nil;
@@ -320,48 +322,48 @@ symbolic procedure conditions_pass(c, b, r);
       >>
     else if eqcar(c, '!Not) then << 
 %      printc "NOT: reverse logic";
-      first_cond := conditions_pass(cadr c, b, r);
+      first_cond := conditions_pass(cadr c, r);
       if first_cond = 'fail then <<
           princ "Condition test not implemented: "; prin car cadr c;
           return nil;
           >>
       else return not first_cond;  
       >>
-    else return single_condition_pass(c, b, r);
+    else return single_condition_pass(c, r);
   end;
 
 
 %*****************List of All Conditions*************
-% Some are not implemented
+% Ones without a * are not implemented
 % Listed in the order of appearance
 
-% !Free!Q
-% !Fraction!Q
-% lessp
-% !Positive!Q
-% !Pos!Q
-% !Neg!Q
+% *!Free!Q
+% *!Fraction!Q
+% *lessp
+% *!Positive!Q
+% *!Pos!Q
+% *!Neg!Q
 % !Not
-% !Zero!Q
-% greaterp
-% !Nonzero!Q
+% *!Zero!Q
+% *greaterp
+% *!Nonzero!Q
 % !Rational!Q
-% !Integer!Q
-% !Integers!Q
-% leq
+% *!Integer!Q
+% *!Integers!Q
+% *leq
 % !Match!Q
-% equal
-% !Negative!Q
-% geq
+% *equal
+% *!Negative!Q
+% *geq
 % nil
 % !Polynomial!Q
 % !Negative!Coefficient!Q
 % !Linear!Q
 % !If
-% neq
+% *neq
 % !Algebraic!Function!Q
-% !Even!Q
-% !Odd!Q
+% *!Even!Q
+% *!Odd!Q
 % !Function!Of!Hyperbolic!Q
 % !Function!Of!Q
 % !Nonsum!Q
@@ -379,52 +381,53 @@ symbolic procedure conditions_pass(c, b, r);
 
 %****************************************************
 
-symbolic procedure single_condition_pass(c, b, r);
+symbolic procedure single_condition_pass(c, r);
   begin
 % Passing (cdr c) for now to preserve structural integrity for various cases
-    if eqcar(c, '!Free!Q) then return check_free_q(cdr c, b, r)
-    else if eqcar(c, '!Zero!Q) then return check_zero_q(cdr c, b)
-    else if eqcar(c, '!Nonzero!Q) then return check_non_zero_q(cdr c, b)
-    else if eqcar(c, 'equal) then return check_equal(cdr c, b)
-    else if eqcar(c, 'neq) then return check_not_equal(cdr c, b)
-    else if eqcar(c, '!Odd!Q) then return check_odd_q(cdr c, b)
-    else if eqcar(c, '!Even!Q) then return check_even_q(cdr c, b)
-    else if eqcar(c, '!Positive!Q) then return check_positive_q(cdr c, b)
-    else if eqcar(c, '!Negative!Q) then return check_negative_q(cdr c, b)
-    else if eqcar(c, '!Pos!Q) then return check_pos_q(cdr c, b)
-    else if eqcar(c, '!Neg!Q) then return check_neg_q(cdr c, b)
-    else if eqcar(c, 'lessp) then return check_lessp(cdr c, b)
-    else if eqcar(c, '!greaterp) then return check_greaterp(cdr c, b)
-    else if eqcar(c, 'leq) then return check_less_equal(cdr c, b)
-    else if eqcar(c, 'geq) then return check_greater_equal(cdr c, b)
-    else if eqcar(c, 'nil) then return check_nil(cdr c, b)
-    else if eqcar(c, '!Independent!Q) then return check_independent_q(cdr c, b)
-    else if eqcar(c, '!Match!Q) then return check_match_q(cdr c, b)
-    else if eqcar(c, '!Integer!Q) then return check_integer_q(cdr c, b)
-    else if eqcar(c, '!Integers!Q) then return check_integers_q(cdr c, b)
-    else if eqcar(c, '!Rational!Q) then return check_rational_q(cdr c, b)
-    else if eqcar(c, '!Fraction!Q) then return check_fraction_q(cdr c, b)
-    else if eqcar(c, '!Polynomial!Q) then return check_polynomial_q(cdr c, b)
-    else if eqcar(c, '!Linear!Q) then return check_linear_q(cdr c, b)
-    else if eqcar(c, '!Function!Of!Q) then return check_function_of_q(cdr c, b)
+% TO-DO: reorder according to the number of occurence
+    if eqcar(c, '!Free!Q) then return check_free_q(cdr c, r)
+    else if eqcar(c, '!Zero!Q) then return check_zero_q(cdr c)
+    else if eqcar(c, '!Nonzero!Q) then return check_non_zero_q(cdr c)
+    else if eqcar(c, 'equal) then return check_equal(cdr c)
+    else if eqcar(c, 'neq) then return check_not_equal(cdr c)
+    else if eqcar(c, '!Odd!Q) then return check_odd_q(cdr c)
+    else if eqcar(c, '!Even!Q) then return check_even_q(cdr c)
+    else if eqcar(c, '!Positive!Q) then return check_positive_q(cdr c)
+    else if eqcar(c, '!Negative!Q) then return check_negative_q(cdr c)
+    else if eqcar(c, '!Pos!Q) then return check_pos_q(cdr c)
+    else if eqcar(c, '!Neg!Q) then return check_neg_q(cdr c)
+    else if eqcar(c, 'lessp) then return check_lessp(cdr c)
+    else if eqcar(c, '!greaterp) then return check_greaterp(cdr c)
+    else if eqcar(c, 'leq) then return check_less_equal(cdr c)
+    else if eqcar(c, 'geq) then return check_greater_equal(cdr c)
+    else if eqcar(c, 'nil) then return check_nil(cdr c)
+    else if eqcar(c, '!Independent!Q) then return check_independent_q(cdr c)
+    else if eqcar(c, '!Match!Q) then return check_match_q(cdr c)
+    else if eqcar(c, '!Integer!Q) then return check_integer_q(cdr c)
+    else if eqcar(c, '!Integers!Q) then return check_integers_q(cdr c)
+    else if eqcar(c, '!Rational!Q) then return check_rational_q(cdr c)
+    else if eqcar(c, '!Fraction!Q) then return check_fraction_q(cdr c)
+    else if eqcar(c, '!Polynomial!Q) then return check_polynomial_q(cdr c)
+    else if eqcar(c, '!Linear!Q) then return check_linear_q(cdr c)
+    else if eqcar(c, '!Function!Of!Q) then return check_function_of_q(cdr c)
     
     else if eqcar(c, '!Fraction!Or!Negative!Q) then 
-      return check_fraction_or_negative_q(cdr c, b)
+      return check_fraction_or_negative_q(cdr c)
 
     else if eqcar(c, '!Negative!Coefficient!Q) then 
-      return check_negative_coefficient_q(cdr c, b)
+      return check_negative_coefficient_q(cdr c)
 
     else if eqcar(c, '!Algebraic!Function!Q) then 
-      return check_algebraic_function_q(cdr c, b)
+      return check_algebraic_function_q(cdr c)
     
     else if eqcar(c, '!Function!Of!Hyperbolic!Q) then 
-      return check_function_of_hyperbolic_q(cdr c, b)
+      return check_function_of_hyperbolic_q(cdr c)
     
     else if eqcar(c, '!Inverse!Function!Free!Q) then 
-      return check_inverse_function_free_q(cdr c, b)
+      return check_inverse_function_free_q(cdr c)
     
     else if eqcar(c, '!Recognized!Function!Of!Trig!Q) then 
-      return check_recognized_function_of_trig_q(cdr c, b)
+      return check_recognized_function_of_trig_q(cdr c)
     
     else <<
       princ "Condition not recognised, need to add to current list: ";
@@ -436,82 +439,139 @@ symbolic procedure single_condition_pass(c, b, r);
 
 % To-do: test it thoroughly - most frequent condition
 % c: condition, in the form of ((bracelist a b c ...) x)
-% b: binding
 % r: right hand side
-symbolic procedure check_free_q(c, b, r);
+symbolic procedure check_free_q(c, r);
   begin
-    d := subla(b, c);
-    r := subla(b, r);
-    mark_constants(r, car cdr d);
-    for each h in (cdr car d) do 
+    mark_constants(r, car cdr c);
+    for each h in (cdr car c) do 
       if not gethash(h, garnet_hash) then go to top_free;
     return t;
 top_free:
     return nil;
   end;
 
-symbolic procedure check_zero_q(c, b);
-  zerop reval(car subla(b,c));
+symbolic procedure check_zero_q(c);
+  zerop reval(car c);
 
-symbolic procedure check_non_zero_q(c, b);
-  not check_zero_q(c,b);
+symbolic procedure check_non_zero_q(c);
+  not check_zero_q(c);
 
-symbolic procedure check_equal(c, b);
-  'fail;  
-symbolic procedure check_not_equal(c, b);
-  'fail;
-symbolic procedure check_odd_q(c, b);
-  'fail;
-symbolic procedure check_even_q(c, b);
-  'fail;
-symbolic procedure check_positive_q(c, b);
-  'fail;
-symbolic procedure check_negative_q(c, b);
-  'fail;
-symbolic procedure check_pos_q(c, b);
-  'fail;
-symbolic procedure check_neg_q(c, b);
-  'fail;
-symbolic procedure check_lessp(c, b);
- 'fail;
-symbolic procedure check_greaterp(c, b);
- 'fail;
-symbolic procedure check_less_equal(c, b);
-  'fail;
-symbolic procedure check_greater_equal(c, b);
-  'fail;
-symbolic procedure check_nil(c, b);
-  'fail;
-% Two cases for !Independent!Q, one followed by !Cancel, the other is not
-symbolic procedure check_independent_q(c, b);
-  'fail;
-symbolic procedure check_match_q(c, b);
-  'fail;
-symbolic procedure check_integer_q(c, b);
-  'fail;
-symbolic procedure check_integers_q(c, b);
-  'fail;
-symbolic procedure check_rational_q(c, b);
-  'fail;
+% still a little puzzled by different equality test
+symbolic procedure check_equal(c);
+  reval car c = reval cadr c;
 
-symbolic procedure check_fraction_q(c, b);
-% !Fraction!Q can be either called on a single atom or a bracelist
-% for eg. (!Fraction!Q n) and (!Fraction!Q (bracelist n p))
+symbolic procedure check_not_equal(c);
+  not check_equal(c);
+
+symbolic procedure check_odd_q(c);
+  oddp reval car c;
+
+symbolic procedure check_even_q(c);
+  evenp reval car c;
+
+symbolic procedure check_positive_q(c);
+  lessp_quotient(0, car c);
+
+symbolic procedure check_negative_q(c);
+  lessp_quotient(car c, 0);
+
+symbolic procedure check_pos_q(c);
+  lessp_quotient(0, car c);
+
+symbolic procedure check_neg_q(c);
+  lessp_quotient(car c, 0);
+
+symbolic procedure check_lessp(c);
+% need to check if they are rational first - rational_q not yet implemented
+% if check_rational_q(car c) and check_rational_q(cadr c) then 
+  lessp_rubi(car c, cadr c);
+
+
+% The (perculiar) behavior of reval:
+% w := '(quotient 1 -2);
+% reval w; => (quotient (minus 1) 2)
+% reval cadr w; => 1;
+% reval cadr reval w; => -1; 
+
+% lessp than compares quotient as well
+symbolic procedure lessp_quotient(l, r);
   begin
-    scalar d;
-    % Sean: not sure what happens to the 'bracelist' when we do subla
-    d := subla(b,c); 
-    if atom car c then
-      return check_fraction_q_atom car d
-    else
-      return check_fraction_q_list cdr car d;
+    l := reval l;
+    r := reval r;
+    if numberp l and numberp r then return l < r
+    else if eqcar(l, 'quotient) and numberp r then <<
+      if zerop r then return eqcar(cadr l, 'minus)
+      else if r > 0 then <<
+        if eqcar(cadr l, 'minus) then return t % neg fraction < positive int
+        else return lessp_quotient(list('times, cadr l, r), caddr l);
+        >>
+      else <<
+        if eqcar(cadr l, 'minus) then % make both positive
+          return lessp_quotient(list('minus, r), list('minus, l))
+        else return nil;
+        >>;
+      >>
+    else if numberp l and eqcar(r, 'quotient) then
+      return not lessp_quotient(r, l)
+    else if eqcar(l, 'quotient) and eqcar(r, 'quotient) then <<
+% This part needs a bit more scrutinisation:
+% we assume if we found a number at numerator, then the quotient
+% is positive
+      if eqcar(cadr l, 'minus) and eqcar(cadr r, 'minus) then
+        return lessp_quotient(list('minus, r), list('minus, l))
+      else if eqcar(cadr l, 'minus) and numberp cadr r then return t
+      else if numberp cadr l and eqcar(cadr r, 'minus) then return nil
+      else if numberp cadr l and numberp cadr r then
+        return lessp_quotient(list('times,cadr l, caddr r), 
+          list('times, cadr r, caddr l))
+      else rederr "Error comparing two quotients";
+      >>
+    else rederr "lessp_quotient cannot recognise the format";
   end;
 
-symbolic procedure check_fraction_q_atom a;
+
+
+symbolic procedure check_greaterp(c);
+  not check_lessp(c);
+
+symbolic procedure check_less_equal(c);
+  check_equal(c) and check_lessp(c);
+
+symbolic procedure check_greater_equal(c);
+  check_equal(c) and not check_lessp(c);
+
+symbolic procedure check_nil(c);
+  'fail;
+% Two cases for !Independent!Q, one followed by !Cancel, the other is not
+symbolic procedure check_independent_q(c);
+  'fail;
+symbolic procedure check_match_q(c);
+  'fail;
+
+symbolic procedure check_integer_q(c);
+  fixp reval car c;
+
+symbolic procedure check_integers_q(c);
+  if null c then t
+  else <<
+    if check_integer_q(car c) then check_integers_q(cdr c)
+    else nil;
+    >>;
+
+symbolic procedure check_rational_q(c);
+  'fail;
+
+symbolic procedure check_fraction_q(c);
+% !Fraction!Q can be either called on a single atom or a bracelist
+% for eg. (!Fraction!Q n) and (!Fraction!Q (bracelist n p))
+  if eqcar(c, 'bracelist) then check_fraction_q_list (cdr car c)
+  else check_fraction_q_atom (car c);
+
+symbolic procedure check_fraction_q_atom c;
 % do a reval to force 'quotient to come to car of the list
 % seems generally work but can't guarantee
-  if atom a then nil
-  else car reval a = 'quotient;
+  if atom reval c then nil
+  else car reval c = 'quotient;
 
 symbolic procedure check_fraction_q_list l;
   begin
@@ -525,23 +585,23 @@ symbolic procedure check_fraction_q_list l;
 
 tr check_fraction_q, check_fraction_q_atom, check_fraction_q_list;
 
-symbolic procedure check_polynomial_q(c, b);
+symbolic procedure check_polynomial_q(c);
   'fail;
-symbolic procedure check_linear_q(c, b);
+symbolic procedure check_linear_q(c);
   'fail;
-symbolic procedure check_function_of_q(c, b);
+symbolic procedure check_function_of_q(c);
   'fail;
-symbolic procedure check_fraction_or_negative_q(c, b);
+symbolic procedure check_fraction_or_negative_q(c);
   'fail;
-symbolic procedure check_negative_coefficient_q(c, b);
+symbolic procedure check_negative_coefficient_q(c);
   'fail;
-symbolic procedure check_algebraic_function_q(c, b);
+symbolic procedure check_algebraic_function_q(c);
   'fail;
-symbolic procedure check_function_of_hyperbolic_q(c, b);
+symbolic procedure check_function_of_hyperbolic_q(c);
   'fail;
-symbolic procedure check_inverse_function_free_q(c, b);
+symbolic procedure check_inverse_function_free_q(c);
   'fail;
-symbolic procedure check_recognized_function_of_trig_q(c, b);
+symbolic procedure check_recognized_function_of_trig_q(c);
   'fail;
 
 % ===================== Conditions Section End ======================
@@ -688,7 +748,7 @@ algebraic;
 
 % tr trymatch, trymatchlist;
 
- garnet((u + v*z^(1/2))^(-1/2), z);
+%garnet((u + v*z^(1/2))^(-1/2), z);
 %garnet((u + z^1)^(-2), z);
 %garnet((u + v*z)^(-2), z);
 %garnet((u + z)^(-2), z);
