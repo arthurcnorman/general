@@ -11,17 +11,17 @@
 %  open ChangeKind;  open MathSpace;  open Spacing;  open MathPenalty
 %
 %  fun IListToHList st insertPenalty iList  =
-%  let fun trans st prevKind  =
+%  let fun trans1 st prevKind  =
 %      fn []  =>  []
-%      |  IPen  pen  :: rest  =>  Penalty pen     ::  trans st  prevKind rest
-%      |  ISpace sp  :: rest  =>  makeSpace st sp  @  trans st  prevKind rest
-%      |  IStyle st' :: rest  =>                      trans st' prevKind rest
+%      |  IPen  pen  :: rest  =>  Penalty pen     ::  trans1 st  prevKind rest
+%      |  ISpace sp  :: rest  =>  makeSpace st sp  @  trans1 st  prevKind rest
+%      |  IStyle st' :: rest  =>                      trans1 st' prevKind rest
 %      |  INoad (actKind, hList) :: rest  =>
 %         let val newKind  =  changeKind  prevKind  actKind  rest
 %             val spaceList  =  makeSpaceOpt st (mathSpacing (prevKind, newKind))
 %             val penaltyList  =  mathPenalty  insertPenalty  newKind  rest
-%         in  spaceList  @  hList  @  penaltyList  @  trans st newKind rest  end
-%  in  trans st None iList  end
+%         in  spaceList  @  hList  @  penaltyList  @  trans1 st newKind rest  end
+%  in  trans1 st None iList  end
 %end  (* structure IListTranslate *)
 %
 end;

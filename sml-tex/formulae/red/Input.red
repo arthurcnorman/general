@@ -28,8 +28,13 @@
 %  val sumsym    =  MathChar (Op,    EX,  80)
 %  val intsym    =  MathChar (Op,    EX,  82)
 %
+
+% This file sets up numeric character codes and maps things onto one of
+% the fonts RM, MI, SY or EX. This is all delicate and will need serious
+% review to cope with Unicode input and output using Unicode fonts...
+
 fluid '(sumsym intsym);
-sumsum := MathChar('Op, 'EX, 80);
+sumsym := MathChar('Op, 'EX, 80);
 intsym := MathChar('Op, 'EX, 82);
 
 
@@ -49,8 +54,33 @@ intsym := MathChar('Op, 'EX, 82);
 %  | #"."  =>  (Bin,   SY,  1)
 %  | _     =>  raise (NotImplemented ("Character " ^ toString ch))
 %
+
+% Note that in CSL the char-code function copes with Unicode stuff..
+
+symbolic procedure sym ch;
+  if liter ch then                  list('Ord, 'MI, char!-code ch)
+  else if digit ch or ch = '!@ then list('Ord, 'RM, char!-code ch)
+  else if ch = '!( or ch = '![ then list('Open, 'RM, char!-code ch)
+  else if ch = '!) or ch = '!] then list('Close, 'RM, char!-code ch)
+  else if ch = '!= or ch = '!: then list('Rel, 'RM, char!-code ch)
+  else if ch = '!< or ch = '!> then list('Rel, 'MI, char!-code ch)
+  else if ch = '!! or ch = '!? or vh = '!;
+                               then list('Punct, 'RM, char!-code ch)
+  else if ch = '!,             then list('Punct, 'MI, 59)
+  else if ch = '!+             then list('Bin,   'RM, 43)
+% Observe weird TeX character codes here...
+  else if ch = '!-             then list('Bin,   'SY,  0)
+  else if ch = '!*             then list('Bin,   'SY,  3)
+  else if ch = '!.             then list('Bin,   'SY,  1)
+  else error(1, list("character not implemented", ch, char!-code ch));
+
+
 %  fun trans str  =  map (MathChar o sym) (String.explode str)
-%
+
+% Tricky replacement of MathChar constructor here!
+symbolic procedure trans s;
+  for each c in explodec s collect 'MathChar . (sym c);
+
 %  val overline   =  Overline
 %  val underline  =  Underline
 %
@@ -64,12 +94,23 @@ intsym := MathChar('Op, 'EX, 82);
 %  fun sub    a b    =  Script {nucleus = a, supOpt = NONE,   subOpt = SOME b}
 %  fun supsub a b c  =  Script {nucleus = a, supOpt = SOME b, subOpt = SOME c}
 %
-%  fun bigop sym subopt supopt  =
+%  fun bigop_ sym subopt supopt  =
 %  BigOp (default, {nucleus = [sym], supOpt = supopt, subOpt = subopt})
 %
-%  val sum  =  bigop sumsym
-%  val int  =  bigop intsym
+
+% A screipt is {nucleus, supopt, subopt}
+symbolic procedure bigop_(sym, subopt, supopt);
+  BigOp('default, list(list sym, supopt, subopt));
+
+%  val sum  =  bigop_ sumsym
+%  val int  =  bigop_ intsym
 %
+symbolic procedure sum(u, v);
+  bigop_(sumsym, u, v);
+symbolic procedure int(u, v);
+  bigop_(intsym, u, v);
+  
+
 %  fun math kind ml  =  Kind (kind, ml)
 %
 %  val style = Style
