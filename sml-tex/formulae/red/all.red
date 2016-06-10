@@ -2,11 +2,15 @@
 
 lisp;
 on echo,comp,backtrace;
+
 % The SML code was written using mixed case, and so to avoid introducing
 % unexpected name clashes I will parse the Rlisp version in a case sensitive
 % way. I hope (and perhaps expect) that there will not be issues so I can go
 % back to the Reduce default later on...
-off raise;
+
+off int,raise;
+
+symbolic inline procedure SOME u; list u;
 
 in "General.red";
 in "Powers2.red";

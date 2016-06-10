@@ -16,7 +16,7 @@ symbolic inline procedure famNr n;
   else if n = 'MI then 1
   else if n = 'SY then 2
   else if n = 'EX then 3
-  else error(1, "bas arg for famNr);
+  else error(1, "bad arg for famNr");
 
 %
 %  type delim    =  (family * int * family * int) option
@@ -30,7 +30,7 @@ symbolic inline procedure styleNr n;
   else if n = 'T then 1
   else if n = 'S then 2
   else if n = 'SS then 3
-  else error(1, "bar arg for styleNr);
+  else error(1, "bad arg for styleNr");
 
 %  (* These numbers are only needed for vector indexing. *)
 %
