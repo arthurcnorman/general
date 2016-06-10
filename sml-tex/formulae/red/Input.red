@@ -28,6 +28,11 @@
 %  val sumsym    =  MathChar (Op,    EX,  80)
 %  val intsym    =  MathChar (Op,    EX,  82)
 %
+fluid '(sumsym intsym);
+sumsum := MathChar('Op, 'EX, 80);
+intsym := MathChar('Op, 'EX, 82);
+
+
 %  fun sym ch  =
 %  if  isAlpha ch                      then  (Ord,   MI, ord ch)  else
 %  if  isDigit ch  orelse  ch = #"@"   then  (Ord,   RM, ord ch)  else
