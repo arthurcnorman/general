@@ -1,5 +1,3 @@
-(* Since functions such as `fold' and `exists' depend on the version,
-   I program everything from the basic constructors. *)
 
   fun round r  =  trunc (r + 0.5)         (* "truncate" in other versions *)
 
@@ -10,13 +8,14 @@
   fun revAppend    []     yl  =  yl
   |   revAppend (x :: xl) yl  =  revAppend xl (x :: yl)
 
-  fun optMap f  =  fn NONE    =>  NONE
-                   |  SOME x  =>  SOME (f x)
+  fun optMap f NONE    =  NONE
+    | optMap f (SOME x)  =  SOME (f x)
 
-  fun optFold y f  =  fn NONE    =>  y
-                      |  SOME x  =>  f x
+  fun optFold y f NONE    =  y
+    | optFold y f (SOME x)  =  f x
  
-  fun optVal y  =  optFold y (fn x => x)
+  fun optVal y NONE = y
+    | optVal y (SOME x) = x
 
   fun lookUp x  =
   let fun searchx          []        =  NONE

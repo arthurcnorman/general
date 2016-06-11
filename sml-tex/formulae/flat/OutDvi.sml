@@ -1,22 +1,20 @@
 
-  val instr    =  outNat1
+  fun instrArg code arg  =  (outNat1 code;  outNat1 arg)
 
-  fun instrArg code arg  =  (instr code;  outNat1 arg)
-
-  fun setChar ch  =  if  ch < 128  then  instr ch  else  instrArg 128 ch
+  fun setChar ch  =  if  ch < 128  then  outNat1 ch  else  instrArg 128 ch
   val putChar  =  instrArg 133
 
-  fun rule code (a, b)  =  (instr code;  outInt4 a;  outInt4 b)
+  fun rule code (a, b)  =  (outNat1 code;  outInt4 a;  outInt4 b)
   val setRule  =  rule  132
   val putRule  =  rule  137
 
   val right   =  outInstrV  142
   val down    =  outInstrV  156
 
-  val push    =  fn () => instr  141
-  val pop     =  fn () => instr  142
+  fun push()  =  outNat1  141
+  fun pop()   =  outNat1  142
 
-  fun font f  =  instr (171 + f)
+  fun font f  =  outNat1 (171 + f)
 
   fun fontDef nr   =  
   let val (fam, s)  =  Vector.sub (famSizeVector, nr)
@@ -32,29 +30,29 @@
   |   fontDefs (h :: t)  =  (fontDef h;  fontDefs t)
 
   fun bop (pageNr, prevPos)  =
-      ( instr 139;  outInt4 pageNr;  outZero 36;  outInt4 prevPos)
+      ( outNat1 139;  outInt4 pageNr;  outZero 36;  outInt4 prevPos)
 
-  val eop  =  fn () => instr 140
+  fun eop() = outNat1 140
 
-  val version  =  fn () =>  outNat1 2
-  val numDen   =  fn () => (outInt4 25400000;  outInt4 473628672)
-  val banner   =  fn () =>  outString "Reinhold Heckmann's Formula Formatter"
+  fun version() =  outNat1 2
+  fun numDen() = (outInt4 25400000;  outInt4 473628672)
+  fun banner() =  outString "Reinhold Heckmann's Formula Formatter"
 
   fun pre mag  =
-      ( instr 247;  version ();  numDen ();  outInt4 mag;  banner () )
+      ( outNat1 247;  version ();  numDen ();  outInt4 mag;  banner () )
 
   fun trailer 0  =  ()
-  |   trailer n  =  (instr 223;  trailer (n - 1))
+  |   trailer n  =  (outNat1 223;  trailer (n - 1))
 
   fun post mag (pageNr, prevPos, maxLevel)  =
-      ( instr 248;  outInt4 prevPos;
+      ( outNat1 248;  outInt4 prevPos;
         numDen ();  outInt4 mag;
         outInt4 (distInt (10 * 72));   (* maxVSize *)
         outInt4 (distInt ( 7 * 72));   (* maxWidth *)
         outNat2 maxLevel;  outNat2 pageNr )
 
   fun postpost postPos  =
-      ( instr 249;  outInt4 postPos;  version ();  trailer 3 )
+      ( outNat1 249;  outInt4 postPos;  version ();  trailer 3 )
 
   fun tail ownPos  =  trailer (4 - ownPos mod 4)
 
