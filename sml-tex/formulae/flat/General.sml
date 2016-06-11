@@ -3,15 +3,6 @@
 
   fun round r  =  trunc (r + 0.5)         (* "truncate" in other versions *)
 
-  fun sum [] = 0
-    | sum (a :: b) = a + sum b
-
-  fun Max [] = 0
-    | Max (a :: b) = Int.max(a, Max b)
-
-  fun concat [] = []
-    | concat (a :: b) = a @ concat b
-
   fun contains list x  =  let fun f    []     =  false
                               |   f (h :: t)  =  (h = x)  orelse  f t
                           in  f list  end

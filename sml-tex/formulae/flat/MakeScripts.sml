@@ -8,10 +8,12 @@
       if  isChar  then  zero  else  dnuc + SubDrop (script st)
 
   fun SupPos st cr isChar hnuc dsup  =
-      Max [SupPos0 st isChar hnuc,  Sup cr st,    dsup + xHeight st div 4]
+      Int.max (SupPos0 st isChar hnuc,
+        Int.max(Sup cr st,    dsup + xHeight st div 4))
 
   fun SubAlonePos st isChar dnuc hsub  =
-      Max [SubPos0 st isChar dnuc,  SubAlone st,  hsub - almost_xHeight st]
+      Int.max (SubPos0 st isChar dnuc,
+        Int.max(SubAlone st,  hsub - almost_xHeight st))
 
   fun SubWithSupPos st isChar dnuc  =
       Int.max (SubPos0 st isChar dnuc,  SubWithSup st)

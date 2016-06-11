@@ -1,23 +1,22 @@
-  open Char
 
   val sumsym    =  MathChar (Op,    EX,  80)
   val intsym    =  MathChar (Op,    EX,  82)
 
   fun sym ch  =  
-  if  isAlpha ch                      then  (Ord,   MI, ord ch)  else
-  if  isDigit ch  orelse  ch = #"@"   then  (Ord,   RM, ord ch)  else
+  if  Char.isAlpha ch                      then  (Ord,   MI, ord ch)  else
+  if  Char.isDigit ch  orelse  ch = #"@"   then  (Ord,   RM, ord ch)  else
   if  ch = #"("   orelse  ch = #"["   then  (Open,  RM, ord ch)  else
   if  ch = #")"   orelse  ch = #"]"   then  (Close, RM, ord ch)  else
   if  ch = #"="   orelse  ch = #":"   then  (Rel,   RM, ord ch)  else
   if  ch = #"<"   orelse  ch = #">"   then  (Rel,   MI, ord ch)  else
-  if  contains  "!?;"  ch             then  (Punct, RM, ord ch)  else
+  if  contains [#"!", #"?", #";"]  ch   then  (Punct, RM, ord ch)  else
   case  ch  of
     #","  =>  (Punct, MI, 59)
   | #"+"  =>  (Bin,   RM, 43)
   | #"-"  =>  (Bin,   SY,  0)
   | #"*"  =>  (Bin,   SY,  3)
   | #"."  =>  (Bin,   SY,  1)
-  | _     =>  raise (NotImplemented ("Character " ^ toString ch))
+  | _     =>  raise (NotImplemented ("Character " ^ Char.toString ch))
 
   fun trans str  =  map (MathChar o sym) (String.explode str)
 

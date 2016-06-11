@@ -1,4 +1,3 @@
-open TextIO;
 
   fun famName RM = "RM"  |  famName MI = "MI"
   |   famName SY = "SY"  |  famName EX = "EX"
@@ -21,7 +20,7 @@ open TextIO;
 
   fun getOctal file  =
   let fun found n  =
-      let val ch  =  valOf (input1 file)
+      let val ch  =  valOf (TextIO.input1 file)
       in  if Char.isDigit ch  then  found (8 * n + dig ch)  else  n  end
   in  found 0  end
 
@@ -29,7 +28,7 @@ open TextIO;
      and reads until the next C or E, consuming this character *)
   fun getInfo size file  =
   let fun collect w h d i l t b r a =
-      case  valOf(input1 file)  of
+      case  valOf(TextIO.input1 file)  of
         #"W"  =>  let val w'  =  getDist size file
                   in  collect w' h  d  i  l  t  b  r  a  end
       | #"H"  =>  let val h'  =  getDist size file
@@ -63,9 +62,9 @@ open TextIO;
   fun loadFont (fam, s)  =
   let val size  =  distInt s
       val fileName  =  FileName fam s
-      val file  =  openIn fileName
+      val file  =  TextIO.openIn fileName
       val infoList  =  getList size file
-  in  closeIn file;  vector (infoList)  end
+  in  TextIO.closeIn file;  vector (infoList)  end
 
 (* END destructive file reading *)
 

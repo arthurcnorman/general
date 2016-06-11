@@ -1,11 +1,3 @@
-(*
- * fun compute f g nl  =  f (map g nl)
- * val hlistWidth   =  compute sum width
- * val hlistHeight  =  compute Max height
- * val hlistDepth   =  compute Max depth
- * val vlistWidth   =  compute Max vwidth
- * val vlistVsize   =  compute sum vsize
- *)
 
 fun hlistWidth [] = 0
   | hlistWidth (a :: b) = width a + hlistWidth b;

@@ -1,5 +1,8 @@
 (*
 *)
+open TextIO;
+open BinIO;
+
 U "General";
 U "Powers2";
 U "BasicTypes";

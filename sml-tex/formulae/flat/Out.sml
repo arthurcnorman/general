@@ -1,5 +1,5 @@
-  open BinIO
   type byte = Word8.word
+
   exception NoOut
 
   val out = ref (NONE: outstream option)
