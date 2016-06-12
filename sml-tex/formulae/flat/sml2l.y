@@ -703,11 +703,10 @@ prefix                :  NOT                        { $<LO>$ = sym_not; }
                 |  '~'                        { $<LO>$ = sym_minus; }
                 ;
 
-proc_head        :  SYMBOL                { $<LO>$ = cons($<LO>1, C_nil); }
-                |  SYMBOL SYMBOL        { $<LO>$ = list2($<LO>1, $<LO>2); }
-                |  SYMBOL '(' ')'        { $<LO>$ = cons($<LO>1, C_nil); }
-                |  SYMBOL '(' SYMBOL sym_list
-                                        { $<LO>$ = cons($<LO>1, cons($<LO>3, $<LO>4)); }
+arg             : SYMBOL
+
+proc_head        :  SYMBOL arg        { $<LO>$ = list2($<LO>1, $<LO>2); }
+                |  proc_head arg      { $<LO>$ = cons($<LO>1, $<LO>2); }
                 ;
 
 proc_def        :  FUN proc_head '=' cmnd
