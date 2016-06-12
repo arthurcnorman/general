@@ -16,7 +16,7 @@
   (* The next two functions read until the next end of line,
      consuming the newline character *)
   fun getDist size file  =
-  realMult (valOf (Real.fromString (valOf (inputLine file))), size)
+  realMult (valOf (Real.fromString (valOf (TextIO.inputLine file))), size)
 
   fun getOctal file  =
   let fun found n  =
@@ -55,7 +55,7 @@
   in  collect zero zero zero zero NONE NONE NONE NONE zero end
 
   fun getList size file  =
-  let val _  =  inputLine file    (* skips remainder of C line *)
+  let val _  =  TextIO.inputLine file    (* skips remainder of C line *)
       val (info, eof)  =  getInfo size file
   in  if  eof  then  [info]  else  info :: getList size file  end
 
