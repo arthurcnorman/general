@@ -3,6 +3,8 @@ load_package lalr;
 
 lisp;
 
+enable!-errorset(3,3);
+
 prec := nil;
 
 % The grammar used here is derived from one found at
@@ -10,7 +12,7 @@ prec := nil;
 
 grammar := '(
 
- (toplevel ((prog)))
+ (toplevel ((prog ";" "eof") (progn (terpri) (print !$1))))
 
 % Constants for SML should be
 %     int      [~]<digits>
@@ -31,7 +33,7 @@ grammar := '(
  (var    (("'" !:symbol))
          (("''" !:symbol)))
 
- (longid ((id))
+ (longid ((id) (progn (princ "Id found ") (print !$1) !$1))
          ((longid "." id)))
 
  (lab    ((id))
@@ -53,11 +55,29 @@ grammar := '(
          (())
          ((";" exp seqexps)))
 
- (exp    ((con))
+ (exp    ((con)    (progn (princ "Parsed constant") (print !$1)))
          ((longid))
          (("op" longid))
          ((exp exp))
-         ((exp id exp))
+         (("!" exp) (list 'pling !$2))
+         (("+" exp) !$2)
+         (("~" exp) (list 'minus !$2))
+         ((exp id exp) (list !$2 !$1 !$3))
+         ((exp "+" exp) (progn (printc "sum spotted") (list 'plus !$1 !$3)))
+         ((exp "-" exp) (progn (printc "difference spotted") (list 'difference !$1 !$3)))
+         ((exp "*" exp) (progn (printc "product spotted") (list 'times !$1 !$3)))
+         ((exp "/" exp) (progn (printc "quotient spotted") (list 'quotient !$1 !$3)))
+         ((exp "%" exp) (progn (printc "remainder spotted") (list 'remainder !$1 !$3)))
+         ((exp "^" exp) (list 'stringconcat !$1 !$3))
+         ((exp "div" exp) (progn (printc "quotient spotted") (list 'quotient !$1 !$3)))
+         ((exp "mod" exp) (progn (printc "remainder spotted") (list 'remainder !$1 !$3)))
+         ((exp ">" exp) (list 'greaterp !$1 !$3))
+         ((exp ">=" exp) (list 'geq !$1 !$3))
+         ((exp "<" exp) (list 'lessp !$1 !$3))
+         ((exp "<=" exp) (list 'leq !$1 !$3))
+         ((exp "=" exp) (list 'equal !$1 !$3))
+         ((exp "<>" exp) (list 'neq !$1 !$3))
+         ((exp ":=" exp) (list 'setq !$1 !$3))
          (("(" exp tupletail))
          (("{" "}"))
          (("{" exprow "}"))
@@ -152,7 +172,7 @@ grammar := '(
          (("abstype" datbind "withtype" typbind "with" dec "end"))
          (("exception" exnbind))
 %        (("structure" strbind))
-         ((dec ";" dec))
+%@@      ((dec ";" dec))
          (("local" dec "in" dec "end"))
 %        (("open" longid))   % Could have multiple longids here
 %        (("nonfix" id))     % multiple ids
@@ -169,7 +189,8 @@ grammar := '(
  (funbind ((funmatch))
           ((funmatch "and" funbind)))
 
- (funmatch ((id patterns "=" exp))
+ (funmatch ((id patterns "=" exp) (progn (print !$1) (print !$2) (print !$4)
+             (list 'de !$1 !$2 !$4)))
            (("op" id patterns "=" exp))
            ((id patterns ":" typ "=" exp))
            (("op" id patterns ":" typ "=" exp))
@@ -212,9 +233,11 @@ grammar := '(
 % (strdesc)
 
 (prog     ((dec))
+          ((exp))
 %         (("functor" fctbind))
 %         (("signature" sigbind))
-          ((prog ";" prog)))
+%         ((prog ";" prog))       % For now I will only allow one clause
+          )
 
 % (fctbind)
 % (sigbind)
@@ -223,7 +246,27 @@ grammar := '(
 
 << terpri(); prettyprint grammar; nil >>;
 
-pp := lalr_create_parser(prec, grammar);
+pp := lalr_create_parser(prec, grammar)$
+
+tr yylex;
+
+<< lex_init(); yyparse pp >>;
+
+1+2;
+eof
+
+
+;;;;;
+
+<< lex_init(); yyparse pp >>;
+
+fun fact n =
+  if n = 1 then 1
+  else n * fact (n-1);
+
+eof
+
+;
 
 end;
 
