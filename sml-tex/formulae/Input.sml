@@ -85,5 +85,6 @@ struct
     | delim "langle"   = SOME (SY, 104, EX, 10)
     | delim "rangle"   = SOME (SY, 105, EX, 11)
     | delim "null"     = NONE
+    | delim _          = raise (BasicTypes.NotImplemented "delim")
 
 end
