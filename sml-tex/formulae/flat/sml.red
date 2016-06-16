@@ -70,7 +70,7 @@ prec := '(
 
 grammar := '(
 
- (toplevel ((prog) (progn (terpri) (print !$1))))
+ (toplevel ((prog) !$1))
 
 % Constants for SML should be
 %     int      [~]<digits>
@@ -91,23 +91,23 @@ grammar := '(
  (var    (("'" !:symbol))
          (("''" !:symbol)))
 
- (longid ((id) (princ "Id found ") (print !$1) !$1)
+ (longid ((id) !$1)
          ((longid "." id)))
 
  (lab    ((id))
          ((!:number)))
 
  (tupletail
-         ((exp ")"))
-         ((exp "," tupletail)))
+         ((exp ")") nil)
+         ((exp "," tupletail) (cons !$1 !$3)))
 
  (listtail
-         ((exp "]"))
-         ((exp "," listtail)))
+         ((exp "]") nil)
+         ((exp "," listtail) (cons !$1 !$3)))
 
  (seqtail
-         ((exp ")"))
-         ((exp ";" seqtail)))
+         ((exp ")") nil)
+         ((exp ";" seqtail) (cons !$1 !$3)))
 
  (exp    ((basicexp))
          ((basicexp ":" typ))
@@ -116,14 +116,14 @@ grammar := '(
 %        ((exp id exp) (list !$2 !$1 !$3))
 % I will rely on precedence to sort out the mess of grouping within
 % infix expressions.
-         ((exp "+" exp) (printc "sum spotted") (list 'plus !$1 !$3))
-         ((exp "-" exp) (printc "difference spotted") (list 'difference !$1 !$3))
-         ((exp "*" exp) (printc "product spotted") (list 'times !$1 !$3))
-         ((exp "/" exp) (printc "quotient spotted") (list 'quotient !$1 !$3))
-         ((exp "%" exp) (printc "remainder spotted") (list 'remainder !$1 !$3))
+         ((exp "+" exp) (list 'plus !$1 !$3))
+         ((exp "-" exp) (list 'difference !$1 !$3))
+         ((exp "*" exp) (list 'times !$1 !$3))
+         ((exp "/" exp) (list 'quotient !$1 !$3))
+         ((exp "%" exp) (list 'remainder !$1 !$3))
          ((exp "^" exp) (list 'stringconcat !$1 !$3))
-         ((exp "div" exp) (printc "quotient spotted") (list 'quotient !$1 !$3))
-         ((exp "mod" exp) (printc "remainder spotted") (list 'remainder !$1 !$3))
+         ((exp "div" exp) (list 'quotient !$1 !$3))
+         ((exp "mod" exp) (list 'remainder !$1 !$3))
          ((exp ">" exp) (list 'greaterp !$1 !$3))
          ((exp ">=" exp) (list 'geq !$1 !$3))
          ((exp "<" exp) (list 'lessp !$1 !$3))
@@ -133,37 +133,40 @@ grammar := '(
          ((exp ":=" exp) (list 'setq !$1 !$3))
          ((exp "::" exp) (list 'cons !$1 !$3))
          ((exp "handle" match))
-         ((exp "andalso" exp))
-         ((exp "orelse" exp))
+         ((exp "andalso" exp) (list 'and !$1 !$3))
+         ((exp "orelse" exp) (list 'or !$1 !$3))
          (("!" exp) (list 'pling !$2))
          (("~" exp) (list 'minus !$2))
          (("raise" exp))
-         (("if" exp "then" exp "else" exp))
+         (("if" exp "then" exp "else" exp)
+             (list 'cond
+                (list !$2 !$4)
+                (list t !$6)))
          (("while" exp "do" exp)) 
          (("case" exp "of" match))
          (("fn" match)))
 
 % A basicexp will be an expression that self-terminates
 
- (basicexp ((con)    (princ "Parsed constant ") (print !$1))
+ (basicexp ((con))
          ((longid))
          (("op" longid))
          ((exp ":" typ))
-         (("(" exp ")"))
+         (("(" exp ")") !$2)
          (("(" exp "," tupletail))
          (("{" "}"))
          (("{" exprow "}"))
          (("#" lab))
-         (("[" "]"))
-         (("[" exp "]"))
+         (("[" "]") 'empty_list)
+         (("[" exp "]") (list 'list !$2))
          (("[" exp "," listtail))
          (("(" exp ";" seqtail))
          (("let" dec "in" exp "end"))
          (("let" dec "in" exp seqexps)))
 
  (seqexps
-         (("end"))
-         ((";" exp seqexps)))
+         (("end") nil)
+         ((";" exp seqexps) (cons !$2 !$3)))
 
  (exprow ((lab "=" exp))
          ((lab "=" exp "," exprow)))
@@ -260,11 +263,10 @@ grammar := '(
           ((pat "=" exp "and" valbind))
           (("rec" valbind)))
 
- (funbind ((funmatch))
-          ((funmatch "and" funbind)))
+ (funbind ((funmatch) (list !$1))
+          ((funmatch "and" funbind) (cons !$1 !$3)))
 
- (funmatch ((id patterns "=" exp) (print !$1) (print !$2) (print !$4)
-             (list 'de !$1 !$2 !$4))
+ (funmatch ((id patterns "=" exp) (list 'de !$1 !$2 !$4))
            (("op" id patterns "=" exp))
            ((id patterns ":" typ "=" exp))
            (("op" id patterns ":" typ "=" exp))
@@ -273,8 +275,8 @@ grammar := '(
            ((id patterns ":" typ "=" exp "|" funmatch))
            (("op" id patterns ":" typ "=" exp "|" funmatch)))
 
- (patterns ((pat))
-           ((pat patterns)))
+ (patterns ((pat) (list !$1))
+           ((pat patterns) (cons !$1 !$2)))
 
  (typbind  ((varcomma id "=" typ))
            ((varcomma id "=" typ "and" typbind)))
@@ -332,19 +334,33 @@ lexer_style!* := lexer_style_sml;
 
 % This example is to test or illustrate support for SML comments.
 << lex_init(); yyparse pp >>;
-(111 (* comment *)+(* comment (* nest *) demo *) 222)
-eof
+(111 (* comment *)+(* comment (* nest *) demo *) 222);
+
 
 
 ;;
 
 begin
-   scalar r;
+   scalar r, savefile;
    lex_init();
    while (r := yyparse pp) neq 'eof do <<
-     terpri();
-     printc "@@@@@@@@@@@@@@@@@@";
-     prettyprint r >>
+     if eqcar(r, 'use) then begin
+       scalar ff, a;
+       ff := cadr r;
+       a := open(ff, 'input);
+       if null a then error(1, list("Unable to open file", ff));
+       savefile := rds a;
+     end
+     else if lex_char = !$eof!$ then <<
+       printc "End of file detected";
+       rds savefile;
+       lex_char := !$eol!$ >>
+     else <<
+       terpri();
+       printc "@@@@@@@@@@@@@@@@@@";
+       princ "LISP: "; prettyprint r;
+       printc "##################";
+       terpri() >> >>
 end;
 
 fun fact n =
@@ -354,6 +370,76 @@ fun fact n =
 and g x y z = [x,y,z]
 
 val pi = 3.14159;
+
+
+(*
+ This is the Dutch version of TeX Maths Layout coded in SML, adjusted so
+ it only uses a subset of SML. It also has some extensions that add support
+ for accents and delimiters, and the aim is that eventually it should
+ cover all maths. The stuff here reads in all the source files in an order
+ which is safe.
+*)
+
+use "General.sml";
+use "Powers2.sml";
+use "BasicTypes.sml";
+use "Distance.sml";
+use "Size.sml";
+use "FontTypes.sml";
+use "LoadFont.sml";
+use "FontVector.sml";
+use "CharInfo.sml";
+use "CharFunctions.sml";
+use "Const.sml";
+use "FontParams.sml";
+use "StyleParams.sml";
+use "BoxTypes.sml";
+use "BasicBox.sml";
+use "NodeDim.sml";
+use "NodeListDim.sml";
+use "GlueCalculation.sml";
+use "HListGlue.sml";
+use "BoxPack.sml";
+use "MakeVBox.sml";
+use "AxisCenter.sml";
+use "ChangeStyle.sml";
+use "Radical.sml";
+use "BasicChar.sml";
+use "MakeChar.sml";
+use "Accent.sml";
+use "MakeLine.sml";
+use "MakeAtop.sml";
+use "MakeFract.sml";
+use "Delimiter.sml";
+use "GenFraction.sml";
+use "MakeLimOp.sml";
+use "MakeScripts.sml";
+use "MathTypes.sml";
+use "Kind.sml";
+use "MathSpace.sml";
+use "MathGlue.sml";
+use "Spacing.sml";
+use "IListTypes.sml";
+use "IListDim.sml";
+use "ChangeKind.sml";
+use "MathPenalty.sml";
+use "Boundaries.sml";
+use "IListTranslate.sml";
+use "MathTranslate.sml";
+use "Formula.sml";
+use "Out.sml";
+use "OutHigh.sml";
+use "OutDvi.sml";
+use "DviState.sml";
+use "DviCmd.sml";
+use "SetNode.sml";
+use "SetBox.sml";
+use "ShipOut.sml";
+use "Input.sml";
+use "test.sml";
+
+(* End of everything *)
+
 
 
 eof
