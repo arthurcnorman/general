@@ -56,15 +56,21 @@ prec := '(
           ("+" "-")
   !:none  (">" "<" ">=" "<=" "=" "<>")
   !:right ("::")
-  !:left  ("do" "raise" "handle")
   )$
 
 % The grammar used here is derived from one found at
 %    https://www.mpi-sws.org/~rossberg/sml.html
+% A naive transliteration from there yields a grammar that has a huge
+% number of ambiguities/conflicts. For instance an expression like
+%        a b : 'c
+% could potentially be treated either as (a (b : 'c) or ((a b) : 'c).
+% Some of the issue can be sorted out by precedence rules, but to end up
+% with as clear-cut behaviour as I can I am expanding the grammar rules
+% somewhat.
 
 grammar := '(
 
- (toplevel ((prog "eof") (progn (terpri) (print !$1))))
+ (toplevel ((prog) (progn (terpri) (print !$1))))
 
 % Constants for SML should be
 %     int      [~]<digits>
@@ -92,23 +98,24 @@ grammar := '(
          ((!:number)))
 
  (tupletail
-         ((")"))
-         (("," exp tupletail)))
+         ((exp ")"))
+         ((exp "," tupletail)))
 
- (listail
-         (("]"))
-         (("," exp listail)))
+ (listtail
+         ((exp "]"))
+         ((exp "," listtail)))
 
  (seqtail
-         ((")"))
-         ((";" exp seqtail)))
+         ((exp ")"))
+         ((exp ";" seqtail)))
 
- (exp    ((con)    (princ "Parsed constant ") (print !$1))
-         ((longid))
-         (("op" longid))
-         ((exp ":" type))
-         ((exp exp))
-         ((exp id exp) (list !$2 !$1 !$3))
+ (exp    ((basicexp))
+         ((basicexp ":" typ))
+         ((exp basicexp))
+% The following rule should only apply if "id" has infix status...
+%        ((exp id exp) (list !$2 !$1 !$3))
+% I will rely on precedence to sort out the mess of grouping within
+% infix expressions.
          ((exp "+" exp) (printc "sum spotted") (list 'plus !$1 !$3))
          ((exp "-" exp) (printc "difference spotted") (list 'difference !$1 !$3))
          ((exp "*" exp) (printc "product spotted") (list 'times !$1 !$3))
@@ -125,39 +132,34 @@ grammar := '(
          ((exp "<>" exp) (list 'neq !$1 !$3))
          ((exp ":=" exp) (list 'setq !$1 !$3))
          ((exp "::" exp) (list 'cons !$1 !$3))
+         ((exp "handle" match))
+         ((exp "andalso" exp))
+         ((exp "orelse" exp))
          (("!" exp) (list 'pling !$2))
-         (("+" exp) (list 'unaryplus !$2))
          (("~" exp) (list 'minus !$2))
-         (("(" exp tupletail))
+         (("raise" exp))
+         (("if" exp "then" exp "else" exp))
+         (("while" exp "do" exp)) 
+         (("case" exp "of" match))
+         (("fn" match)))
+
+% A basicexp will be an expression that self-terminates
+
+ (basicexp ((con)    (princ "Parsed constant ") (print !$1))
+         ((longid))
+         (("op" longid))
+         ((exp ":" typ))
+         (("(" exp ")"))
+         (("(" exp "," tupletail))
          (("{" "}"))
          (("{" exprow "}"))
          (("#" lab))
          (("[" "]"))
-         (("[" exp listail))
-         (("(" exp ";" exp seqtail))
+         (("[" exp "]"))
+         (("[" exp "," listtail))
+         (("(" exp ";" seqtail))
          (("let" dec "in" exp "end"))
-         (("let" dec "in" exp seqexps))
-% for "raise" see "if" and "while"!
-         (("raise" exp))
-         ((exp "handle" match))
-         ((exp "andalso" exp))
-         ((exp "orelse" exp))
-% "if" has problems like "while" below in that, for instance
-%   IF a THEN b else c d
-% could parse as
-%   (IF a THEN b ELSE c) d
-% or as
-%   IF a THEN b ELSE (c d)
-% and similarly if the final sequence is "c : type" or "c + d". The
-% parser generator tends to default to SHIFT rather then REDUCE actions and
-% this ia what is wanted here.
-         (("if" exp "then" exp "else" exp))
-% If you have (exp exp) and (exp : typ) as productions for exp then
-% there is an ambiguity in the next as to whether the suffix attaches to
-% the exp after "do" or to the whole "while" statement.
-         (("while" exp "do" exp)) 
-         (("case" exp "of" match))
-         (("fn" match)))
+         (("let" dec "in" exp seqexps)))
 
  (seqexps
          (("end"))
@@ -325,27 +327,33 @@ pp := lalr_create_parser(prec, grammar)$
 
 lexer_style!* := lexer_style_sml;
 
-% tr yylex;
-on tracelex;
+%tr yylex, lex_basic_token, lex_token, readch, yypeek, yyreadch;
+%on tracelex;
 
+% This example is to test or illustrate support for SML comments.
 << lex_init(); yyparse pp >>;
-111 + 222
-eof
-
-<< lex_init(); yyparse pp >>;
-111(* comment *)+(* comment (* with nesting *) to demonstrate *)222
+(111 (* comment *)+(* comment (* nest *) demo *) 222)
 eof
 
 
-;;;;;
+;;
 
-<< lex_init(); yyparse pp >>;
+begin
+   scalar r;
+   lex_init();
+   while (r := yyparse pp) neq 'eof do <<
+     terpri();
+     printc "@@@@@@@@@@@@@@@@@@";
+     prettyprint r >>
+end;
 
 fun fact n =
   if n = 1 then 1
   else n * fact (n-1)
 
-fun g x y z = [x,y,z]
+and g x y z = [x,y,z]
+
+val pi = 3.14159;
 
 
 eof
