@@ -2,6 +2,26 @@ lisp;
 
 set!-print!-precision 50;
 
+symbolic procedure parse_tfm_file(infile, outfile, skewchar);
+  begin
+    scalar tfm;
+    tfm := read!-s!-from!-file infile;
+    outfile := open(outfile, 'output);
+    outfile := wrs outfile;
+    parse_tfm(tfm, skewchar);
+    close wrs outfile
+  end;
+
+symbolic procedure read!-s!-from!-file ff;
+  begin
+    scalar a, r;
+    a := open(ff, 'input);   
+    a := rds a;              
+    r := read();             
+    close rds a;             
+    return r                 
+  end;
+
 fluid '(skew);
 symbolic procedure parse_tfm (tfm, skewchar);
   begin
@@ -46,8 +66,9 @@ symbolic procedure parse_varchar_prop prop;
     type := car prop;
     if      type = 'TOP then princ "T"
     else if type = 'REP then princ "R"
+    else if type = 'MID then princ "M"
     else if type = 'BOT then princ "B"
-    else error(0,0);
+    else error(0,type);
     if (cadr prop) neq 'O then error(0,0);
     print caddr prop 
   end;
@@ -67,5 +88,3 @@ symbolic procedure parse_kern_prop prop;
   else << princ "S"; print cadddr cdr prop >>; 
 
 
-  
-end;

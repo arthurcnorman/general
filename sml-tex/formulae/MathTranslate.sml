@@ -59,6 +59,18 @@ struct
         else  makeScripts st cr isChar itCorr nucNode supOptBox subOptBox
   end
 
+  and doGenScripts' st cr limits isOp script =
+  case #nucleus script of 
+    [Accent (fam, ch, ml)] => 
+      let
+        val noAccentScript = {nucleus=ml, supOpt=(#supOpt script), subOpt=(#subOpt script)}
+        val noAccentHList = doGenScripts st cr limits isOp noAccentScript
+        val nucleus = NoadToHList st cr (Accent (fam,ch,ml))
+      in
+        (hd nucleus) :: (tl noAccentHList)
+      end
+  | _                      => doGenScripts st cr limits isOp script
+
   and doBigOp st cr lim script  =
   let val limits  =  (st = D  andalso  lim = default)  orelse  lim = yes
   in  doGenScripts st cr limits true script  end
@@ -72,7 +84,7 @@ struct
   |  Underline  ml  =>  HL (makeUnder st (cleanBox st cr ml))
   |  GenFraction genFract  =>  HL (doGenFraction st cr genFract)
   |  LeftRight (left, ml, right)  =>  HL (doLeftRight st cr left ml right)
-  |  Script script   =>  doGenScripts st cr false false script
+  |  Script script   =>  doGenScripts' st cr false false script
   |  BigOp (lim, script)  =>  doBigOp st cr lim script
   |  SubBox   b    =>  HL b
   |  MList    ml   =>  HL (cleanBox st cr ml)
