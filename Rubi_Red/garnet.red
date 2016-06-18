@@ -8,9 +8,9 @@ on backtrace, echo, comp; % set some useful (I hope) options
 % The existing "rubi_red" package provides a way to access all the
 % Rubi rules... But in fact I will set up my own short list...
 
-% load_package rubi_red;
+load_package rubi_red;
 
-fluid '(rubi_rules);
+% fluid '(rubi_rules);
 
 % To start with I will have just ONE rule!
 
@@ -19,19 +19,19 @@ fluid '(rubi_rules);
 % eg let me try n=1, p=-2, so I get
 % (a + b*x^1)^(-2)
 
-rubi_rules := '(
+%rubi_rules := '(
 
-(!/!;
-   (!:!=
-      (!Int
-         (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
-         (!_ x !Symbol))
-      (quotient (times x (expt (plus a (times b (expt x n))) (plus p 1))) a))
-   (and
-      (!Free!Q (bracelist a b n p) x)
-      (!Zero!Q (plus (times n (plus p 1)) 1))))
+%(!/!;
+%   (!:!=
+%      (!Int
+%         (expt (plus (!_ a) (times (!_!. b) (expt (!_ x) (!_ n)))) (!_ p))
+%         (!_ x !Symbol))
+%      (quotient (times x (expt (plus a (times b (expt x n))) (plus p 1))) a))
+%   (and
+%      (!Free!Q (bracelist a b n p) x)
+%      (!Zero!Q (plus (times n (plus p 1)) 1))))
 
-)$
+%)$
 
 
 algebraic operator unsimplified_int;
@@ -252,7 +252,7 @@ symbolic procedure apply_rule(rule, a, x);
        princ "looking at "; prin a; princ " wrt "; print x;
        princ "Try rule "; prettyprint rule; terpri() >>;
     if not eqcar(rule, '!/!;) then <<
-       printc "Expecting /; at top of rule, rule is: "; % print rule;
+       % printc "Expecting /; at top of rule, rule is: "; % print rule;
        return nil >>;
     w := cadr rule;
     conditions := caddr rule;
@@ -264,12 +264,25 @@ symbolic procedure apply_rule(rule, a, x);
 % trymatch will return either a list of bindings or the special symbol
 % 'fail to indicate that matching was not possible.
     bindings := trymatch(list('!Int, a, x), lhs, nil);
-    princ "Bindings = "; print bindings;
+    
     if bindings = 'fail then return nil;
+    
+    % TO-DO: verify if binding is valid
+    terpri(); princ "Bindings = "; print bindings;
+
+    % WARNING: FOLLOWING IS A HACK THAT ONLY CHECK BINDING FOR X ONCE
+    % There must be a better way of checking if binding occurs twice
+    % and if bindings are coherent
+
+    if assoc('x, bindings) and assoc('x, cdr bindings) and 
+      not (assoc('x, bindings) = assoc('x, cdr bindings)) then return nil;
+
+    princ "Rule is: "; print rule;
+    if eqcar(rhs, '!Module) or eqcar(rhs, '!Dist) then return nil;
 
     % following is a little test for check_fraction_q
-    condition := '(!Fraction!Q (bracelist n p));
-    single_condition_pass(condition, bindings, rhs);
+    % condition := '(!Fraction!Q (bracelist n p));
+    % single_condition_pass(subla(bindings, condition), rhs);
 
 % Here I need to check conditions
 % Sean: do subla before checking conditions??
@@ -329,25 +342,35 @@ symbolic procedure conditions_pass(c, r);
           >>
       else return not first_cond;  
       >>
-    else return single_condition_pass(c, r);
+    else << 
+      first_cond := single_condition_pass(c, r);
+      if first_cond = 'fail then return nil
+      else if first_cond then return t
+      else <<
+        princ "Condition failed: "; print c;
+        return nil;
+        >>
+      >>
   end;
 
 
-%*****************List of All Conditions*************
+%*****************List of Conditions*************
 % Ones without a * are not implemented
 % Listed in the order of appearance
+% After some inspection, some conditions seem not captured here
+% TO-DO: find out why
 
 % *!Free!Q
 % *!Fraction!Q
-% *lessp
+% *lessp -> most imporant one, needs a lot more testing
 % *!Positive!Q
 % *!Pos!Q
 % *!Neg!Q
-% !Not
+% !Not - this is bizarre, as it shouldn't appear
 % *!Zero!Q
 % *greaterp
 % *!Nonzero!Q
-% !Rational!Q
+% !Rational!Q -> incorrectly implemented, see notes later
 % *!Integer!Q
 % *!Integers!Q
 % *leq
@@ -385,6 +408,7 @@ symbolic procedure single_condition_pass(c, r);
   begin
 % Passing (cdr c) for now to preserve structural integrity for various cases
 % TO-DO: reorder according to the number of occurence
+% TO-DO: remove the parenthesis around (cdr c) if necessary 
     if eqcar(c, '!Free!Q) then return check_free_q(cdr c, r)
     else if eqcar(c, '!Zero!Q) then return check_zero_q(cdr c)
     else if eqcar(c, '!Nonzero!Q) then return check_non_zero_q(cdr c)
@@ -401,7 +425,7 @@ symbolic procedure single_condition_pass(c, r);
     else if eqcar(c, 'leq) then return check_less_equal(cdr c)
     else if eqcar(c, 'geq) then return check_greater_equal(cdr c)
     else if eqcar(c, 'nil) then return check_nil(cdr c)
-    else if eqcar(c, '!Independent!Q) then return check_independent_q(cdr c)
+    else if eqcar(c, '!Independent!Q) then return check_independent_q(cdr c, r)
     else if eqcar(c, '!Match!Q) then return check_match_q(cdr c)
     else if eqcar(c, '!Integer!Q) then return check_integer_q(cdr c)
     else if eqcar(c, '!Integers!Q) then return check_integers_q(cdr c)
@@ -438,17 +462,23 @@ symbolic procedure single_condition_pass(c, r);
   end;
 
 % To-do: test it thoroughly - most frequent condition
-% c: condition, in the form of ((bracelist a b c ...) x)
+% c: condition, in the form of ((bracelist a b c ...) x) or (a x)
 % r: right hand side
 symbolic procedure check_free_q(c, r);
   begin
     mark_constants(r, car cdr c);
-    for each h in (cdr car c) do 
-      if not gethash(h, garnet_hash) then go to top_free;
-    return t;
-top_free:
-    return nil;
+    if eqcar(car c, 'bracelist) then
+      return check_free_q_list cdr car c
+    else return print gethash(car c, garnet_hash);
   end;
+
+
+symbolic procedure check_free_q_list l;
+  if null l then t
+  else if gethash(car l, garnet_hash) then check_free_q_list cdr l
+  else nil;
+
+% tr check_free_q_list, check_free_q;
 
 symbolic procedure check_zero_q(c);
   zerop reval(car c);
@@ -482,9 +512,7 @@ symbolic procedure check_neg_q(c);
   lessp_quotient(car c, 0);
 
 symbolic procedure check_lessp(c);
-% need to check if they are rational first - rational_q not yet implemented
-% if check_rational_q(car c) and check_rational_q(cadr c) then 
-  lessp_rubi(car c, cadr c);
+  lessp_quotient(car c, cadr c);
 
 
 % The (perculiar) behavior of reval:
@@ -494,6 +522,7 @@ symbolic procedure check_lessp(c);
 % reval cadr reval w; => -1; 
 
 % lessp than compares quotient as well
+% To-do: might not work well with irrational and complex numbers
 symbolic procedure lessp_quotient(l, r);
   begin
     l := reval l;
@@ -524,10 +553,13 @@ symbolic procedure lessp_quotient(l, r);
       else if numberp cadr l and numberp cadr r then
         return lessp_quotient(list('times,cadr l, caddr r), 
           list('times, cadr r, caddr l))
-      else rederr "Error comparing two quotients";
+      else 
+        rederr "Error comparing two quotients";
       >>
+    % Sean: not really sure the best error-handling practice here
     else rederr "lessp_quotient cannot recognise the format";
   end;
+
 
 
 
@@ -542,9 +574,12 @@ symbolic procedure check_greater_equal(c);
 
 symbolic procedure check_nil(c);
   'fail;
+
 % Two cases for !Independent!Q, one followed by !Cancel, the other is not
-symbolic procedure check_independent_q(c);
-  'fail;
+% !Cancel not implemented
+symbolic procedure check_independent_q(c, r);
+  if not eqcar(car c, 'Cancel) then check_free_q(c, r);
+
 symbolic procedure check_match_q(c);
   'fail;
 
@@ -553,13 +588,31 @@ symbolic procedure check_integer_q(c);
 
 symbolic procedure check_integers_q(c);
   if null c then t
-  else <<
-    if check_integer_q(car c) then check_integers_q(cdr c)
-    else nil;
-    >>;
+  else if check_integer_q(c) then check_integers_q(cdr c)
+  else nil;
 
 symbolic procedure check_rational_q(c);
-  'fail;
+  if eqcar(c, 'bracelist) then check_rational_q_list (cdr car c)
+  else check_rational_q_atom (car c);
+
+symbolic procedure check_rational_q_list l;
+  if null l then t
+  else if check_rational_q_atom car l then check_rational_q_list cdr l
+  else nil;
+
+% WARNING: THIS ONE WILL FAIL!!
+% It is implemented incorrectly so as to move on with testing
+% If we do a reval PI, it gives back a quotient of two integers,
+% thus making it a rational number as well. BUT WE KNOW IT IS NOT.
+% We need to in some way evaluate c (the expression) first, because
+% the goal is to see if any irrational terms cancels out, since many test
+% begin with (!Rationa!Q (!Rt ...) ..).
+symbolic procedure check_rational_q_atom c;
+  if fixp reval c then t
+  else if eqcar(reval c, 'quotient) then fixp cadr c and fixp caddr c
+  else nil;
+
+reval pi;
 
 symbolic procedure check_fraction_q(c);
 % !Fraction!Q can be either called on a single atom or a bracelist
@@ -583,7 +636,7 @@ symbolic procedure check_fraction_q_list l;
     else return nil;
   end;
 
-tr check_fraction_q, check_fraction_q_atom, check_fraction_q_list;
+% tr check_fraction_q, check_fraction_q_atom, check_fraction_q_list;
 
 symbolic procedure check_polynomial_q(c);
   'fail;
@@ -611,6 +664,12 @@ symbolic procedure check_recognized_function_of_trig_q(c);
 % returns binding if succeed, 'fail otherwise
 % bindings in the following format:
 % (( rule_variable_name . expression_variable_name) (...) ...)
+
+% TO-DO: seems there might be double binding, meaning if we do
+% garnet((1+z)^(-1/12), z), x is bind to both z and (1+z)
+% thus we get 12*z^(11/12)/11 as a result, instead of 
+% 12*(1+z)^(11/12)/11.
+
 symbolic procedure trymatch(u, pattern, env);
   begin
 %    princ "u = "; print u;
@@ -643,6 +702,9 @@ symbolic procedure trymatchlist(lu, lpattern, env);
       else if eqcar(car lpattern, 'times) then <<
         w := trymatch_times(lu, lpattern, env);
         >>
+      else if eqcar(car lpattern, 'plus) then <<
+        w := trymatch_plus(lu, lpattern, env);
+        >>
       else return 'fail;
       >>;
     if w = 'fail then return 'fail
@@ -653,18 +715,25 @@ symbolic procedure trymatchlist(lu, lpattern, env);
 
 % To-do: not fully implemented yet
 % To-do: some redundant logic, will fix it when I have a clear mind
+% To-do: distinguish between !_ and !_!.
 
 symbolic procedure trymatch_expt(lu, lpattern, env);
 % princ "Attempting to add exponent 1.";
-    if eqcar(caddr car lpattern, '!_ ) then 
+    if eqcar(caddr car lpattern, '!_ ) or eqcar(caddr car lpattern, '!_!. ) then 
       trymatch(list('expt, car lu, 1), car lpattern, env)
     else 'fail;
 
 
 symbolic procedure trymatch_times(lu, lpattern, env);
 % princ "Attempting to add coefficient/times 1.";
-  if eqcar(cadr car lpattern, '!_!. ) then 
+  if eqcar(cadr car lpattern, '!_ ) or eqcar(cadr car lpattern, '!_!. ) then 
    trymatch(list('times, 1, car lu), car lpattern, env)
+  else 'fail;
+
+symbolic procedure trymatch_plus(lu, lpattern, env);
+% princ "Attempting to add plus 0.";
+  if eqcar(cadr car lpattern, '!_ ) or eqcar(cadr car lpattern, '!_!. ) then 
+   trymatch(list('plus, 0, car lu), car lpattern, env)
   else 'fail;
 
 %======================Try Match with Options End================
@@ -748,16 +817,18 @@ algebraic;
 
 % tr trymatch, trymatchlist;
 
-%garnet((u + v*z^(1/2))^(-1/2), z);
-%garnet((u + z^1)^(-2), z);
-%garnet((u + v*z)^(-2), z);
-%garnet((u + z)^(-2), z);
+% TO-DO: doesn't seem to work with sin z, log etc.
+
+garnet((u + v*z^1)^(-1/3), z); % doesn't work
+garnet((u + z^1)^(-2), z);
+garnet((u + v*z)^(-2), z);
+garnet((u + z)^(-2), z);
 
 % Now the same four but with a level of indirection...
-% w := (u + v*z^1)^(-1/3); garnet(w, z);
-%w := (u + z^1)^(-2); garnet(w, z);
-%w := (u + v*z)^(-2); garnet(w, z);
-%w := (u + z)^(-2); garnet(w, z);
+w := (u + v*z^1)^(-1/3); garnet(w, z); % doesn't work either
+w := (u + z^1)^(-2); garnet(w, z); % This one in the test 
+w := (u + v*z)^(-2); garnet(w, z);
+w := (u + z)^(-2); garnet(w, z);
 
 
 end;
