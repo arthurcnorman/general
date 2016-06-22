@@ -51,12 +51,80 @@ lisp;
 
 if memq('csl, lispsystem!*) then enable!-errorset(3,3);
 
+% Some symbols must be recognized by SML as names of types... Note that
+% the lexer will classify any name starting with a quote mark as stanidng
+% for a type.
+
+for each x in '(unit bool int real char string list option) do
+  put(x, 'lex_is_typename, t);
+
 prec := '(
-  !:left  ("*" "/" "%" "div" "mod")
-          ("+" "-")
-  !:none  (">" "<" ">=" "<=" "=" "<>")
-  !:right ("::")
+  !:left  (!:infix9)
+  !:right (!:infixr9)
+  !:left  (!:infix8)
+  !:right (!:infixr8)
+  !:left  (!:infix7)
+  !:right (!:infixr7)
+  !:left  (!:infix6)
+  !:right (!:infixr6)
+  !:left  (!:infix5)
+  !:right (!:infixr5)
+  !:left  (!:infix4)
+  !:right (!:infixr4)
+  !:left  (!:infix3)
+  !:right (!:infixr3)
+  !:left  (!:infix2)
+  !:right (!:infixr2)
+  !:left  (!:infix1)
+  !:right (!:infixr1)
+  !:left  (!:infix0)
+  !:right (!:infixr0)
   )$
+
+lex_keywords '(
+  "*"   "/"   "%"   "div" "mod" "+"   "-"   "::"  
+  ">"   "<"   ">="  "<="  "="   "<>"  ":=");
+
+put('!*,   'lex_code, get('!:infix7, 'lex_fixed_code))$
+put('!/,   'lex_code, get('!:infix7, 'lex_fixed_code))$
+put('!%,   'lex_code, get('!:infix7, 'lex_fixed_code))$
+put('div,  'lex_code, get('!:infix7, 'lex_fixed_code))$
+put('mod,  'lex_code, get('!:infix7, 'lex_fixed_code))$
+
+put('!+,   'lex_code, get('!:infix6, 'lex_fixed_code))$
+put('!-,   'lex_code, get('!:infix6, 'lex_fixed_code))$
+
+put('!:!:, 'lex_code, get('!:infixr5, 'lex_fixed_code))$
+
+put('!>,   'lex_code, get('!:infix4, 'lex_fixed_code))$
+put('!<,   'lex_code, get('!:infix4, 'lex_fixed_code))$
+put('!>!=, 'lex_code, get('!:infix4, 'lex_fixed_code))$
+put('!<!=, 'lex_code, get('!:infix4, 'lex_fixed_code))$
+put('!=,   'lex_code, get('!:infix4, 'lex_fixed_code))$
+put('!<!>, 'lex_code, get('!:infix4, 'lex_fixed_code))$
+
+put('!:!=, 'lex_code, get('!:infix3, 'lex_fixed_code))$
+
+put('!*,   'lisp_name, 'times);
+put('!/,   'lisp_name, 'quotient);
+put('!%,   'lisp_name, 'remainder);
+put('div,  'lisp_name, 'quotient);
+put('mod,  'lisp_name, 'remainder);
+
+put('!+,   'lisp_name, 'plus);
+put('!-,   'lisp_name, 'difference);
+
+put('!:!:, 'lisp_name, 'cons);
+
+put('!>,   'lisp_name, 'greaterp);
+put('!<,   'lisp_name, 'lessp);
+put('!>!=, 'lisp_name, 'geq);
+put('!<!=, 'lisp_name, 'leq);
+put('!=,   'lisp_name, 'equal);
+put('!<!>, 'lisp_name, 'neq);
+
+put('!:!=, 'lisp_name, 'set);
+
 
 % The grammar used here is derived from one found at
 %    https://www.mpi-sws.org/~rossberg/sml.html
@@ -86,13 +154,18 @@ grammar := '(
          (("#" !:string))
          ((!:string)))
 
+ (digit  ((!:number)))
+
  (id     ((!:symbol)))
 
- (var    (("'" !:symbol))
-         (("''" !:symbol)))
+ (var    ((!:typename))
+         ((!:typename)))
 
  (longid ((id) !$1)
          ((longid "." id)))
+
+ (longvar((var) !$1)
+         ((longid "." var)))
 
  (lab    ((id))
          ((!:number)))
@@ -109,6 +182,20 @@ grammar := '(
          ((exp ")") nil)
          ((exp ";" seqtail) (cons !$1 !$3)))
 
+% Here I can have
+%     x : 'a something
+%     x : int * something
+% and if the name something is the name of a type it is liable to form
+% part of the type, while if it is not then it will be a name of a variable.
+% This is an ambiguity that I believe has to be resolved by considering that
+% status of the name. Consider cases
+%      datatype 'a tree = ...
+%      x : int tree;   (* case 1 *)
+%      val x = 3;
+%      val y = 8;
+%      x : int * y;    (* case 2 *)
+% so I do not believe that any decision that allows both "exp ::= id" and
+% "typ ::= id" can be unambiguous. Oh dear.
  (exp    ((basicexp))
          ((basicexp ":" typ))
          ((exp basicexp))
@@ -116,22 +203,26 @@ grammar := '(
 %        ((exp id exp) (list !$2 !$1 !$3))
 % I will rely on precedence to sort out the mess of grouping within
 % infix expressions.
-         ((exp "+" exp) (list 'plus !$1 !$3))
-         ((exp "-" exp) (list 'difference !$1 !$3))
-         ((exp "*" exp) (list 'times !$1 !$3))
-         ((exp "/" exp) (list 'quotient !$1 !$3))
-         ((exp "%" exp) (list 'remainder !$1 !$3))
-         ((exp "^" exp) (list 'stringconcat !$1 !$3))
-         ((exp "div" exp) (list 'quotient !$1 !$3))
-         ((exp "mod" exp) (list 'remainder !$1 !$3))
-         ((exp ">" exp) (list 'greaterp !$1 !$3))
-         ((exp ">=" exp) (list 'geq !$1 !$3))
-         ((exp "<" exp) (list 'lessp !$1 !$3))
-         ((exp "<=" exp) (list 'leq !$1 !$3))
-         ((exp "=" exp) (list 'equal !$1 !$3))
-         ((exp "<>" exp) (list 'neq !$1 !$3))
-         ((exp ":=" exp) (list 'setq !$1 !$3))
-         ((exp "::" exp) (list 'cons !$1 !$3))
+         ((exp !:infix0 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infix1 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infix2 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infix3 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infix4 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infix5 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infix6 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infix7 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infix8 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infix9 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infixr0 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infixr1 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infixr2 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infixr3 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infixr4 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infixr5 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infixr6 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infixr7 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infixr8 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp !:infixr9 exp) (list (get !$2 'lisp_name) !$1 !$3))
          ((exp "handle" match))
          ((exp "andalso" exp) (list 'and !$1 !$3))
          ((exp "orelse" exp) (list 'or !$1 !$3))
@@ -151,7 +242,7 @@ grammar := '(
  (basicexp ((con))
          ((longid))
          (("op" longid))
-         ((exp ":" typ))
+%        ((exp ":" typ))
          (("(" exp ")") !$2)
          (("(" exp "," tupletail))
          (("{" "}"))
@@ -161,11 +252,16 @@ grammar := '(
          (("[" exp "]") (list 'list !$2))
          (("[" exp "," listtail))
          (("(" exp ";" seqtail))
-         (("let" dec "in" exp "end"))
-         (("let" dec "in" exp seqexps)))
+         ((letid dec "in" exp endid))
+         ((letid dec "in" exp seqexps)))
+
+ (localid
+         (("local") (startcontext)))
+ (letid  (("let") (startcontext)))
+ (endid  (("end") (endcontext)))
 
  (seqexps
-         (("end") nil)
+         ((endid) nil)
          ((";" exp seqexps) (cons !$2 !$3)))
 
  (exprow ((lab "=" exp))
@@ -174,30 +270,38 @@ grammar := '(
  (match  ((pat "=>" exp))
          ((pat "=>" exp "|" match)))
 
- (pat    ((con))
+ (pat    ((pat1))
+         ((pat1 ":" typ))
+         ((!:symbol "as" pat1 ":" typ))
+         (("op" !:symbol "as" pat1 ":" typ))
+         ((!:symbol ":" typ "as" pat1 ":" typ))
+         (("op" !:symbol ":" typ "as" pat1 ":" typ)))
+ 
+ (pat1   ((con))
          (("_"))
          ((id))
          (("op" id))
          ((longid))
          (("op" longid))
-         ((longid pat))
-         (("op" longid pat))
-% The next line supports patterns that involve an arbitrary infix
-% operator. I will only allow known ones. Well right now the only infix
-% constructor I can think of is "::". I think that this grammar has
-% real problems not knowing what names are tagged as "infix".
+         ((longid pat1))
+         (("op" longid pat1))
 %        ((pat id pat))
-         ((pat "::" pat))
+% The above line supports patterns that involve an arbitrary infix
+% operator. I will only allow known ones. Well right now the only infix
+% constructor I can think of is "::". I believe that to make this work
+% fully I would want to let the lexer offer a different token class for
+% infix operators. I also refuse to support type qualifiers without
+% parens here, so if you want to specify types explicitly you must
+% parenthesis as in
+%                      (a : 'a) :: (b : 'a list)
+% rather than just      a : a' :: b : 'a list
+%
+         ((pat1 "::" pat1))
          (("(" patseq ")"))
-         (("(" ")"))
+         (("(" ")") nil)
          (("{" patrow "}"))
          (("[" patseq "]"))
-         (("[" "]"))
-         ((pat ":" typ))
-         ((!:symbol "as" pat))
-         (("op" !:symbol "as" pat))
-         ((!:symbol ":" typ "as" pat))
-         (("op" !:symbol ":" typ "as" pat)))
+         (("[" "]") nil))
 
  (patseq ((pat))
          ((patseq "," pat)))
@@ -215,8 +319,8 @@ grammar := '(
          ((id ":" typ "as" pat "," patrow)))
 
  (typ    ((var))
-         ((longid))
-         ((typ longid))
+         ((longvar))
+         ((typ longvar))
          (("(" typ "," ttail ")" longid))
          (("(" typ ")"))
          ((typ "->" typ))
@@ -250,13 +354,13 @@ grammar := '(
          (("exception" exnbind))
 %        (("structure" strbind))
 %@@      ((dec ";" dec))
-         (("local" dec "in" dec "end"))
+         ((localid dec "in" dec endid))
 %        (("open" longid))   % Could have multiple longids here
-%        (("nonfix" id))     % multiple ids
-%        (("infix" id))
-%        (("infix" digit id))
-%        (("infixr" id))
-%        (("infixr" digit id))
+         (("nonfix" id) (makeinfix !$2 0 'none))     % multiple ids
+         (("infix" id) (makeinfix !$2 0 'left))
+         (("infix" digit id) (makeinfix !$2 !$3 'left))
+         (("infixr" id) (makeinfix !$2 0 'right))
+         (("infixr" digit id) (makeinfix !$3 !$3 'right))
          )
 
  (valbind ((pat "=" exp))
@@ -265,6 +369,10 @@ grammar := '(
 
  (funbind ((funmatch) (list !$1))
           ((funmatch "and" funbind) (cons !$1 !$3)))
+
+% The explicit type ": typ" qualification here qualifies the return
+% type of the whole expression. It seems that the patterns used here must
+% not be ones that end in their own ": typ".
 
  (funmatch ((id patterns "=" exp) (list 'de !$1 !$2 !$4))
            (("op" id patterns "=" exp))
@@ -275,11 +383,14 @@ grammar := '(
            ((id patterns ":" typ "=" exp "|" funmatch))
            (("op" id patterns ":" typ "=" exp "|" funmatch)))
 
- (patterns ((pat) (list !$1))
-           ((pat patterns) (cons !$1 !$2)))
+ (patterns ((pat1) (list !$1))
+           ((patterns pat1) (append !$1 (list !$2))))
 
- (typbind  ((varcomma id "=" typ))
-           ((varcomma id "=" typ "and" typbind)))
+ (maketyname
+           ((id) (maketyname !$1) !$1))
+
+ (typbind  ((varcomma maketyname "=" typ))
+           ((varcomma maketyname "=" typ "and" typbind)))
 
  (datbind  ((varcomma id "=" conbind))
            ((varcomma id "=" conbind "and" datbind)))
@@ -320,7 +431,83 @@ grammar := '(
 %
   )$
 
-% While debugging it may be helpful to see the grammar displayed with
+fluid '(lexer_context context_stack);
+
+symbolic procedure maketyname id;
+  begin
+    if not zerop posn() then terpri();
+    princ "@@@ Identifier "; princ id; printc " is now a type name";
+    lexer_context := ('type, id, get(id, 'lex_is_typename)) . lexer_context;
+    put(id, 'smltypename, t);
+    return id
+  end;
+
+global '(infix_lookup);
+infix_lookup := mkhash(30, 2, 1.5);
+
+<< puthash('(0 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
+   puthash('(1 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
+   puthash('(2 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
+   puthash('(3 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
+   puthash('(4 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
+   puthash('(5 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
+   puthash('(6 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
+   puthash('(7 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
+   puthash('(8 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
+   puthash('(9 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
+   puthash('(0 . left), infix_lookup, get('!:infix0, 'lex_fixed_code));
+   puthash('(1 . left), infix_lookup, get('!:infix1, 'lex_fixed_code));
+   puthash('(2 . left), infix_lookup, get('!:infix2, 'lex_fixed_code));
+   puthash('(3 . left), infix_lookup, get('!:infix3, 'lex_fixed_code));
+   puthash('(4 . left), infix_lookup, get('!:infix4, 'lex_fixed_code));
+   puthash('(5 . left), infix_lookup, get('!:infix5, 'lex_fixed_code));
+   puthash('(6 . left), infix_lookup, get('!:infix6, 'lex_fixed_code));
+   puthash('(7 . left), infix_lookup, get('!:infix7, 'lex_fixed_code));
+   puthash('(8 . left), infix_lookup, get('!:infix8, 'lex_fixed_code));
+   puthash('(9 . left), infix_lookup, get('!:infix9, 'lex_fixed_code));
+   puthash('(0 . right), infix_lookup, get('!:infixr0, 'lex_fixed_code));
+   puthash('(1 . right), infix_lookup, get('!:infixr1, 'lex_fixed_code));
+   puthash('(2 . right), infix_lookup, get('!:infixr2, 'lex_fixed_code));
+   puthash('(3 . right), infix_lookup, get('!:infixr3, 'lex_fixed_code));
+   puthash('(4 . right), infix_lookup, get('!:infixr4, 'lex_fixed_code));
+   puthash('(5 . right), infix_lookup, get('!:infixr5, 'lex_fixed_code));
+   puthash('(6 . right), infix_lookup, get('!:infixr6, 'lex_fixed_code));
+   puthash('(7 . right), infix_lookup, get('!:infixr7, 'lex_fixed_code));
+   puthash('(8 . right), infix_lookup, get('!:infixr8, 'lex_fixed_code));
+   puthash('(9 . right), infix_lookup, get('!:infixr9, 'lex_fixed_code));
+   nil >>;
+
+symbolic procedure makeinfix(id, prec, dirn);
+  begin
+    if not zerop posn() then terpri();
+    princ "@@@ Identifier "; princ id; printc " is now an operator";
+    princ prec; princ "  "; printc dirn;
+    lexer_context := ('type, id, get(id, 'lex_code)) . lexer_context;
+    put(id, 'lex_code, gethash(prec . dirn, infix_lookup));
+    return id
+  end;
+
+symbolic procedure startcontext();
+  begin
+    context_stack := lexer_context . context_stack;
+    lexer_context := nil;
+    if not zerop posn() then terpri();
+    printc "Starting a nested context";
+  end;
+
+symbolic procedure endcontext();
+  begin
+    if not zerop posn() then terpri();
+    printc "Ending a nested context";
+% I now need to unwind any local type and infix declarations...
+    for each p in lexer_context do
+      if eqcar(p, 'infix) then put(cadr p, 'lex_code, cddr p)
+      else put(cadr p, 'lex_is_typename, cddr p);
+    lexer_context := car context_stack;
+    context_stack := cdr context_stack;
+  end;
+
+% While debugging it may be helpful to see the grammar diplayed with
 % indentation normalised...
 %
 << terpri(); prettyprint grammar; nil >>;
