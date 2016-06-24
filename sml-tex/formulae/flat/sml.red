@@ -32,7 +32,7 @@
 % $Id: $
 
 % The code here parses (a subset of) SML and generates a Lisp
-% tre efrom it. If the SML code is sufficiently simple this Lisp can
+% tree from it. If the SML code is sufficiently simple this Lisp can
 % be output as Rlisp code. It may be in more restricted cases, but
 % sometimes it may be feasible to generate C or C++ code instead. The
 % idea for this is that SML can be used as a prototyping language where its
@@ -70,6 +70,7 @@ prec := '(
   !:right (!:infixr6)
   !:left  (!:infix5)
   !:right (!:infixr5)
+  !:right ("::")
   !:left  ("=")
   !:left  (!:infix4)
   !:right (!:infixr4)
@@ -103,6 +104,29 @@ put('!<!>, 'lisp_name, 'neq);
 
 put('!:!=, 'lisp_name, 'set);
 
+fluid '(filestack);
+
+symbolic procedure process u;
+  begin
+    scalar v;
+    terpri();
+    princ "Input: ";
+    prettyprint u;
+    if u = !$eof!$ then <<
+      if null filestack then error(1, "Unexpected end of file");
+      close rds car filestack;
+      printc "End of file - returning to previous file";
+      filestack := cdr filestack;
+      lex_char := !$eol!$;
+      yypeek_char := nil >>
+    else if eqcar(u, 'use) then <<
+      u := cadr u;
+      v := open(u, 'input);
+      if null v then error(1, list("file", u, "could not be opened"));
+      princ "+++ Reading from file "; print u;
+      filestack := rds v . filestack >>
+  end;
+
 
 % The grammar used here is derived from one found at
 %    https://www.mpi-sws.org/~rossberg/sml.html
@@ -118,8 +142,9 @@ grammar := '(
 
  (toplevel ((progs "eof")))
 
- (progs    ((prog) (princ "Statement: ") (prettyprint !$1))
-           ((progs prog) (princ "Statement: ") (prettyprint !$2)))
+ (progs    ((prog) (process !$1))
+           ((progs prog) (process !$2))
+           ((progs !:eof) (process !$eof!$)))
 
 % Constants for SML should be
 %     int      [~]<digits>
@@ -188,28 +213,30 @@ grammar := '(
 %     val name = value;
 %     fun fname args = body;
 %     (expression : type1 * type2)
-         ((exp infix0 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix1 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix2 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix3 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix4 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp "=" exp) (print (list 'infix !$2))  (list 'equal !$1 !$3))
-         ((exp infix5 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix6 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix7 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp "*" exp) (print (list 'infix !$2))  (list 'equal !$1 !$3))
-         ((exp infix8 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix9 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr0 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr1 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr2 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr3 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr4 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr5 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr6 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr7 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr8 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr9 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+% Also "::" can occur in a pattern, and that gives trouble to me.
+         ((exp infix0 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix1 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix2 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix3 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix4 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp "=" exp) (list 'equal !$1 !$3))
+         ((exp infix5 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix6 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix7 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp "*" exp) (list 'equal !$1 !$3))
+         ((exp infix8 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix9 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr0 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr1 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr2 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr3 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr4 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr5 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp "::" exp) (list 'cons !$1 !$3))
+         ((exp infixr6 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr7 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr8 exp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr9 exp) (list (get !$2 'lisp_name) !$1 !$3))
          ((exp "handle" match))
          ((exp "andalso" exp) (list 'and !$1 !$3))
          ((exp "orelse" exp) (list 'or !$1 !$3))
@@ -591,16 +618,15 @@ pp := lalr_create_parser(prec, grammar)$
 
 lexer_style!* := lexer_style_sml + 0x40; % Support #if and #eval too!
 
-tr yylex, lex_basic_token;
-
 % If parsing the SML code fails I will just exit from Reduce. Otherwise
 % it is likely that I will be faced with a mess of further silly messages
 % as Reduce tries to make sense if SML input itself.
 % I think I may need an option within lalr for parsing from a file, such
-% that errors merely close that file - ie so that parsed and regular Reduce
-% stuff are kept more separate.
+% that errors merely close that file and return to using Reduce on
+% an outer file... ie so that parsed and regular Reduce stuff are kept
+% more separate.
 
-on tracelex, parser_errors_fatal;
+on parse_errors_fatal;
 
 begin
    lex_init();
