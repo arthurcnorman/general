@@ -49,7 +49,7 @@ load_package lalr;
 
 lisp;
 
-if memq('csl, lispsystem!*) then enable!-errorset(3,3);
+if getd 'enable!-errorset then enable!-errorset(3,3);
 
 % Some symbols must be recognized by SML as names of types... Note that
 % the lexer will classify any name starting with a quote mark as stanidng
@@ -64,11 +64,13 @@ prec := '(
   !:left  (!:infix8)
   !:right (!:infixr8)
   !:left  (!:infix7)
+  !:left  ("*")
   !:right (!:infixr7)
   !:left  (!:infix6)
   !:right (!:infixr6)
   !:left  (!:infix5)
   !:right (!:infixr5)
+  !:left  ("=")
   !:left  (!:infix4)
   !:right (!:infixr4)
   !:left  (!:infix3)
@@ -80,30 +82,6 @@ prec := '(
   !:left  (!:infix0)
   !:right (!:infixr0)
   )$
-
-lex_keywords '(
-  "*"   "/"   "%"   "div" "mod" "+"   "-"   "::"  
-  ">"   "<"   ">="  "<="  "="   "<>"  ":=");
-
-put('!*,   'lex_code, get('!:infix7, 'lex_fixed_code))$
-put('!/,   'lex_code, get('!:infix7, 'lex_fixed_code))$
-put('!%,   'lex_code, get('!:infix7, 'lex_fixed_code))$
-put('div,  'lex_code, get('!:infix7, 'lex_fixed_code))$
-put('mod,  'lex_code, get('!:infix7, 'lex_fixed_code))$
-
-put('!+,   'lex_code, get('!:infix6, 'lex_fixed_code))$
-put('!-,   'lex_code, get('!:infix6, 'lex_fixed_code))$
-
-put('!:!:, 'lex_code, get('!:infixr5, 'lex_fixed_code))$
-
-put('!>,   'lex_code, get('!:infix4, 'lex_fixed_code))$
-put('!<,   'lex_code, get('!:infix4, 'lex_fixed_code))$
-put('!>!=, 'lex_code, get('!:infix4, 'lex_fixed_code))$
-put('!<!=, 'lex_code, get('!:infix4, 'lex_fixed_code))$
-put('!=,   'lex_code, get('!:infix4, 'lex_fixed_code))$
-put('!<!>, 'lex_code, get('!:infix4, 'lex_fixed_code))$
-
-put('!:!=, 'lex_code, get('!:infix3, 'lex_fixed_code))$
 
 put('!*,   'lisp_name, 'times);
 put('!/,   'lisp_name, 'quotient);
@@ -120,7 +98,7 @@ put('!>,   'lisp_name, 'greaterp);
 put('!<,   'lisp_name, 'lessp);
 put('!>!=, 'lisp_name, 'geq);
 put('!<!=, 'lisp_name, 'leq);
-put('!=,   'lisp_name, 'equal);
+%put('!=,   'lisp_name, 'equal);
 put('!<!>, 'lisp_name, 'neq);
 
 put('!:!=, 'lisp_name, 'set);
@@ -138,7 +116,10 @@ put('!:!=, 'lisp_name, 'set);
 
 grammar := '(
 
- (toplevel ((prog) !$1))
+ (toplevel ((progs "eof")))
+
+ (progs    ((prog) (princ "Statement: ") (prettyprint !$1))
+           ((progs prog) (princ "Statement: ") (prettyprint !$2)))
 
 % Constants for SML should be
 %     int      [~]<digits>
@@ -202,27 +183,33 @@ grammar := '(
 % The following rule should only apply if "id" has infix status...
 %        ((exp id exp) (list !$2 !$1 !$3))
 % I will rely on precedence to sort out the mess of grouping within
-% infix expressions.
-         ((exp !:infix0 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infix1 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infix2 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infix3 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infix4 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infix5 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infix6 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infix7 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infix8 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infix9 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infixr0 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infixr1 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infixr2 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infixr3 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infixr4 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infixr5 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infixr6 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infixr7 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infixr8 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp !:infixr9 exp) (list (get !$2 'lisp_name) !$1 !$3))
+% infix expressions. Note that I have to treat both "=" and "*" specially
+% here because they occur in other syntactic contexts, such as
+%     val name = value;
+%     fun fname args = body;
+%     (expression : type1 * type2)
+         ((exp infix0 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix1 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix2 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix3 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix4 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp "=" exp) (print (list 'infix !$2))  (list 'equal !$1 !$3))
+         ((exp infix5 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix6 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix7 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp "*" exp) (print (list 'infix !$2))  (list 'equal !$1 !$3))
+         ((exp infix8 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infix9 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr0 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr1 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr2 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr3 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr4 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr5 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr6 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr7 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr8 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
+         ((exp infixr9 exp) (print (list 'infix !$2))  (list (get !$2 'lisp_name) !$1 !$3))
          ((exp "handle" match))
          ((exp "andalso" exp) (list 'and !$1 !$3))
          ((exp "orelse" exp) (list 'or !$1 !$3))
@@ -236,6 +223,34 @@ grammar := '(
          (("while" exp "do" exp)) 
          (("case" exp "of" match))
          (("fn" match)))
+
+% These silly looking rules are to do with the "trick" that allows one to
+% declare infix operators on the fly. If (say) "+" has been made an infix
+% operator with precedence 4 it parses as a token of type !:infix4. But the
+% value of yylval will still be the plus sign. These rules exist to transfer
+% that value into the semantic action so that it is what drives the resr if
+% the parser, rather than having the less useful token !:infix4.
+
+ (infix0 ((!:infix0) yylval))
+ (infix1 ((!:infix1) yylval))
+ (infix2 ((!:infix2) yylval))
+ (infix3 ((!:infix3) yylval))
+ (infix4 ((!:infix4) yylval))
+ (infix5 ((!:infix5) yylval))
+ (infix6 ((!:infix6) yylval))
+ (infix7 ((!:infix7) yylval))
+ (infix8 ((!:infix8) yylval))
+ (infix9 ((!:infix9) yylval))
+ (infixr0 ((!:infixr0) yylval))
+ (infixr1 ((!:infixr1) yylval))
+ (infixr2 ((!:infixr2) yylval))
+ (infixr3 ((!:infixr3) yylval))
+ (infixr4 ((!:infixr4) yylval))
+ (infixr5 ((!:infixr5) yylval))
+ (infixr6 ((!:infixr6) yylval))
+ (infixr7 ((!:infixr7) yylval))
+ (infixr8 ((!:infixr8) yylval))
+ (infixr9 ((!:infixr9) yylval))
 
 % A basicexp will be an expression that self-terminates
 
@@ -356,12 +371,61 @@ grammar := '(
 %@@      ((dec ";" dec))
          ((localid dec "in" dec endid))
 %        (("open" longid))   % Could have multiple longids here
-         (("nonfix" id) (makeinfix !$2 0 'none))     % multiple ids
-         (("infix" id) (makeinfix !$2 0 'left))
-         (("infix" digit id) (makeinfix !$2 !$3 'left))
-         (("infixr" id) (makeinfix !$2 0 'right))
-         (("infixr" digit id) (makeinfix !$3 !$3 'right))
+% The full syntax here would allow a sequence of opnames here. Just for now
+% I will be lazy and only support one.
+         (("nonfix" opname) (makeinfix !$2 0 'none))
+         (("infix" opname) (makeinfix !$2 0 'left))
+         (("infix" digit opname) (makeinfix !$3 !$2 'left))
+         (("infixr" opname) (makeinfix !$2 0 'right))
+         (("infixr" digit opname) (makeinfix !$3 !$2 'right))
          )
+
+
+% The words accepted in INFIX and INFIXR directives  should probably include
+% things that have already been declared with an infix property. I want
+% the identifier itself as my result...
+% Also all sorts of other tokens will have been given special lexer codes but
+% they should still be things that COULD be made infix... So I list the ones
+% that I can think of here! This is really odd in that if (say) "->" is
+% a single token then in the process of that case being notes as a dipthong
+% the initial "-" will also be given its own lexer code... so I need to
+% list initial substrings of any multi-character dipthong here.
+%
+ (opname  ((id) (princ "opname: ") (print yylval))
+          (("*") (princ "opname: ") (print yylval))
+          (("/") (princ "opname: ") (print yylval))
+          (("%") (princ "opname: ") (print yylval))
+          (("+") (princ "opname: ") (print yylval))
+          (("-") (princ "opname: ") (print yylval))
+          (("::") (princ "opname: ") (print yylval))
+          ((":") (princ "opname: ") (print yylval))
+          (("=") (princ "opname: ") (print yylval))
+          (("<") (princ "opname: ") (print yylval))
+          (("<=") (princ "opname: ") (print yylval))
+          ((">") (princ "opname: ") (print yylval))
+          ((">=") (princ "opname: ") (print yylval))
+          (("<>") (princ "opname: ") (print yylval))
+          ((":=") (princ "opname: ") (print yylval))
+          ((!:infix0) (princ "opname: ") (print yylval))
+          ((!:infix1) (princ "opname: ") (print yylval))
+          ((!:infix2) (princ "opname: ") (print yylval))
+          ((!:infix3) (princ "opname: ") (print yylval))
+          ((!:infix4) (princ "opname: ") (print yylval))
+          ((!:infix5) (princ "opname: ") (print yylval))
+          ((!:infix6) (princ "opname: ") (print yylval))
+          ((!:infix7) (princ "opname: ") (print yylval))
+          ((!:infix8) (princ "opname: ") (print yylval))
+          ((!:infix9) (princ "opname: ") (print yylval))
+          ((!:infixr0) (princ "opname: ") (print yylval))
+          ((!:infixr1) (princ "opname: ") (print yylval))
+          ((!:infixr2) (princ "opname: ") (print yylval))
+          ((!:infixr3) (princ "opname: ") (print yylval))
+          ((!:infixr4) (princ "opname: ") (print yylval))
+          ((!:infixr5) (princ "opname: ") (print yylval))
+          ((!:infixr6) (princ "opname: ") (print yylval))
+          ((!:infixr7) (princ "opname: ") (print yylval))
+          ((!:infixr8) (princ "opname: ") (print yylval))
+          ((!:infixr9) (princ "opname: ") (print yylval)))
 
  (valbind ((pat "=" exp))
           ((pat "=" exp "and" valbind))
@@ -421,6 +485,7 @@ grammar := '(
 
 (prog     ((dec))
           ((exp))
+          ((";"))
 %         (("functor" fctbind))
 %         (("signature" sigbind))
 %         ((prog ";" prog))       % For now I will only allow one clause
@@ -443,7 +508,7 @@ symbolic procedure maketyname id;
   end;
 
 global '(infix_lookup);
-infix_lookup := mkhash(30, 2, 1.5);
+infix_lookup := mkhash(30, 2, 1.5)$
 
 << puthash('(0 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
    puthash('(1 . none), infix_lookup, get('!:symbol, 'lex_fixed_code));
@@ -480,9 +545,9 @@ infix_lookup := mkhash(30, 2, 1.5);
 symbolic procedure makeinfix(id, prec, dirn);
   begin
     if not zerop posn() then terpri();
-    princ "@@@ Identifier "; princ id; printc " is now an operator";
+    princ "@@@ Identifier "; princ id; princ " is now an operator: ";
     princ prec; princ "  "; printc dirn;
-    lexer_context := ('type, id, get(id, 'lex_code)) . lexer_context;
+    lexer_context := list('type, id, get(id, 'lex_code)) . lexer_context;
     put(id, 'lex_code, gethash(prec . dirn, infix_lookup));
     return id
   end;
@@ -512,43 +577,37 @@ symbolic procedure endcontext();
 %
 << terpri(); prettyprint grammar; nil >>;
 
+<< princ ":infix7 "; print plist '!:infix7;
+   princ "= "; print plist '!=;
+   princ "* "; print plist '!*;
+   princ "- "; print plist '!-;
+   nil >>;
 pp := lalr_create_parser(prec, grammar)$
+<< princ ":infix7 "; print plist '!:infix7;
+   princ "= "; print plist '!=;
+   princ "* "; print plist '!*;
+   princ "- "; print plist '!-;
+   nil >>;
 
-lexer_style!* := lexer_style_sml;
+lexer_style!* := lexer_style_sml + 0x40; % Support #if and #eval too!
 
-%tr yylex, lex_basic_token, lex_token, readch, yypeek, yyreadch;
-%on tracelex;
+tr yylex, lex_basic_token;
 
-% This example is to test or illustrate support for SML comments.
-<< lex_init(); yyparse pp >>;
-(111 (* comment *)+(* comment (* nest *) demo *) 222);
+% If parsing the SML code fails I will just exit from Reduce. Otherwise
+% it is likely that I will be faced with a mess of further silly messages
+% as Reduce tries to make sense if SML input itself.
+% I think I may need an option within lalr for parsing from a file, such
+% that errors merely close that file - ie so that parsed and regular Reduce
+% stuff are kept more separate.
 
-
-
-;;
+on tracelex, parser_errors_fatal;
 
 begin
-   scalar r, savefile;
    lex_init();
-   while (r := yyparse pp) neq 'eof do <<
-     if eqcar(r, 'use) then begin
-       scalar ff, a;
-       ff := cadr r;
-       a := open(ff, 'input);
-       if null a then error(1, list("Unable to open file", ff));
-       savefile := rds a;
-     end
-     else if lex_char = !$eof!$ then <<
-       printc "End of file detected";
-       rds savefile;
-       lex_char := !$eol!$ >>
-     else <<
-       terpri();
-       printc "@@@@@@@@@@@@@@@@@@";
-       princ "LISP: "; prettyprint r;
-       printc "##################";
-       terpri() >> >>
+   yyparse pp
 end;
+
+use "Library_Reduce.sml";
 
 fun fact n =
   if n = 1 then 1
@@ -632,6 +691,8 @@ use "test.sml";
 eof
 
 ;
+
+if getd 'enable!-errorset then enable!-errorset(0,3);
 
 end;
 
