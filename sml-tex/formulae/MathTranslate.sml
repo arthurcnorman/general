@@ -1,3 +1,31 @@
+signature MATH_TRANSLATE  =
+sig
+  val cleanBox: BasicTypes.style -> bool -> MathTypes.mlist -> BoxTypes.box
+  val doAccent: BasicTypes.style -> bool -> BasicTypes.family -> 
+                BasicTypes.charCode -> MathTypes.mlist -> BoxTypes.box
+  val doGenFraction: BasicTypes.style -> bool -> MathTypes.genfraction -> 
+                     BoxTypes.box
+  val doLeftRight: BasicTypes.style -> bool -> BasicTypes.delim ->
+                   MathTypes.mlist -> BasicTypes.delim -> BoxTypes.box
+  val doNucleus: BasicTypes.style -> bool -> bool -> MathTypes.mlist ->
+                 BoxTypes.node * BasicTypes.dist * bool
+  val doGenScripts: BasicTypes.style -> bool -> bool -> bool ->
+                    MathTypes.script -> BoxTypes.hlist
+  val doBigOp: BasicTypes.style -> bool -> MathTypes.limits -> 
+               MathTypes.script -> BoxTypes.hlist
+  val doPlainScripts: BasicTypes.style -> bool -> MathTypes.script -> 
+                      BoxTypes.hlist
+  val doAccentScripts: BasicTypes.style -> bool -> MathTypes.noad -> 
+                       MathTypes.mlist -> MathTypes.mlist option -> 
+                       MathTypes.mlist option -> BoxTypes.hlist
+  val NoadToHList: BasicTypes.style -> bool -> MathTypes.noad -> BoxTypes.hlist
+  val MListToIList: BasicTypes.style -> bool -> MathTypes.mlist -> 
+                    IListTypes.ilist
+  val MListToHList: BasicTypes.style -> bool -> bool -> MathTypes.mlist ->
+                    BoxTypes.hlist
+end  (* signature MATH_TRANSLATE *)
+(*----------*)
+
 structure MathTranslate: MATH_TRANSLATE  =
 struct
   open BasicTypes;  open BoxTypes;  open MathTypes;  open IListTypes
