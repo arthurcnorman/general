@@ -25,7 +25,7 @@
 % * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND *
 % * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR  *
 % * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF     *
-% * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE * POSSIBILITY OF SUCH *
+% * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH   *
 % * DAMAGE.                                                                *
 % **************************************************************************
 
@@ -46,16 +46,10 @@
 on echo;
 lisp;
 load_package lalr;
+on comp;
 
 % When running using CSL arrange that errorset can never hide backtraces.
 if getd 'enable!-errorset then enable!-errorset(3,3);
-
-%@@ % Some symbols must be recognized by SML as names of types... Note that
-%@@ % the lexer will classify any name starting with a quote mark as stanidng
-%@@ % for a type.
-%@@ [I now believe that this will not be the case...]
-%@@ for each x in '(unit bool int real char string list option) do
-%@@   put(x, 'lex_is_typename, t);
 
 prec := '(
   !:left  !:op
@@ -121,42 +115,35 @@ symbolic procedure process u;
     scalar v;
     terpri();
     princ "Input: ";
-    prettyprint u;
+    if u = !$eof!$ then printc "<EndOfFile>" else prettyprint u;
     if u = !$eof!$ then <<
+printf("lex_char = %p, lex_peek_char = %p, next_input = %p%n",
+ lex_char, lex_peek_char, next_input);
       if null filestack then error(1, "Unexpected end of file");
       close rds car filestack;
       printc "End of file - returning to previous file";
       filestack := cdr filestack;
-      lex_char := !$eol!$;
+% Almost unrteasonably I MUST sort of fake in a semicolon where I
+% switch files...
+      lex_char := '!;;
       lex_peek_char := nil >>
     else if eqcar(u, 'use) then <<
       u := cadr u;
       v := open(u, 'input);
       if null v then error(1, list("file", u, "could not be opened"));
       princ "+++ Reading from file "; print u;
+      which_line := 1;
+      if_depth := 0;
+      for i := 0:63 do putv(last64, i, nil);
+      last64p := 0;
+      lex_char := '!;;
+      lex_peek_char := nil;
       filestack := rds v . filestack >>
   end;
 
 
 % The grammar used here is derived from one found at
 %    https://www.mpi-sws.org/~rossberg/sml.html
-% A naive transliteration from there yields a grammar that has a huge
-% number of ambiguities/conflicts. For instance an expression like
-%        a b : 'c
-% could potentially be treated either as (a (b : 'c) or ((a b) : 'c).
-% Some of the issue can be sorted out by precedence rules, but to end up
-% with as clear-cut behaviour as I can I am expanding the grammar rules
-% somewhat. A perhaps nastier case is
-%   fun f x : a b = ...
-% where consider
-%   fun f1 x : (int list) = ...
-%   fun f2 (x : int) y    = ...
-% which are two interpretations you could imagine if the symbol b was
-% the name of a (parameterised) type. ML wishes to insist that "a b" be
-% type and so if the second interpretation is required then the parentheses
-% are needed. But a simple way of writhing the grammar here fails to
-% capture that and declares ambiguity.
-
 
 % I am re-working the original grammar that I had here using information
 % fron "The Definition of Standard ML (Revised)", 1997. At least that will
@@ -195,7 +182,7 @@ grammar := '(
 
  (id     ((!:symbol)))
 
- (var    ((!:typename)))
+ (tyvar  ((!:typename)))
 
  (lab    ((id))
          ((!:number)))
@@ -211,34 +198,6 @@ grammar := '(
  (seqtail
          ((exp ")") nil)
          ((exp ";" seqtail) (cons !$1 !$3)))
-
-% Here I can have
-%     x : 'a something
-%     x : int * something
-% and if the name something is the name of a type it is liable to form
-% part of the type, while if it is not then it will be a name of a variable.
-% This is an ambiguity that I believe has to be resolved by considering that
-% status of the name. Consider cases
-%      datatype 'a tree = ...
-%      x : int tree;   (* case 1 *)
-%      val x = 3;
-%      val y = 8;
-%      x : int * y;    (* case 2 *)
-% so I do not believe that any decision that allows both "exp ::= id" and
-% "typ ::= id" can be unambiguous. Oh dear. So to cope with this I have to
-% allow the lexer to separate names that are names of types from names
-% that are not.
-%
-% Another general source of pain. Some productions here end in exp.
-% That leads to ambiguity as between for instance
-%        while E do E      E
-% and    while E do      E E
-% where I have used spacing above to suggest the grouping. I want the
-% second to apply, ie as if it has been while E do (E E). To achieve
-% that I will have one rule for all the cases of E that end with another
-% E.
-%
-%
 
  (atexp  ((con))
          (((opt "op") id) !$2)
@@ -373,32 +332,31 @@ grammar := '(
          ((id "as" pat "," patrow))
          ((id ":" typ "as" pat "," patrow)))
 
- (typ    ((var))
-         ((typ var))
-         (("(" typ "," ttail ")" id))
-         (("(" typ ")"))
+ (tyseq  (())
+         ((typ))
+         (("(" (listplus "," typ) ")")))
+
+ (typ    ((tyvar))
+         (("{" typrow "}"))
+         ((tyseq id))
+         ((typ "*" (listplus "*" typ)))
          ((typ "->" typ))
-         ((typ starstuff))
-         (("{" typrow "}")))
+         (("(" typ ")"))
+         )
 
- (ttail  ((typ))
-         ((typ "," ttail)))
+ (labtyp ((lab ":" typ)))
 
- (starstuff (("*" typ))
-            (("*" typ starstuff)))
+ (typrow (((listplus "." labtyp))))
 
- (typrow ((lab ":" typ))
-         ((lab ":" typ "," typrow)))
+ (tyvarseq (())
+         ((tyvar))
+         (("(" tyvar tyvarseqtail ")")))
 
- (varcomma (())
-         ((var))
-         (("(" var varcommatail ")")))
+ (tyvarseqtail (("," tyvar))
+         (("," tyvar tyvarseqtail)))
 
- (varcommatail (("," var))
-         (("," var varcommatail)))
-
- (dec    (("val" varcomma valbind))
-         (("fun" varcomma funbind))
+ (dec    (("val" tyvarseq valbind))
+         (("fun" tyvarseq funbind))
          (("type" typbind))
          (("datatype" datbind))
          (("datatype" datbind "withtype" typbind))
@@ -430,41 +388,41 @@ grammar := '(
 % the initial "-" will also be given its own lexer code... so I need to
 % list initial substrings of any multi-character dipthong here.
 %
- (opname  ((id) (princ "opname: ") (print yylval))
-          (("*") (princ "opname: ") (print yylval))
-          (("/") (princ "opname: ") (print yylval))
-          (("%") (princ "opname: ") (print yylval))
-          (("+") (princ "opname: ") (print yylval))
-          (("-") (princ "opname: ") (print yylval))
-          (("::") (princ "opname: ") (print yylval))
-          ((":") (princ "opname: ") (print yylval))
-          (("=") (princ "opname: ") (print yylval))
-          (("<") (princ "opname: ") (print yylval))
-          (("<=") (princ "opname: ") (print yylval))
-          ((">") (princ "opname: ") (print yylval))
-          ((">=") (princ "opname: ") (print yylval))
-          (("<>") (princ "opname: ") (print yylval))
-          ((":=") (princ "opname: ") (print yylval))
-          ((!:infix0) (princ "opname: ") (print yylval))
-          ((!:infix1) (princ "opname: ") (print yylval))
-          ((!:infix2) (princ "opname: ") (print yylval))
-          ((!:infix3) (princ "opname: ") (print yylval))
-          ((!:infix4) (princ "opname: ") (print yylval))
-          ((!:infix5) (princ "opname: ") (print yylval))
-          ((!:infix6) (princ "opname: ") (print yylval))
-          ((!:infix7) (princ "opname: ") (print yylval))
-          ((!:infix8) (princ "opname: ") (print yylval))
-          ((!:infix9) (princ "opname: ") (print yylval))
-          ((!:infixr0) (princ "opname: ") (print yylval))
-          ((!:infixr1) (princ "opname: ") (print yylval))
-          ((!:infixr2) (princ "opname: ") (print yylval))
-          ((!:infixr3) (princ "opname: ") (print yylval))
-          ((!:infixr4) (princ "opname: ") (print yylval))
-          ((!:infixr5) (princ "opname: ") (print yylval))
-          ((!:infixr6) (princ "opname: ") (print yylval))
-          ((!:infixr7) (princ "opname: ") (print yylval))
-          ((!:infixr8) (princ "opname: ") (print yylval))
-          ((!:infixr9) (princ "opname: ") (print yylval)))
+ (opname  ((id))
+          (("*"))
+          (("/"))
+          (("%"))
+          (("+"))
+          (("-"))
+          (("::"))
+          ((":"))
+          (("="))
+          (("<"))
+          (("<="))
+          ((">"))
+          ((">="))
+          (("<>"))
+          ((":="))
+          ((!:infix0))
+          ((!:infix1))
+          ((!:infix2))
+          ((!:infix3))
+          ((!:infix4))
+          ((!:infix5))
+          ((!:infix6))
+          ((!:infix7))
+          ((!:infix8))
+          ((!:infix9))
+          ((!:infixr0))
+          ((!:infixr1))
+          ((!:infixr2))
+          ((!:infixr3))
+          ((!:infixr4))
+          ((!:infixr5))
+          ((!:infixr6))
+          ((!:infixr7))
+          ((!:infixr8))
+          ((!:infixr9)))
 
  (valbind ((pat "=" exp))
           ((pat "=" exp "and" valbind))
@@ -489,26 +447,18 @@ grammar := '(
  (patterns ((pat1) (list !$1))
            ((patterns pat1) (append !$1 (list !$2))))
 
- (maketyname
-           ((id) (maketyname !$1) !$1))
+% (maketyname
+%           ((id) (maketyname !$1) !$1))
 
- (typbind  ((varcomma maketyname "=" typ))
-           ((varcomma maketyname "=" typ "and" typbind)))
+ (typbind  ((tyvarseq id "=" typ))
+           ((tyvarseq id "=" typ "and" typbind)))
 
- (datbind  ((varcomma id "=" conbind))
-           ((varcomma id "=" conbind "and" datbind)))
+ (datbind  ((tyvarseq id "=" conbind (opt "and" datbind))))
 
- (conbind  ((id))
-           ((id "of" typ))
-           ((id "|" conbind))
-           ((id "of" typ "|" conbind)))
+ (conbind  (((opt "op") id (opt "of" typ) (opt "|" conbind))))
 
- (exnbind  ((id))
-           ((id "of" typ))
-           ((id "|" exnbind))
-           ((id "of" typ "|" exnbind))
-           ((id "=" id))
-           ((id "=" id "|" exnbind)))
+ (exnbind  (((opt "op") id (opt "of" typ) (opt "and" exnbind)))
+           (((opt "op") id "=" id (opt "and" exnbind))))
 
 % (str)
 % (strbind)
@@ -553,11 +503,13 @@ grammar := '(
 
 fluid '(lexer_context context_stack);
 
+% I believe that this is not in fact needed any more...
 symbolic procedure maketyname id;
   begin
     if not zerop posn() then terpri();
     princ "@@@ Identifier "; princ id; printc " is now a type name";
-    lexer_context := ('type, id, get(id, 'lex_is_typename)) . lexer_context;
+    lexer_context :=
+      list('type, id, get(id, 'lex_is_typename)) . lexer_context;
     put(id, 'smltypename, t);
     return id
   end;
@@ -652,7 +604,7 @@ begin
    yyparse pp
 end;
 
-1;
+datatype demo = red | blue | green of int * int;
 
 use "Library_Reduce.sml";
 
@@ -743,4 +695,3 @@ if getd 'enable!-errorset then enable!-errorset(0,3);
 
 end;
 
- 
