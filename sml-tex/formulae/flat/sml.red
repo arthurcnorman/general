@@ -44,34 +44,34 @@
 
 
 on echo;
+lisp;
 load_package lalr;
 
-
-lisp;
-
+% When running using CSL arrange that errorset can never hide backtraces.
 if getd 'enable!-errorset then enable!-errorset(3,3);
 
-% Some symbols must be recognized by SML as names of types... Note that
-% the lexer will classify any name starting with a quote mark as stanidng
-% for a type.
-
-for each x in '(unit bool int real char string list option) do
-  put(x, 'lex_is_typename, t);
+%@@ % Some symbols must be recognized by SML as names of types... Note that
+%@@ % the lexer will classify any name starting with a quote mark as stanidng
+%@@ % for a type.
+%@@ [I now believe that this will not be the case...]
+%@@ for each x in '(unit bool int real char string list option) do
+%@@   put(x, 'lex_is_typename, t);
 
 prec := '(
+  !:left  !:op
   !:left  (!:infix9)
   !:right (!:infixr9)
   !:left  (!:infix8)
   !:right (!:infixr8)
   !:left  (!:infix7)
-  !:left  ("*")
+  !:left  ("*")       % because * is used in types too
   !:right (!:infixr7)
   !:left  (!:infix6)
   !:right (!:infixr6)
   !:left  (!:infix5)
   !:right (!:infixr5)
   !:right ("::")
-  !:left  ("=")
+  !:left  ("=")       % because = used in many places as well as infix
   !:left  (!:infix4)
   !:right (!:infixr4)
   !:left  (!:infix3)
@@ -82,6 +82,16 @@ prec := '(
   !:right (!:infixr1)
   !:left  (!:infix0)
   !:right (!:infixr0)
+  !:left  ":"
+          "->"
+          "andalso"
+          "orelse"
+          "handle"
+          "raise"
+          "else"
+          "do"
+          "of"
+          "fn"
   )$
 
 put('!*,   'lisp_name, 'times);
@@ -118,7 +128,7 @@ symbolic procedure process u;
       printc "End of file - returning to previous file";
       filestack := cdr filestack;
       lex_char := !$eol!$;
-      yypeek_char := nil >>
+      lex_peek_char := nil >>
     else if eqcar(u, 'use) then <<
       u := cadr u;
       v := open(u, 'input);
@@ -136,13 +146,28 @@ symbolic procedure process u;
 % could potentially be treated either as (a (b : 'c) or ((a b) : 'c).
 % Some of the issue can be sorted out by precedence rules, but to end up
 % with as clear-cut behaviour as I can I am expanding the grammar rules
-% somewhat.
+% somewhat. A perhaps nastier case is
+%   fun f x : a b = ...
+% where consider
+%   fun f1 x : (int list) = ...
+%   fun f2 (x : int) y    = ...
+% which are two interpretations you could imagine if the symbol b was
+% the name of a (parameterised) type. ML wishes to insist that "a b" be
+% type and so if the second interpretation is required then the parentheses
+% are needed. But a simple way of writhing the grammar here fails to
+% capture that and declares ambiguity.
+
+
+% I am re-working the original grammar that I had here using information
+% fron "The Definition of Standard ML (Revised)", 1997. At least that will
+% be definitive! I hope it will let me get rid of syntactic ambiguity.
 
 grammar := '(
 
  (toplevel ((progs "eof")))
 
  (progs    ((prog) (process !$1))
+           ((exp) (process !$1))
            ((progs prog) (process !$2))
            ((progs !:eof) (process !$eof!$)))
 
@@ -162,16 +187,15 @@ grammar := '(
 
  (digit  ((!:number)))
 
+% I have changed the lexer so that aaa.bbb.ccc lexes as a single symbol.
+% that means that I do not have any concept of "long id" here. That
+% may simplify some matters, but if I implemented a full module system I
+% would then need to dive inside ids that happened to be long to extract
+% information about them.
+
  (id     ((!:symbol)))
 
- (var    ((!:typename))
-         ((!:typename)))
-
- (longid ((id) !$1)
-         ((longid "." id)))
-
- (longvar((var) !$1)
-         ((longid "." var)))
+ (var    ((!:typename)))
 
  (lab    ((id))
          ((!:number)))
@@ -201,47 +225,86 @@ grammar := '(
 %      val y = 8;
 %      x : int * y;    (* case 2 *)
 % so I do not believe that any decision that allows both "exp ::= id" and
-% "typ ::= id" can be unambiguous. Oh dear.
- (exp    ((basicexp))
-         ((basicexp ":" typ))
-         ((exp basicexp))
-% The following rule should only apply if "id" has infix status...
-%        ((exp id exp) (list !$2 !$1 !$3))
-% I will rely on precedence to sort out the mess of grouping within
-% infix expressions. Note that I have to treat both "=" and "*" specially
-% here because they occur in other syntactic contexts, such as
-%     val name = value;
-%     fun fname args = body;
-%     (expression : type1 * type2)
-% Also "::" can occur in a pattern, and that gives trouble to me.
-         ((exp infix0 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix1 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix2 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix3 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix4 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp "=" exp) (list 'equal !$1 !$3))
-         ((exp infix5 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix6 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix7 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp "*" exp) (list 'equal !$1 !$3))
-         ((exp infix8 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infix9 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr0 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr1 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr2 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr3 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr4 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr5 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp "::" exp) (list 'cons !$1 !$3))
-         ((exp infixr6 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr7 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr8 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp infixr9 exp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((exp "handle" match))
+% "typ ::= id" can be unambiguous. Oh dear. So to cope with this I have to
+% allow the lexer to separate names that are names of types from names
+% that are not.
+%
+% Another general source of pain. Some productions here end in exp.
+% That leads to ambiguity as between for instance
+%        while E do E      E
+% and    while E do      E E
+% where I have used spacing above to suggest the grouping. I want the
+% second to apply, ie as if it has been while E do (E E). To achieve
+% that I will have one rule for all the cases of E that end with another
+% E.
+%
+%
+
+ (atexp  ((con))
+         (((opt "op") id) !$2)
+% I have to do special things to cope with infix operators - and they of
+% course are exactly the items most liable to be seen after the word "op".
+         (("op" (or !:infix0 !:infix1 !:infix2 !:infix3 !:infix4
+                    !:infix5 !:infix6 !:infix7 !:infix8 !:infix9)) !$2)
+         (("op" (or !:infixr0 !:infixr1 !:infixr2 !:infixr3 !:infixr4
+                    !:infixr5 !:infixr6 !:infixr7 !:infixr8 !:infixr9)) !$2)
+% A very few symbols are even more special as infix operators.
+         (("op" (or "*" "=" "::")) !$2)
+         (("{" exprow "}"))
+         (("#" lab))
+         (("(" ")"))                         % Unit
+         (("(" exp "," tupletail))           % A tuple
+         (("[" "]") 'empty_list)             % Empty list
+         (("[" exp "]") (list 'list !$2))    % List of length 1
+         (("[" exp "," listtail))            % Longer list
+         (("(" exp ";" seqtail))             % Sequence
+         ((letid dec "in" seqexps))
+         (("(" exp ")") !$2))                % Mere parentheses
+
+(appexp  ((atexp))
+         ((appexp atexp)))
+
+ (infexp ((appexp))
+         ((infexp !:infix0 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix1 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix2 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix3 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix4 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp "=" infexp) (list 'equal !$1 !$3))
+         ((infexp !:infix5 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix6 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix7 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp "*" infexp) (list 'equal !$1 !$3))
+         ((infexp !:infix8 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix9 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr0 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr1 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr2 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr3 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr4 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr5 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp "::" infexp) (list 'cons !$1 !$3))
+         ((infexp !:infixr6 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr7 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr8 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr9 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         )
+
+
+% I first look at the grammar as given in the specification, and note
+% two particular messy cases which have to be reolved by a from of
+% precedence.
+%     if A then B else C handle ...
+% must lead to a shift rather than a reduce. This case can be covered to
+% giving HANDLE and ELSE precedence settings. Indeed I hope that by
+% giving most of the keywords used here precedence values the apparent
+% ambiguities can all be resolved.
+
+ (exp    ((infexp))
+         ((exp ":" typ))
          ((exp "andalso" exp) (list 'and !$1 !$3))
          ((exp "orelse" exp) (list 'or !$1 !$3))
-         (("!" exp) (list 'pling !$2))
-         (("~" exp) (list 'minus !$2))
+         ((exp "handle" match))
          (("raise" exp))
          (("if" exp "then" exp "else" exp)
              (list 'cond
@@ -251,94 +314,44 @@ grammar := '(
          (("case" exp "of" match))
          (("fn" match)))
 
-% These silly looking rules are to do with the "trick" that allows one to
-% declare infix operators on the fly. If (say) "+" has been made an infix
-% operator with precedence 4 it parses as a token of type !:infix4. But the
-% value of yylval will still be the plus sign. These rules exist to transfer
-% that value into the semantic action so that it is what drives the resr if
-% the parser, rather than having the less useful token !:infix4.
-
- (infix0 ((!:infix0) yylval))
- (infix1 ((!:infix1) yylval))
- (infix2 ((!:infix2) yylval))
- (infix3 ((!:infix3) yylval))
- (infix4 ((!:infix4) yylval))
- (infix5 ((!:infix5) yylval))
- (infix6 ((!:infix6) yylval))
- (infix7 ((!:infix7) yylval))
- (infix8 ((!:infix8) yylval))
- (infix9 ((!:infix9) yylval))
- (infixr0 ((!:infixr0) yylval))
- (infixr1 ((!:infixr1) yylval))
- (infixr2 ((!:infixr2) yylval))
- (infixr3 ((!:infixr3) yylval))
- (infixr4 ((!:infixr4) yylval))
- (infixr5 ((!:infixr5) yylval))
- (infixr6 ((!:infixr6) yylval))
- (infixr7 ((!:infixr7) yylval))
- (infixr8 ((!:infixr8) yylval))
- (infixr9 ((!:infixr9) yylval))
-
-% A basicexp will be an expression that self-terminates
-
- (basicexp ((con))
-         ((longid))
-         (("op" longid))
-%        ((exp ":" typ))
-         (("(" exp ")") !$2)
-         (("(" exp "," tupletail))
-         (("{" "}"))
-         (("{" exprow "}"))
-         (("#" lab))
-         (("[" "]") 'empty_list)
-         (("[" exp "]") (list 'list !$2))
-         (("[" exp "," listtail))
-         (("(" exp ";" seqtail))
-         ((letid dec "in" exp endid))
-         ((letid dec "in" exp seqexps)))
-
  (localid
          (("local") (startcontext)))
  (letid  (("let") (startcontext)))
  (endid  (("end") (endcontext)))
 
  (seqexps
-         ((endid) nil)
-         ((";" exp seqexps) (cons !$2 !$3)))
+         ((exp endid) nil)
+         ((exp ";" seqexps) (cons !$2 !$3)))
 
  (exprow ((lab "=" exp))
          ((lab "=" exp "," exprow)))
 
+% exp ::= "fn" match
+% so what about
+%      fn a => fn b => c    E
+
  (match  ((pat "=>" exp))
          ((pat "=>" exp "|" match)))
 
- (pat    ((pat1))
-         ((pat1 ":" typ))
-         ((!:symbol "as" pat1 ":" typ))
-         (("op" !:symbol "as" pat1 ":" typ))
-         ((!:symbol ":" typ "as" pat1 ":" typ))
-         (("op" !:symbol ":" typ "as" pat1 ":" typ)))
+ (pat    ((pat0))
+         ((pat0 ":" typ))
+         ((!:symbol "as" pat0 ":" typ))
+         (("op" !:symbol "as" pat0 ":" typ))
+         ((!:symbol ":" typ "as" pat0 ":" typ))
+         (("op" !:symbol ":" typ "as" pat0 ":" typ)))
  
+ (pat0   ((pat1))
+% For now I will only use :: as an infix constructor in patterns.
+% in principle any infix item might be used as a contructor and so could
+% arise here, with all the joys of precedence to make life fun.
+         ((pat1 "::" pat0)))
+
  (pat1   ((con))
          (("_"))
          ((id))
          (("op" id))
-         ((longid))
-         (("op" longid))
-         ((longid pat1))
-         (("op" longid pat1))
-%        ((pat id pat))
-% The above line supports patterns that involve an arbitrary infix
-% operator. I will only allow known ones. Well right now the only infix
-% constructor I can think of is "::". I believe that to make this work
-% fully I would want to let the lexer offer a different token class for
-% infix operators. I also refuse to support type qualifiers without
-% parens here, so if you want to specify types explicitly you must
-% parenthesis as in
-%                      (a : 'a) :: (b : 'a list)
-% rather than just      a : a' :: b : 'a list
-%
-         ((pat1 "::" pat1))
+         ((id pat1))
+         (("op" id pat1))
          (("(" patseq ")"))
          (("(" ")") nil)
          (("{" patrow "}"))
@@ -361,9 +374,8 @@ grammar := '(
          ((id ":" typ "as" pat "," patrow)))
 
  (typ    ((var))
-         ((longvar))
-         ((typ longvar))
-         (("(" typ "," ttail ")" longid))
+         ((typ var))
+         (("(" typ "," ttail ")" id))
          (("(" typ ")"))
          ((typ "->" typ))
          ((typ starstuff))
@@ -390,14 +402,14 @@ grammar := '(
          (("type" typbind))
          (("datatype" datbind))
          (("datatype" datbind "withtype" typbind))
-         (("datatype" id "=" "datatype" longid))
+         (("datatype" id "=" "datatype" id))
          (("abstype" datbind "with" dec "end"))
          (("abstype" datbind "withtype" typbind "with" dec "end"))
          (("exception" exnbind))
 %        (("structure" strbind))
 %@@      ((dec ";" dec))
          ((localid dec "in" dec endid))
-%        (("open" longid))   % Could have multiple longids here
+%        (("open" id))   % Could have multiple ids here
 % The full syntax here would allow a sequence of opnames here. Just for now
 % I will be lazy and only support one.
          (("nonfix" opname) (makeinfix !$2 0 'none))
@@ -495,8 +507,8 @@ grammar := '(
            ((id "of" typ))
            ((id "|" exnbind))
            ((id "of" typ "|" exnbind))
-           ((id "=" longid))
-           ((id "=" longid "|" exnbind)))
+           ((id "=" id))
+           ((id "=" id "|" exnbind)))
 
 % (str)
 % (strbind)
@@ -510,12 +522,28 @@ grammar := '(
 % (exndesc)
 % (strdesc)
 
+% The syntax that I started from did not include the possibility of an
+% expression here. That sort of makes sense because consider
+%   fun foo f = f
+%   22;
+% which could (potentially) either parse as a function definition followed
+% by an expression or as a function definition with RHS "f 22". To try to
+% avoid this ambiguity I am going to insist that there be (at least one)
+% semicolon ahead of any expression to separate it from the previous
+% input.
+% This is much like the need for a semicolon if one wrote
+%   1+2
+%   3+4;
+% to avoid that being parse as something that wanted to use 2 as a function
+% applied to the argument 3. I rather hope that all declarations start with
+% keywords and so the issue of where one endsd and the next starts will
+% not be a severe problem.
+
 (prog     ((dec))
-          ((exp))
-          ((";"))
+          ((";" exp) !$2)
+          ((";") nil)
 %         (("functor" fctbind))
 %         (("signature" sigbind))
-%         ((prog ";" prog))       % For now I will only allow one clause
           )
 
 % (fctbind)
@@ -602,19 +630,9 @@ symbolic procedure endcontext();
 % While debugging it may be helpful to see the grammar diplayed with
 % indentation normalised...
 %
-<< terpri(); prettyprint grammar; nil >>;
+% << terpri(); prettyprint grammar; nil >>;
 
-<< princ ":infix7 "; print plist '!:infix7;
-   princ "= "; print plist '!=;
-   princ "* "; print plist '!*;
-   princ "- "; print plist '!-;
-   nil >>;
 pp := lalr_create_parser(prec, grammar)$
-<< princ ":infix7 "; print plist '!:infix7;
-   princ "= "; print plist '!=;
-   princ "* "; print plist '!*;
-   princ "- "; print plist '!-;
-   nil >>;
 
 lexer_style!* := lexer_style_sml + 0x40; % Support #if and #eval too!
 
@@ -629,9 +647,12 @@ lexer_style!* := lexer_style_sml + 0x40; % Support #if and #eval too!
 on parse_errors_fatal;
 
 begin
+   scalar !*raise, !*lower;
    lex_init();
    yyparse pp
 end;
+
+1;
 
 use "Library_Reduce.sml";
 
