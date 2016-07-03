@@ -143,11 +143,6 @@ printf("lex_char = %p, lex_peek_char = %p, next_input = %p%n",
       filestack := rds v . filestack >>
   end;
 
-symbolic procedure trace_parsing();
-  begin
-    printf "Trace from parser%n"
-  end;
-
 % The grammar used here is derived from one found at
 %    https://www.mpi-sws.org/~rossberg/sml.html
 
@@ -159,11 +154,9 @@ grammar := '(
 
  (toplevel ((progs "eof")))
 
- (trace    (() (trace_parsing)))
-
- (progs    ((prog trace) (process !$1))
-           ((exp trace) (process !$1))
-           ((progs prog trace) (process !$2))
+ (progs    ((prog) (process !$1))
+           ((exp) (process !$1))
+           ((progs prog) (process !$2))
            ((progs !:eof) (process !$eof!$)))
 
 % Constants for SML should be
@@ -286,7 +279,7 @@ grammar := '(
          ((infexp !:infix5 infexp) (list (get !$2 'lisp_name) !$1 !$3))
          ((infexp !:infix6 infexp) (list (get !$2 'lisp_name) !$1 !$3))
          ((infexp !:infix7 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp "*" infexp) (list 'equal !$1 !$3))
+         ((infexp "*" infexp) (list 'times !$1 !$3))
          ((infexp !:infix8 infexp) (list (get !$2 'lisp_name) !$1 !$3))
          ((infexp !:infix9 infexp) (list (get !$2 'lisp_name) !$1 !$3))
          ((infexp !:infixr0 infexp) (list (get !$2 'lisp_name) !$1 !$3))
@@ -315,15 +308,18 @@ grammar := '(
          ((exp ":" typ))
          ((exp "andalso" exp) (list 'and !$1 !$3))
          ((exp "orelse" exp) (list 'or !$1 !$3))
-%@@@         ((exp "handle" match))
+%@@@
+         ((exp "handle" match))
          (("raise" exp))
          (("if" exp "then" exp "else" exp)
              (list 'cond
                 (list !$2 !$4)
                 (list t !$6)))
          (("while" exp "do" exp)) 
-%@@@         (("case" exp "of" match))
-%@@@         (("fn" match))
+%@@@
+         (("case" exp "of" match))
+%@@@
+         (("fn" match))
          )
 
  (localid
@@ -345,34 +341,50 @@ grammar := '(
 
  (pat1   ((atpat))
          ((id_with_op atpat))
-%@@@         ((pat1 !:infix0 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infix1 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infix2 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infix3 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infix4 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 "=" pat1) (list 'equal !$1 !$3))
-%@@@         ((pat1 !:infix5 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infix6 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infix7 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 "*" pat1) (list 'equal !$1 !$3))
-%@@@         ((pat1 !:infix8 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infix9 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infixr0 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infixr1 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infixr2 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infixr3 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infixr4 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infixr5 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infixr6 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infixr7 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infixr8 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-%@@@         ((pat1 !:infixr9 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infix0 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infix1 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infix2 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infix3 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infix4 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+% I do not thing that "=" can be used as a constructor, and so
+% having code such as in for instance
+%    datatype X = (op =) of Y*Z
+%    val (a = b) = ...
+% would be asking for trouble. Especially without the parentheses in the
+% "val" declaration. I will leave the syntax rule in here but commented
+% out mostly so that divergence between the rules here for patterns and
+% the mostly matching ones for expressions can be compared.
+%        ((pat1 "=" pat1) (list 'equal !$1 !$3))
+         ((pat1 !:infix5 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infix6 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infix7 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 "*" pat1) (list 'times !$1 !$3))
+         ((pat1 !:infix8 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infix9 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infixr0 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infixr1 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infixr2 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infixr3 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infixr4 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infixr5 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infixr6 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infixr7 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infixr8 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((pat1 !:infixr9 pat1) (list (get !$2 'lisp_name) !$1 !$3))
          ((id_with_op "as" pat1))
-%@@@         ((id_with_op ":" typ "as" pat1))
          )
 
-(pat     ((pat1))
-         ((pat ":" typ)))
+ (pat    ((pat1))
+         ((pat ":" typ))
+% This rule is over-generous, in that the only case actually allowed
+% is '["op"] id ":" typ "as" pat1' but then if you see an identifier x
+% followed by a colon you know you next have to read a type, but until
+% you have looked way forward to see if the word "as" is coming you can not
+% be certain if the identifier should be reduced all the way to pat before
+% having the type attached.
+
+         ((pat ":" typ "as" pat1))
+         )
 
  (opttyp (())
          ((":" typ)))
@@ -401,19 +413,22 @@ grammar := '(
 
  (attyp  ((!:typename))
          (("{" typrow "}"))
+         (("(" typ ")"))
          ((!:symbol)))
 
  (typ1   ((attyp))
          ((typ1 !:symbol))
          (("(" typ "," tyseq ")" !:symbol))
-%@@@         ((typ1 "*" (listplus "*" typ1)))
          )
 
  (typ2   ((typ1))
-         ((typ1 "->" typ2)))
+         ((typ2 "*" typ1))
+         )
 
- (typ    ((typ2))
-         (("(" typ ")"))
+ (typ3   ((typ2))
+         ((typ2 "->" typ3)))
+
+ (typ    ((typ3))
          )
 
  (labtyp ((lab ":" typ)))
@@ -603,7 +618,7 @@ symbolic procedure endcontext();
 
 % This will tend to lead to a LOT of output - much of which will be hard to
 % decode. But while debugging the grannar it may be necessary.
-on lalr_verbose;
+% on lalr_verbose;
 
 pp := lalr_create_parser(prec, grammar)$
 
