@@ -52,7 +52,7 @@ on comp;
 if getd 'enable!-errorset then enable!-errorset(3,3);
 
 prec := '(
-  !:left  !:op
+  !:left  "op"
   !:left  (!:infix9)
   !:right (!:infixr9)
   !:left  (!:infix8)
@@ -64,7 +64,6 @@ prec := '(
   !:right (!:infixr6)
   !:left  (!:infix5)
   !:right (!:infixr5)
-  !:right ("::")
   !:left  ("=")       % because = used in many places as well as infix
   !:left  (!:infix4)
   !:right (!:infixr4)
@@ -76,16 +75,19 @@ prec := '(
   !:right (!:infixr1)
   !:left  (!:infix0)
   !:right (!:infixr0)
-  !:left  ":"
-          "->"
-          "andalso"
-          "orelse"
-          "handle"
-          "raise"
-          "else"
-          "do"
-          "of"
-          "fn"
+  !:left  (":")
+          ("->")
+          ("andalso")
+          ("orelse")
+          ("handle")
+          ("raise")
+          ("else")
+          ("do")
+          ("of")
+          ("fn")
+          ("|")
+          ("=>")
+          ("as")
   )$
 
 put('!*,   'lisp_name, 'times);
@@ -141,6 +143,10 @@ printf("lex_char = %p, lex_peek_char = %p, next_input = %p%n",
       filestack := rds v . filestack >>
   end;
 
+symbolic procedure trace_parsing();
+  begin
+    printf "Trace from parser%n"
+  end;
 
 % The grammar used here is derived from one found at
 %    https://www.mpi-sws.org/~rossberg/sml.html
@@ -153,9 +159,11 @@ grammar := '(
 
  (toplevel ((progs "eof")))
 
- (progs    ((prog) (process !$1))
-           ((exp) (process !$1))
-           ((progs prog) (process !$2))
+ (trace    (() (trace_parsing)))
+
+ (progs    ((prog trace) (process !$1))
+           ((exp trace) (process !$1))
+           ((progs prog trace) (process !$2))
            ((progs !:eof) (process !$eof!$)))
 
 % Constants for SML should be
@@ -167,9 +175,8 @@ grammar := '(
 %     string   "<chars>"        may use "\" based escape sequence
 %     char     #"<1-char>"
 
- (con    ((!:number))      % Needs int vs. float, also hex input
-         (("~" !:number))
-         (("#" !:string))
+ (con    ((!:number))      % Note that lexer deals with "~1" for negative
+         (("#" !:string))  % character literal
          ((!:string)))
 
  (digit  ((!:number)))
@@ -180,11 +187,7 @@ grammar := '(
 % would then need to dive inside ids that happened to be long to extract
 % information about them.
 
- (id     ((!:symbol)))
-
- (tyvar  ((!:typename)))
-
- (lab    ((id))
+ (lab    ((!:symbol))
          ((!:number)))
 
  (tupletail
@@ -199,184 +202,9 @@ grammar := '(
          ((exp ")") nil)
          ((exp ";" seqtail) (cons !$1 !$3)))
 
- (atexp  ((con))
-         (((opt "op") id) !$2)
-% I have to do special things to cope with infix operators - and they of
-% course are exactly the items most liable to be seen after the word "op".
-         (("op" (or !:infix0 !:infix1 !:infix2 !:infix3 !:infix4
-                    !:infix5 !:infix6 !:infix7 !:infix8 !:infix9)) !$2)
-         (("op" (or !:infixr0 !:infixr1 !:infixr2 !:infixr3 !:infixr4
-                    !:infixr5 !:infixr6 !:infixr7 !:infixr8 !:infixr9)) !$2)
-% A very few symbols are even more special as infix operators.
-         (("op" (or "*" "=" "::")) !$2)
-         (("{" exprow "}"))
-         (("#" lab))
-         (("(" ")"))                         % Unit
-         (("(" exp "," tupletail))           % A tuple
-         (("[" "]") 'empty_list)             % Empty list
-         (("[" exp "]") (list 'list !$2))    % List of length 1
-         (("[" exp "," listtail))            % Longer list
-         (("(" exp ";" seqtail))             % Sequence
-         ((letid dec "in" seqexps))
-         (("(" exp ")") !$2))                % Mere parentheses
-
-(appexp  ((atexp))
-         ((appexp atexp)))
-
- (infexp ((appexp))
-         ((infexp !:infix0 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infix1 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infix2 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infix3 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infix4 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp "=" infexp) (list 'equal !$1 !$3))
-         ((infexp !:infix5 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infix6 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infix7 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp "*" infexp) (list 'equal !$1 !$3))
-         ((infexp !:infix8 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infix9 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infixr0 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infixr1 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infixr2 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infixr3 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infixr4 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infixr5 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp "::" infexp) (list 'cons !$1 !$3))
-         ((infexp !:infixr6 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infixr7 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infixr8 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         ((infexp !:infixr9 infexp) (list (get !$2 'lisp_name) !$1 !$3))
-         )
-
-
-% I first look at the grammar as given in the specification, and note
-% two particular messy cases which have to be reolved by a from of
-% precedence.
-%     if A then B else C handle ...
-% must lead to a shift rather than a reduce. This case can be covered to
-% giving HANDLE and ELSE precedence settings. Indeed I hope that by
-% giving most of the keywords used here precedence values the apparent
-% ambiguities can all be resolved.
-
- (exp    ((infexp))
-         ((exp ":" typ))
-         ((exp "andalso" exp) (list 'and !$1 !$3))
-         ((exp "orelse" exp) (list 'or !$1 !$3))
-         ((exp "handle" match))
-         (("raise" exp))
-         (("if" exp "then" exp "else" exp)
-             (list 'cond
-                (list !$2 !$4)
-                (list t !$6)))
-         (("while" exp "do" exp)) 
-         (("case" exp "of" match))
-         (("fn" match)))
-
- (localid
-         (("local") (startcontext)))
- (letid  (("let") (startcontext)))
- (endid  (("end") (endcontext)))
-
- (seqexps
-         ((exp endid) nil)
-         ((exp ";" seqexps) (cons !$2 !$3)))
-
- (exprow ((lab "=" exp))
-         ((lab "=" exp "," exprow)))
-
-% exp ::= "fn" match
-% so what about
-%      fn a => fn b => c    E
-
- (match  ((pat "=>" exp))
-         ((pat "=>" exp "|" match)))
-
- (pat    ((pat0))
-         ((pat0 ":" typ))
-         ((!:symbol "as" pat0 ":" typ))
-         (("op" !:symbol "as" pat0 ":" typ))
-         ((!:symbol ":" typ "as" pat0 ":" typ))
-         (("op" !:symbol ":" typ "as" pat0 ":" typ)))
- 
- (pat0   ((pat1))
-% For now I will only use :: as an infix constructor in patterns.
-% in principle any infix item might be used as a contructor and so could
-% arise here, with all the joys of precedence to make life fun.
-         ((pat1 "::" pat0)))
-
- (pat1   ((con))
-         (("_"))
-         ((id))
-         (("op" id))
-         ((id pat1))
-         (("op" id pat1))
-         (("(" patseq ")"))
-         (("(" ")") nil)
-         (("{" patrow "}"))
-         (("[" patseq "]"))
-         (("[" "]") nil))
-
- (patseq ((pat))
-         ((patseq "," pat)))
-
- (patrow (("..."))
-         ((lab "=" pat))
-         ((lab "=" pat "," patrow))
-         ((id))
-         ((id ":" typ))
-         ((id "as" pat))
-         ((id ":" typ "as" pat))
-         ((id "," patrow))
-         ((id ":" typ "," patrow))
-         ((id "as" pat "," patrow))
-         ((id ":" typ "as" pat "," patrow)))
-
- (tyseq  (())
-         ((typ))
-         (("(" (listplus "," typ) ")")))
-
- (typ    ((tyvar))
-         (("{" typrow "}"))
-         ((tyseq id))
-         ((typ "*" (listplus "*" typ)))
-         ((typ "->" typ))
-         (("(" typ ")"))
-         )
-
- (labtyp ((lab ":" typ)))
-
- (typrow (((listplus "." labtyp))))
-
- (tyvarseq (())
-         ((tyvar))
-         (("(" tyvar tyvarseqtail ")")))
-
- (tyvarseqtail (("," tyvar))
-         (("," tyvar tyvarseqtail)))
-
- (dec    (("val" tyvarseq valbind))
-         (("fun" tyvarseq funbind))
-         (("type" typbind))
-         (("datatype" datbind))
-         (("datatype" datbind "withtype" typbind))
-         (("datatype" id "=" "datatype" id))
-         (("abstype" datbind "with" dec "end"))
-         (("abstype" datbind "withtype" typbind "with" dec "end"))
-         (("exception" exnbind))
-%        (("structure" strbind))
-%@@      ((dec ";" dec))
-         ((localid dec "in" dec endid))
-%        (("open" id))   % Could have multiple ids here
-% The full syntax here would allow a sequence of opnames here. Just for now
-% I will be lazy and only support one.
-         (("nonfix" opname) (makeinfix !$2 0 'none))
-         (("infix" opname) (makeinfix !$2 0 'left))
-         (("infix" digit opname) (makeinfix !$3 !$2 'left))
-         (("infixr" opname) (makeinfix !$2 0 'right))
-         (("infixr" digit opname) (makeinfix !$3 !$2 'right))
-         )
-
+ (id_with_op
+         ((!:symbol))
+         (("op" opname) !$2))
 
 % The words accepted in INFIX and INFIXR directives  should probably include
 % things that have already been declared with an infix property. I want
@@ -384,18 +212,20 @@ grammar := '(
 % Also all sorts of other tokens will have been given special lexer codes but
 % they should still be things that COULD be made infix... So I list the ones
 % that I can think of here! This is really odd in that if (say) "->" is
-% a single token then in the process of that case being notes as a dipthong
+% a single token then in the process of that case being noted as a dipthong
 % the initial "-" will also be given its own lexer code... so I need to
-% list initial substrings of any multi-character dipthong here.
-%
- (opname  ((id))
+% list initial substrings of any dipthong here. In most cases the token
+% will start off as amere !:symbol items, but ones that I will map onto
+% custom Lisp names are best noted explicitly here I think.
+
+ (opname  ((!:symbol))
           (("*"))
           (("/"))
           (("%"))
           (("+"))
           (("-"))
-          (("::"))
           ((":"))
+          (("::"))
           (("="))
           (("<"))
           (("<="))
@@ -424,41 +254,235 @@ grammar := '(
           ((!:infixr8))
           ((!:infixr9)))
 
- (valbind ((pat "=" exp))
-          ((pat "=" exp "and" valbind))
-          (("rec" valbind)))
+ (opnames (((plus opname))))
 
- (funbind ((funmatch) (list !$1))
-          ((funmatch "and" funbind) (cons !$1 !$3)))
+ (emptylist (("[" "]")))
 
-% The explicit type ": typ" qualification here qualifies the return
-% type of the whole expression. It seems that the patterns used here must
-% not be ones that end in their own ": typ".
+ (unit   (("(" ")")))
 
- (funmatch ((id patterns "=" exp) (list 'de !$1 !$2 !$4))
-           (("op" id patterns "=" exp))
-           ((id patterns ":" typ "=" exp))
-           (("op" id patterns ":" typ "=" exp))
-           ((id patterns "=" exp "|" funmatch))
-           (("op" id patterns "=" exp "|" funmatch))
-           ((id patterns ":" typ "=" exp "|" funmatch))
-           (("op" id patterns ":" typ "=" exp "|" funmatch)))
+ (atexp  ((con))
+         ((id_with_op))
+         (("{" exprow "}"))
+         (("#" lab))
+         ((unit))                            % Unit
+         (("(" exp "," tupletail))           % A tuple
+         ((emptylist) 'empty_list)           % Empty list
+         (("[" exp "]") (list 'list !$2))    % List of length 1
+         (("[" exp "," listtail))            % Longer list
+         (("(" exp ";" seqtail))             % Sequence
+         ((letid dec "in" seqexps endid))
+         (("(" exp ")") !$2))                % Mere parentheses
 
- (patterns ((pat1) (list !$1))
-           ((patterns pat1) (append !$1 (list !$2))))
+ (appexp ((atexp))
+         ((appexp atexp)))
 
-% (maketyname
-%           ((id) (maketyname !$1) !$1))
+ (infexp ((appexp))
+         ((infexp !:infix0 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix1 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix2 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix3 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix4 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp "=" infexp) (list 'equal !$1 !$3))
+         ((infexp !:infix5 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix6 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix7 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp "*" infexp) (list 'equal !$1 !$3))
+         ((infexp !:infix8 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infix9 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr0 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr1 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr2 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr3 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr4 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr5 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr6 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr7 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr8 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         ((infexp !:infixr9 infexp) (list (get !$2 'lisp_name) !$1 !$3))
+         )
 
- (typbind  ((tyvarseq id "=" typ))
-           ((tyvarseq id "=" typ "and" typbind)))
 
- (datbind  ((tyvarseq id "=" conbind (opt "and" datbind))))
+% I first look at the grammar as given in the specification, and note
+% two particular messy cases which have to be reolved by a from of
+% precedence.
+%     if A then B else C handle ...
+% must lead to a shift rather than a reduce. This case can be covered to
+% giving HANDLE and ELSE precedence settings. Indeed I hope that by
+% giving most of the keywords used here precedence values the apparent
+% ambiguities can all be resolved.
 
- (conbind  (((opt "op") id (opt "of" typ) (opt "|" conbind))))
+ (exp    ((infexp))
+         ((exp ":" typ))
+         ((exp "andalso" exp) (list 'and !$1 !$3))
+         ((exp "orelse" exp) (list 'or !$1 !$3))
+%@@@         ((exp "handle" match))
+         (("raise" exp))
+         (("if" exp "then" exp "else" exp)
+             (list 'cond
+                (list !$2 !$4)
+                (list t !$6)))
+         (("while" exp "do" exp)) 
+%@@@         (("case" exp "of" match))
+%@@@         (("fn" match))
+         )
 
- (exnbind  (((opt "op") id (opt "of" typ) (opt "and" exnbind)))
-           (((opt "op") id "=" id (opt "and" exnbind))))
+ (localid
+         (("local") (startcontext)))
+ (letid  (("let") (printc "+++ LET detected")
+                  (startcontext)))
+ (endid  (("end") (endcontext)))
+
+ (seqexps((exp))
+         ((seqexps ";" exp)))
+
+ (exprow ((lab "=" exp))
+         ((lab "=" exp "," exprow)))
+
+ (match  ((onematch))
+         ((match "|" onematch)))
+
+ (onematch ((pat "=>" exp)))
+
+ (pat1   ((atpat))
+         ((id_with_op atpat))
+%@@@         ((pat1 !:infix0 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infix1 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infix2 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infix3 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infix4 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 "=" pat1) (list 'equal !$1 !$3))
+%@@@         ((pat1 !:infix5 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infix6 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infix7 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 "*" pat1) (list 'equal !$1 !$3))
+%@@@         ((pat1 !:infix8 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infix9 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infixr0 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infixr1 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infixr2 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infixr3 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infixr4 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infixr5 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infixr6 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infixr7 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infixr8 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+%@@@         ((pat1 !:infixr9 pat1) (list (get !$2 'lisp_name) !$1 !$3))
+         ((id_with_op "as" pat1))
+%@@@         ((id_with_op ":" typ "as" pat1))
+         )
+
+(pat     ((pat1))
+         ((pat ":" typ)))
+
+ (opttyp (())
+         ((":" typ)))
+
+ (atpat  ((con))
+         (("_"))
+         ((id_with_op))
+         (("{" patrow "}"))
+         ((unit))
+         ((emptylist))
+         (("[" patseq "]"))
+         (("(" patseq ")")))
+
+ (patseq ((pat))
+         ((patseq "," pat)))
+
+ (patrow (("..."))
+         ((lab "=" pat optmorepatrow))
+         ((!:symbol opttyp (opt "as" pat) optmorepatrow)))
+
+ (optmorepatrow (())
+         (("," patrow)))
+
+ (tyseq  ((typ))
+         ((typ "," tyseq)))
+
+ (attyp  ((!:typename))
+         (("{" typrow "}"))
+         ((!:symbol)))
+
+ (typ1   ((attyp))
+         ((typ1 !:symbol))
+         (("(" typ "," tyseq ")" !:symbol))
+%@@@         ((typ1 "*" (listplus "*" typ1)))
+         )
+
+ (typ2   ((typ1))
+         ((typ1 "->" typ2)))
+
+ (typ    ((typ2))
+         (("(" typ ")"))
+         )
+
+ (labtyp ((lab ":" typ)))
+
+ (typrow ((labtyp))
+         ((typrow "," labtyp)))
+
+ (tyvarseq
+         ((!:typename))
+         (("(" tvs2 ")")))
+
+ (tvs2   ((!:typename))
+         ((tvs2 "," !:typename)))
+
+ (dec    (("val" valbind))
+         (("val" tyvarseq valbind))
+         (("fun" fvalbind))
+         (("fun" tyvarseq fvalbind))
+         (("type" typbind))
+         (("datatype" datbind))
+         (("datatype" datbind "withtype" typbind))
+         (("datatype" !:symbol "=" "datatype" !:symbol))
+         (("abstype" datbind "with" dec "end"))
+         (("abstype" datbind "withtype" typbind "with" dec "end"))
+         (("exception" exnbind))
+%        (("structure" strbind))
+         ((localid dec "in" dec endid))
+%        (("open" !:symbol))   % Could have multiple ids here
+         (("nonfix" opnames) (makeinfix !$2 0 'none))
+         (("infix" opnames) (makeinfix !$2 0 'left))
+         (("infix" digit opnames) (makeinfix !$3 !$2 'left))
+         (("infixr" opnames) (makeinfix !$2 0 'right))
+         (("infixr" digit opnames) (makeinfix !$3 !$2 'right))
+         )
+
+
+
+ (valbind
+           (("rec" pat "=" exp "and" valbind))
+           (("rec" pat "=" exp))
+           ((pat "=" exp "and" valbind))
+           ((pat "=" exp))
+           )
+
+ (fvalbind ((nfvalbindings (opt "and" fvalbind))))
+
+ (nfvalbindings ((onefvalbinding))
+           ((nfvalbindings "|" onefvalbinding)))
+
+ (onefvalbinding
+          ((id_with_op (plus atpat) opttyp "=" exp)))
+
+ (typbind  ((!:symbol "=" typ (opt "and" typbind)))
+           ((tyvarseq !:symbol "=" typ (opt "and" typbind))))
+
+ (datbind  ((!:symbol "=" conbind (opt "and" datbind)))
+           ((tyvarseq !:symbol "=" conbind (opt "and" datbind))))
+
+ (optoftyp (())
+           (("of" typ)))
+
+ (conbind  ((id_with_op optoftyp (opt "|" conbind))))
+
+ (optandexnbind
+           (())
+           (("and" exnbind)))
+
+ (exnbind  ((id_with_op optoftyp optandexnbind))
+           ((id_with_op "=" !:symbol optandexnbind)))
 
 % (str)
 % (strbind)
@@ -503,17 +527,6 @@ grammar := '(
 
 fluid '(lexer_context context_stack);
 
-% I believe that this is not in fact needed any more...
-symbolic procedure maketyname id;
-  begin
-    if not zerop posn() then terpri();
-    princ "@@@ Identifier "; princ id; printc " is now a type name";
-    lexer_context :=
-      list('type, id, get(id, 'lex_is_typename)) . lexer_context;
-    put(id, 'smltypename, t);
-    return id
-  end;
-
 global '(infix_lookup);
 infix_lookup := mkhash(30, 2, 1.5)$
 
@@ -551,12 +564,16 @@ infix_lookup := mkhash(30, 2, 1.5)$
 
 symbolic procedure makeinfix(id, prec, dirn);
   begin
+% Allow for multiple declarations in one.
+    if not atom id then <<
+      for each x in id do makeinfix(x, prec, dirn);
+      return nil >>;
     if not zerop posn() then terpri();
     princ "@@@ Identifier "; princ id; princ " is now an operator: ";
     princ prec; princ "  "; printc dirn;
     lexer_context := list('type, id, get(id, 'lex_code)) . lexer_context;
     put(id, 'lex_code, gethash(prec . dirn, infix_lookup));
-    return id
+    return nil
   end;
 
 symbolic procedure startcontext();
@@ -574,7 +591,7 @@ symbolic procedure endcontext();
 % I now need to unwind any local type and infix declarations...
     for each p in lexer_context do
       if eqcar(p, 'infix) then put(cadr p, 'lex_code, cddr p)
-      else put(cadr p, 'lex_is_typename, cddr p);
+      else printf("+++ Unknown context save: %p%n", p);
     lexer_context := car context_stack;
     context_stack := cdr context_stack;
   end;
@@ -583,6 +600,10 @@ symbolic procedure endcontext();
 % indentation normalised...
 %
 % << terpri(); prettyprint grammar; nil >>;
+
+% This will tend to lead to a LOT of output - much of which will be hard to
+% decode. But while debugging the grannar it may be necessary.
+on lalr_verbose;
 
 pp := lalr_create_parser(prec, grammar)$
 
@@ -684,14 +705,6 @@ use "Input.sml";
 use "test.sml";
 
 (* End of everything *)
-
-
-
 eof
-
 ;
-
-if getd 'enable!-errorset then enable!-errorset(0,3);
-
-end;
-
+quit;
