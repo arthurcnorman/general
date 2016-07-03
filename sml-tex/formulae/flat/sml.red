@@ -119,14 +119,12 @@ symbolic procedure process u;
     princ "Input: ";
     if u = !$eof!$ then printc "<EndOfFile>" else prettyprint u;
     if u = !$eof!$ then <<
-printf("lex_char = %p, lex_peek_char = %p, next_input = %p%n",
- lex_char, lex_peek_char, next_input);
       if null filestack then error(1, "Unexpected end of file");
       close rds car filestack;
       printc "End of file - returning to previous file";
       filestack := cdr filestack;
-% Almost unrteasonably I MUST sort of fake in a semicolon where I
-% switch files...
+% Almost unreasonably I MUST sort of fake in a semicolon where I
+% switch files... 
       lex_char := '!;;
       lex_peek_char := nil >>
     else if eqcar(u, 'use) then <<
@@ -188,7 +186,7 @@ grammar := '(
          ((exp "," tupletail) (cons !$1 !$3)))
 
  (listtail
-         ((exp "]") nil)
+         ((exp "]") (list !$1))
          ((exp "," listtail) (cons !$1 !$3)))
 
  (seqtail
@@ -196,8 +194,8 @@ grammar := '(
          ((exp ";" seqtail) (cons !$1 !$3)))
 
  (id_with_op
-         ((!:symbol))
-         (("op" opname) !$2))
+         ((!:symbol) (printf "%f## sym: %r%n" !$1) !$1)
+         (("op" opname) (printf "%f## op sym: %r%n" !$2) !$2))
 
 % The words accepted in INFIX and INFIXR directives  should probably include
 % things that have already been declared with an infix property. I want
@@ -254,7 +252,7 @@ grammar := '(
  (unit   (("(" ")")))
 
  (atexp  ((con))
-         ((id_with_op))
+         ((id_with_op) !$1)
          (("{" exprow "}"))
          (("#" lab))
          ((unit))                            % Unit
@@ -308,7 +306,6 @@ grammar := '(
          ((exp ":" typ))
          ((exp "andalso" exp) (list 'and !$1 !$3))
          ((exp "orelse" exp) (list 'or !$1 !$3))
-%@@@
          ((exp "handle" match))
          (("raise" exp))
          (("if" exp "then" exp "else" exp)
@@ -316,9 +313,7 @@ grammar := '(
                 (list !$2 !$4)
                 (list t !$6)))
          (("while" exp "do" exp)) 
-%@@@
          (("case" exp "of" match))
-%@@@
          (("fn" match))
          )
 
@@ -334,10 +329,12 @@ grammar := '(
  (exprow ((lab "=" exp))
          ((lab "=" exp "," exprow)))
 
- (match  ((onematch))
-         ((match "|" onematch)))
+ (match  ((onematch) (printf "%f## onematch: %r%n" !$1) !$1)
+         ((onematch "|" match)))
 
- (onematch ((pat "=>" exp)))
+ (tracedpat ((pat) (printf "%f## pat = %r%n" !$1) !$1))
+
+ (onematch ((tracedpat "=>" exp)))
 
  (pat1   ((atpat))
          ((id_with_op atpat))
@@ -346,14 +343,12 @@ grammar := '(
          ((pat1 !:infix2 pat1) (list (get !$2 'lisp_name) !$1 !$3))
          ((pat1 !:infix3 pat1) (list (get !$2 'lisp_name) !$1 !$3))
          ((pat1 !:infix4 pat1) (list (get !$2 'lisp_name) !$1 !$3))
-% I do not thing that "=" can be used as a constructor, and so
-% having code such as in for instance
-%    datatype X = (op =) of Y*Z
-%    val (a = b) = ...
-% would be asking for trouble. Especially without the parentheses in the
-% "val" declaration. I will leave the syntax rule in here but commented
-% out mostly so that divergence between the rules here for patterns and
-% the mostly matching ones for expressions can be compared.
+% The rules of ML are that "=" may not be re-bound, and hence it can
+% not end up as a constructor. Specifically that means it can not end
+% up in use as as infix constructor in a patten.
+% I will leave the syntax rule in here but commented out mostly so that
+%  divergence between the rules here for patterns and the mostly matching
+%  ones for expressions can be compared.
 %        ((pat1 "=" pat1) (list 'equal !$1 !$3))
          ((pat1 !:infix5 pat1) (list (get !$2 'lisp_name) !$1 !$3))
          ((pat1 !:infix6 pat1) (list (get !$2 'lisp_name) !$1 !$3))
@@ -389,9 +384,9 @@ grammar := '(
  (opttyp (())
          ((":" typ)))
 
- (atpat  ((con))
+ (atpat  ((con) (printf "%f## atpat con: %r%n" !$1) !$1)
          (("_"))
-         ((id_with_op))
+         ((id_with_op) (printf "%f## atpat id_with_op: %r%n" !$1) !$1)
          (("{" patrow "}"))
          ((unit))
          ((emptylist))
@@ -617,7 +612,7 @@ symbolic procedure endcontext();
 % << terpri(); prettyprint grammar; nil >>;
 
 % This will tend to lead to a LOT of output - much of which will be hard to
-% decode. But while debugging the grannar it may be necessary.
+% decode. But while debugging the grammar it may be necessary.
 % on lalr_verbose;
 
 pp := lalr_create_parser(prec, grammar)$
@@ -639,8 +634,6 @@ begin
    lex_init();
    yyparse pp
 end;
-
-datatype demo = red | blue | green of int * int;
 
 use "Library_Reduce.sml";
 
