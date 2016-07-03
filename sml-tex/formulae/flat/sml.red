@@ -150,7 +150,7 @@ symbolic procedure process u;
 
 grammar := '(
 
- (toplevel ((progs "eof")))
+ (toplevel ((progs "EOF")))
 
  (progs    ((prog) (process !$1))
            ((exp) (process !$1))
@@ -438,7 +438,7 @@ grammar := '(
  (tvs2   ((!:typename))
          ((tvs2 "," !:typename)))
 
- (dec    (("val" valbind))
+ (dec1   (("val" valbind))
          (("val" tyvarseq valbind))
          (("fun" fvalbind))
          (("fun" tyvarseq fvalbind))
@@ -459,6 +459,9 @@ grammar := '(
          (("infixr" digit opnames) (makeinfix !$3 !$2 'right))
          )
 
+ (dec    ((dec1))
+         ((dec dec1))
+         ((dec ";" dec1)))
 
 
  (valbind
@@ -523,7 +526,7 @@ grammar := '(
 % keywords and so the issue of where one endsd and the next starts will
 % not be a severe problem.
 
-(prog     ((dec))
+(prog     ((dec1))
           ((";" exp) !$2)
           ((";") nil)
 %         (("functor" fctbind))
@@ -637,14 +640,19 @@ end;
 
 use "Library_Reduce.sml";
 
-fun fact n =
-  if n = 1 then 1
-  else n * fact (n-1)
+(* I will often put test fragments of code here to see if I can
+   parse them - and then later on so I can adjust the generated parse trees
+   until they are reasonably Lisp-like. *)
 
-and g x y z = [x,y,z]
+  fun getList size file  =
+    let val _  =  TextIO.inputLine file
+        val (info, eof)  =  getInfo size file
+    in
+      if eof then [info]
+      else info :: getList size file
+    end
 
-val pi = 3.14159;
-
+;
 
 (*
  This is the Dutch version of TeX Maths Layout coded in SML, adjusted so
@@ -713,6 +721,6 @@ use "Input.sml";
 use "test.sml";
 
 (* End of everything *)
-eof
+EOF
 ;
 quit;
