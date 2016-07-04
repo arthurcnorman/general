@@ -582,13 +582,21 @@ on parse_errors_fatal;
  (exnbind  ((id_with_op optoftyp optandexnbind))
            ((id_with_op "=" !:symbol optandexnbind)))
 
- (strbind  ((!:symbol "=" strexp (opt "and" strbind))))
+ (onestrbind ((!:symbol "=" strexp))
+           ((!:symbol ":" sigexp "=" strexp))
+           ((!:symbol ":>" sigexp "=" strexp))
+           )
+
+ (strbind  ((onestrbind))
+           ((strbind "and" onestrbind)))
+
 
  (strexp   ((structid dec endid))
            ((!:symbol))
            ((strexp ":" sigexp))
            ((strexp ":>" sigexp))
            ((!:symbol "(" strexp ")"))
+           ((!:symbol "(" dec ")"))
            ((letid dec "in" strexp endid))
            )
 
@@ -596,10 +604,11 @@ on parse_errors_fatal;
 
  (sigexp  ((sigid spec endid))
           ((!:symbol))
+          ((sigexp "where" "type" !:symbol "=" typ))
           ((sigexp "where" "type" tyvarseq !:symbol "=" typ))
           )
 
- (sigid   (("struct") (startcontext)))
+ (sigid   (("sig") (startcontext)))
 
  (sigdec  (("signature" sigbind)))
 
@@ -623,23 +632,40 @@ on parse_errors_fatal;
 
  (fundec  (("functor" funbind)))
 
- (funbind ((!:symbol "(" !:symbol ":" sigexp ")" "=" strexp
-           (opt "and" funbind))))
+ (onefunbind ((!:symbol "(" !:symbol ":" sigexp ")" "=" strexp))
+          ((!:symbol "(" !:symbol ":" sigexp ")" ":" sigexp "=" strexp))
+          ((!:symbol "(" !:symbol ":" sigexp ")" ":>" sigexp "=" strexp))
+          ((!:symbol "(" spec ")" ":" sigexp "=" strexp))
+          ((!:symbol "(" spec ")" ":>" sigexp "=" strexp))
+          )
+
+ (funbind  ((onefunbind))
+           ((funbind "and" onefunbind)))
 
  (eqsymlist (("=" !:symbol))
           ((eqsymlist "=" !:symbol)))
 
  (valdesc ((!:symbol ":" typ (opt "and" valdesc))))
 
- (typdesc ((tyvarseq !:symbol (opt "and" typdesc))))
+ (onetypdesc ((!:symbol))
+          ((tyvarseq !:symbol)))
 
- (datdesc ((tyvarseq !:symbol "=" condesc (opt "and" datdesc))))
+ (typdesc ((onetypdesc))
+          ((typdesc "and" onetypdesc))
+          )
+
+ (onedatdesc ((!:symbol "=" condesc))
+          ((tyvarseq !:symbol "=" condesc)))
+
+ (datdesc ((onedatdesc))
+          ((datdesc "and" onedatdesc)))
 
  (condesc ((!:symbol (opt "of" typ) (opt "|" condesc))))
 
  (exdesc  ((!:symbol (opt "of" typ) (opt "and" exdesc))))
 
- (strdesc ((!:symbol ":" sigexp (opt "and" strdesc))))
+ (strdesc ((!:symbol ":" sigexp))
+          ((!:symbol ":" sigexp "and" strdesc)))
 
 % The syntax that I started from did not include the possibility of an
 % expression here. That sort of makes sense because consider
