@@ -45,6 +45,9 @@
                   in  collect w  h  d  i  l  t  b' r  a  end
       | #"R"  =>  let val r'  =  SOME (getOctal file)
                   in  collect w  h  d  i  l  t  b  r' a  end
+(* The M information is in fact at present ignored!!!! *)
+      | #"M"  =>  let val m'  =  SOME (getOctal file)
+                  in  collect w  h  d  i  l  t  b  r a  end
       | #"S"  =>  let val a' =   getDist size file
                   in  collect w  h  d  i  l  t  b  r  a' end
       (* The code above may be expressed simpler using references *)
