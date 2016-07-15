@@ -8,7 +8,7 @@ charmetrics.dat:	charmetrics.sml
 
 .PHONY: test%
 test%:	charmetrics.dat
-	echo 'use "edit.m"; U "all"; $@();' | $(SML)
+	echo 'use "all.sml"; $@();' | $(SML)
 
 # Note that on Arthur's computers there is a shell variable O that
 # identifies the top of the REDUCE tree. The "if" clauses here look for a
