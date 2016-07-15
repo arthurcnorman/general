@@ -3,8 +3,11 @@ SML ?= poly
 .PHONY: all
 all: test1 test2
 
+charmetrics.dat:	charmetrics.sml
+	poly < BuildCharmetrics.sml
+
 .PHONY: test%
-test%:
+test%:	charmetrics.dat
 	echo 'use "edit.m"; U "all"; $@();' | $(SML)
 
 # Note that on Arthur's computers there is a shell variable O that

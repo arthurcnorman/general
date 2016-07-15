@@ -1,5 +1,7 @@
 (*
 *)
+
+PolyML.SaveState.loadState("charmetrics.dat");
 U "General";
 U "Powers2";
 U "BasicTypes";
@@ -7,6 +9,7 @@ U "Distance";
 U "Size";
 U "FontTypes";
 U "LoadFont";
+U "Metrics.sml";
 U "FontVector";
 U "CharInfo";
 U "CharFunctions";
