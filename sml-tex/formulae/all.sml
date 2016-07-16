@@ -60,5 +60,9 @@ use "SetBox.sml";
 use "ShipOut.sml";
 use "Input.sml";
 use "test.sml";
+
+PolyML.SaveState.saveState("smltex.dump");
+
 (*
 *)
+

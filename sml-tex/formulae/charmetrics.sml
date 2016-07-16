@@ -20271,12 +20271,12 @@ val topcentre_hash = Vector.fromList [
      0x2ca00058,
      0x2d400059,
      0x2600005a,
-     0x00000069,
+     0x00000063,
      0xe4400359,
-     0x000020e6,
+     0x00000069,
      0x2941d44e,
-     0x00000068,
-     0x0000006e,
+     0x0000006b,
+     0x000020e8,
      0x1e000061,
      0x1d800062,
      0x1b400063,
@@ -20303,7 +20303,7 @@ val topcentre_hash = Vector.fromList [
      0x1f000078,
      0x1e800079,
      0x1bc0007a,
-     0x000020f0,
+     0x000020ec,
      0xe20020e4,
      0xe2a020e5,
      0xe4c020e6,
@@ -20326,15 +20326,16 @@ val topcentre_hash = Vector.fromList [
      0x2d20004f,
      0xe2a020d6,
      0xe2a020d7,
+     0x0000004a,
+     0x0000004b,
      0x0000004e,
-     0x0000004f,
-     0x0000004d,
      0xe54020db,
      0xe08020dc,
      0xe0c020dd,
      0xe0c020de
     ];
 
+val TOPCENTRE_SIZE = 153;
 val TOPCENTRE_MODULUS = 88;
 val TOPCENTRE_OFFSET = 64;
 
@@ -20446,6 +20447,7 @@ val variant_hash = Vector.fromList
      [0x002020ef, 0x001081fe, 0x0010826a, 0x001082a3, 0x001082db, 0x0010830b]
     ]);
 
+val VARIANT_SIZE = 104;
 val VARIANT_MODULUS = 51;
 val VARIANT_OFFSET = 53;
 
@@ -20737,6 +20739,7 @@ val extension_hash = Vector.fromList
                  0x03ed0000, 0x00000000, 0x00000000, 0x00000000, 0x00000000]
     ]);
 
+val EXTENSION_SIZE = 142;
 val EXTENSION_MODULUS = 101;
 val EXTENSION_OFFSET = 3;
 

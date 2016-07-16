@@ -1,8 +1,9 @@
 (* charmetrics1.sml *)
 
 (* This decodes stuff from the "charmetrics.sml" hash tables to give
- * information about characters in the SYTIX (and cmuntt and odokai)
- * fonts.
+ * information about characters in the STIX (and cmuntt and odokai)
+ * fonts. This is a component of ACN adjustments to the code here so that
+ * use is made of Unicode fonts not the original TeX ones...
  *)
 
 (* To perform boolean operations on 32-bit integers I need to turn things
@@ -36,7 +37,7 @@ fun notb a =
       LargeWord.toLargeInt (
          LargeWord.notb (
             LargeWord.fromLargeInt (
-               LargeInt.toLarge a))))
+               LargeInt.toLarge a))));
 
 fun <<(a, n) =
    Int.fromLarge (
@@ -56,7 +57,17 @@ fun >>(a, n) =
 
 fun getv v n = Vector.sub(v, n);
 
-
+(* The hash table access code here has to be keyed to cod ein a file
+ * called "charmetrics.cpp" in the CSL part of the Reduce source code.
+ * The stuff there accesses raw font metric information (which is in turn
+ * extracted from the .otf font files via a collection of messy steps) and
+ * picks hash parameters that let me end up with especially compact
+ * metric tables. Well even in the form used here the tables consume
+ * quite a lot of space, but I believe they represent a good balance
+ * between spaec saving and compact representation given that the Unicode
+ * fonts concerned have many thousands of characters (specifically I have
+ * over 30,000 codepoints with measurements).
+ *)
 
 fun lookupchar fontnum codepoint =
   let
@@ -150,97 +161,167 @@ and lookupchar1 fullkey row fontnum =
   end;
 
 
+(* Given the output from lookupchar you can then the following with a
+   second codepoint (which must be in the same font) to find an adjustment
+   to the space between the two characters so that they are properly
+   kerned. The initial metric information provides an index into the
+   main kern table, and the code then does a linear search starting from
+   there to seek information relevant to the succesor character. This
+   is sort of reasonable because any one character only has a modest
+   number of successor thet kern with it. The table in fact contains both
+   kern and ligature information, and a bit flags a particular entry to
+   note which sort of adjustment is being recorded in any given word.
+ *)
 
-(* #"f" *)
-lookupchar F_Math 0x66; 
+fun lookupkernadjustment NONE cp = 0
+  | lookupkernadjustment (SOME (width, llx, lly, urx, ury, kerninfo)) cp =
+  if kerninfo = 0 then 0
+  else let
+    fun seek i =
+      let
+        val w = getv kerntable i
+      in
+        if andb(w, 0x001fffff) = cp andalso
+           andb(w, 0x00200000) = 0 then
+          let
+            val w1 = andb(>>(w, 23), 0x1ff)
+          in
+            if andb(w1, 0x100) = 0 then w1
+            else w1 - 0x200
+          end
+        else if andb(w, 0x00400000) <> 0 then 0
+        else seek (i + 1)
+      end
+   in
+     seek kerninfo
+   end;
 
-(* The old Reduce code...
+(* For instance if you have just looked up "f" and you now go
+   (lookupligature ... "i") you should get back SOME ("fi") where the
+   result is the numeric codepoint for an f-i-ligature. If no ligature
+   is available you get back NONE.
+ *)
 
+fun lookupligature NONE cp = NONE
+  | lookupligature (SOME (width, llx, lly, urx, ury, kerninfo)) cp =
+  if kerninfo = 0 then NONE
+  else let
+    fun seek i =
+      let
+        val w = getv kerntable i
+      in
+        if andb(w, 0x001fffff) = cp andalso
+           andb(w, 0x00200000) <> 0 then SOME(andb(>>(w, 23), 0x1ff))
+        else if andb(w, 0x00400000) <> 0 then NONE
+        else seek (i + 1)
+      end
+   in
+     seek kerninfo
+   end;
 
-symbolic procedure lookupkernadjustment codepoint;
-  begin
-    scalar i, w;
-    if zerop (i := c_kerninfo) then return 0;
- a: w := getv32(kerntable!*, i);
-    if land(w, 0x001fffff) = codepoint and
-      zerop land(w, 0x00200000) then <<
-        w := land(lshift(w, -23), 0x1ff);
-        if not zerop land(w, 0x100) then w := w - 0x200;
-        return w >>
-    else if not zerop land(w, 0x00400000) then return 0;
-    i := add1 i;
-    go to a
-  end;
+(* On Original TeX accent positions above characters were adjusted using
+   information that was stored in the kern table. Here I have a separate
+   table for accent offsets, arranged as a hash table that uses at worst
+   two probes. This returns 0 if there us no adjustment needed (or
+   know adjustment know about). Note that the values in the table
+   are treated as 32-bit signed numbers. This information is only
+   present in the STIXMath font (of the fonts I am using) and so I do
+   not worry about other fonts here!
+ *)
 
-symbolic procedure lookupligature codepoint;
-  begin
-    scalar i, w;
-    if zerop (i := c_kerninfo) then return nil;
- a: w := getv32(kerntable!*, i);
-    if land(w, 0x001fffff) = codepoint and
-      not zerop land(w, 0x00200000) then
-        return getv32(ligaturetable!*, land(lshift(w, -23), 0x1ff))
-    else if not zerop land(w, 0x00400000) then return nil;
-    i := add1 i;
-    go to a
-  end;
+fun extend11 n =
+  if andb(n, 0x400) = 0 then n
+  else n - 0x800;
 
-symbolic procedure accentposition codepoint;
-  begin
-    scalar h1, h2, v, w;
-    h1 := remainder(codepoint, 153);
-    % Hash table probe 1.
-    v := land(w := getv32(topcentre_hash!*, h1), 0x1fffff);
-    if not (v = key) then <<
-      h2 := remainder(key, 88) + 64;
-      % Hash table probe 2.
-      v := land(w := getv32(topcentre_hash!*, h2), 0x1fffff);
-      if not (v = key) then return 0 >>;
-    return lshift(w, -21)
-  end;
+fun accentposition key =
+  let
+    val h1 = key mod TOPCENTRE_SIZE
+    val w = getv topcentre_hash h1
+    val v = andb(w, 0x1fffff);
+    in
+      if v = key then extend11(>>(w, 21))
+      else
+        let
+          val h2 = key mod TOPCENTRE_MODULUS + TOPCENTRE_OFFSET
+          val w = getv topcentre_hash h2
+          val v = andb(w, 0x1fffffff)
+        in
+          if v = key then extend11(>>(w, 21))
+          else 0
+        end
+    end;
 
-end;
-
-% Note that variants must be passed a codepoint and direction flag
-symbolic procedure variants key;
-  begin
-    scalar h1, h2, h3, v, w;
-    h1 := remainder(key, 104);
-    % Hash table probe 1.
-    v := getv32(w := getv(variant_hash!*, h1), 0);
-    if not (v = key) then <<
-      h2 := remainder(key, 51) + 53;
-      % Hash table probe 2.
-      v := getv32(w := getv(variant_hash!*, h2), 0);
-      if not (v = key) then <<
-         h3 := remainder(h1 + h2, 104);
-         % Hash table probe 3.
-         v := getv32(w := getv(variant_hash!*, h3), 0);
-         if not (v = key) then return nil >> >>;
-    return w
-  end;
-
-symbolic procedure extension key;
-  begin
-    scalar h1, h2, h3, v, w;
-    h1 := remainder(key, 142);
-    % Hash table probe 1.
-    v := getv32(w := getv(extension_hash!*, h1), 0);
-    if not (v = key) then <<
-      h2 := remainder(key, 101) + 3;
-      % Hash table probe 2.
-      v := getv32(w := getv(extension_hash!*, h2), 0);
-      if not (v = key) then <<
-         h3 := remainder(h1 + h2, 142);
-         % Hash table probe 3.
-         v := getv32(w := getv(extension_hash!*, h3), 0);
-         if not (v = key) then return nil >> >>;
-    return w
-  end;
-
-end;
-
+(* The the STIXMath font there are tables for "variants" and for
+   "extended characters". The first copes with single glyphs that
+   render as a range of sized of (sor instance) parentheses. The
+   latter gives information about a set of characters that can be used
+   to build up seriously over-sized delimiters as in
+      /   top hook
+      |   top extension
+     <    middle part
+      |   lower extension
+      \   lower hook
+   At present I do not really understand the intent of all the
+   data present and associated with the parts! As with accent
+   positions the data I have here only applies in the STIXMath font.
+   (variants cp) returns a Vector of length 6 where each element
+   is either a codepoint or zero (or NONE if no variants are
+   available at all).
 *)
+
+fun variants key =
+  let
+    val h1 = key mod VARIANT_SIZE
+    val w = getv variant_hash h1
+    val v = getv w 0
+    in
+      if v = key then SOME w
+      else
+        let
+          val h2 = key mod VARIANT_MODULUS + VARIANT_OFFSET
+          val w = getv variant_hash h2
+          val v = getv w 0
+          in
+            if v = key then SOME w
+            else
+              let
+                val h3 = (h1 + h2) mod VARIANT_SIZE
+                val w = getv variant_hash h1
+                val v = getv w 0
+              in
+                if v = key then SOME w
+                else NONE
+              end
+        end
+  end;
+
+(* Same sort of idea but for extensions and you get back a longer vector *)
+
+fun extension key =
+  let
+    val h1 = key mod EXTENSION_SIZE
+    val w = getv extension_hash h1
+    val v = getv w 0
+    in
+      if v = key then SOME w
+      else
+        let
+          val h2 = key mod EXTENSION_MODULUS + EXTENSION_OFFSET
+          val w = getv extension_hash h2
+          val v = getv w 0
+          in
+            if v = key then SOME w
+            else
+              let
+                val h3 = (h1 + h2) mod EXTENSION_SIZE
+                val w = getv extension_hash h1
+                val v = getv w 0
+              in
+                if v = key then SOME w
+                else NONE
+              end
+        end
+  end;
 
 
 (* end of Metrics.sml *)
