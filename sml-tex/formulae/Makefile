@@ -3,16 +3,14 @@ SML ?= poly
 .PHONY: all
 all: test1 test2
 
-charmetrics.dat:	charmetrics.sml
-	poly < BuildCharmetrics.sml
-
 .PHONY: test%
 test%:	charmetrics.dat
 	echo 'use "all.sml"; $@();' | $(SML)
 
+
 # Note that on Arthur's computers there is a shell variable O that
 # identifies the top of the REDUCE tree. The "if" clauses here look for a
-# copt of Reduce that I will use in the testing.
+# copy of Reduce that I will use in the testing.
 sml:
 	if test -x $$O/cslbuild/i686-pc-cygwin/csl/bootstrapreduce.exe;\
 	then R=$$O/cslbuild/i686-pc-cygwin/csl/bootstrapreduce.exe; \

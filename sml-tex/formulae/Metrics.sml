@@ -1,18 +1,16 @@
 (* charmetrics1.sml *)
 
-(* Load this file into Poly/SML once to dump a data file that will
- * contain all the font metrics. I do things this way because Poly/ML
- * took a VERY long time (well perhaps 10 minutes) to read in the
- * font table when it was all presented as single list. I now split
- * it into multiple parts and then concatenate them and the file only
- * takes around 20 seconds to process, but this is still somewhat
- * tedious.
+(* This decodes stuff from the "charmetrics.sml" hash tables to give
+ * information about characters in the SYTIX (and cmuntt and odokai)
+ * fonts.
  *)
 
 (* To perform boolean operations on 32-bit integers I need to turn things
    into LargeWord items. This looks clumsy and maybe something simpler
    would be OK (eg maybe I do not need to go via LargeInt) but of this
-   works I will feel OK.
+   works I will feel OK. At least this seems to work on Poly/ML - but
+   in general SML may not provide very good guarantees about the width
+   of integers that it supports.
  *)
 
 fun andb(a, b) =
@@ -59,10 +57,6 @@ fun >>(a, n) =
 fun getv v n = Vector.sub(v, n);
 
 
-val c_kerninfo = ref 0;
-
-fun lookupchar1 fullkey row =
-   SOME row;
 
 fun lookupchar fontnum codepoint =
   let
@@ -86,84 +80,82 @@ fun lookupchar fontnum codepoint =
         0x5000 + andb(codepoint, 0xfff)
       else if codepoint >= 0x10000 then 0xffff
       else codepoint
+(* I combine the (reduced) codempoint with the font number to get a key *)
     val fullkey = <<(fontnum, 16) + cp1
     val key = >>(fullkey, 2)
-    val h1 = key mod 10057
+(* My first hash location is merely the key reduced modulo the hash table
+   size. This is clearly rather cheap and simplistic, but turns out to
+   be good enough.
+ *)
+    val h1 = key mod hashsize
     val w = getv metrics_hash h1;
     val v = andb((getv w 0), 0x7ffff)
   in
-    if v = key then lookupchar1 fullkey w
+(* If I find my character at its first choice location can unpick information
+   and the sub-function lookupchar1 does that.
+ *)
+    if v = key then lookupchar1 fullkey w fontnum
     else let
-      val h2 = (key mod 4955) + 5000;
+(* A second hash function is an offset version of the key modulo a different
+   number. These two numbers were chosen following an exhausive search to
+   find values that led to high hash table occupancy.
+ *)
+      val h2 = (key mod CHAR_METRICS_MODULUS) + CHAR_METRICS_OFFSET;
       val w = getv metrics_hash h2;
       val v = andb((getv w 0), 0x7ffff)
     in
-      if v = key then lookupchar1 fullkey w
+      if v = key then lookupchar1 fullkey w fontnum
       else let
-        val h3 = (h1 + h2) mod 10057;
+(* A third (and final) hash function is simply the sum of the previous two,
+   obviously reduced modulo the table size.
+ *)
+        val h3 = (h1 + h2) mod hashsize;
         val w = getv metrics_hash h3;
         val v = andb((getv w 0), 0x7ffff)
       in
-        if v = key then lookupchar1 fullkey w
+        if v = key then lookupchar1 fullkey w fontnum
+(* If the character was not present I will return NONE *)
         else NONE
       end
     end
+  end
+
+and lookupchar1 fullkey row fontnum =
+  let
+    val v = 2*andb(fullkey, 3)
+    val wlo = getv row (v+2)
+  in
+    if wlo = 0 then NONE
+    else
+      let
+        val whi = getv row (v+3)
+        val width = andb(>>(whi, 19), 0x1fff)
+        val llx   = andb(>>(whi, 6),  0x1fff) - 3000
+        val lly   = andb(>>(wlo, 26), 0x3f) +
+                    andb(<<(whi, 6),  0xfc0) - 1000
+        val urx   = andb(>>(wlo, 13), 0x1fff) - 500
+        val ury   = andb(wlo, 0x1fff) - 1000
+        val ki =
+          if v = 0      then andb(>>(getv row 0, 19), 0x7ff)
+          else if v = 2 then andb(>>(getv row 0, 30), 0x3) +
+                             andb(<<(getv row 1, 2), 0x7fc)
+          else if v = 4 then andb(>>(getv row 1, 9), 0x7ff)
+          else (* v = 6 *)   andb(>>(getv row 1, 20), 0x7ff);
+        val kerninfo =
+          if ki = 0 then 0
+          else ki + (getv fontkern fontnum)
+      in 
+        SOME (width, llx, lly, urx, ury, kerninfo)
+      end
   end;
+
+
 
 (* #"f" *)
 lookupchar F_Math 0x66; 
 
 (* The old Reduce code...
 
-symbolic procedure lookupchar(fontnum, codepoint);
-  begin
-    scalar v, h1, h2, w, whi, wlo, fullkey, key;
-% pack codes into fewer bits
-    if fontnum < 2 then <<
-      if land(codepoint, 0xd800) = 0xd800 then codepoint := 0xffff
-      else if codepoint >= 0x10000 then <<
-        if codepoint < 0x10800 then codepoint := 0xd800 + land(codepoint, 0xfff)
-        else codepoint := 0xffff >> >>
-    else if codepoint >= 0x4000 and codepoint < 0x8000 then codepoint := 0xffff
-    else if codepoint >= 0x1d000 and codepoint < 0x1e000 then
-      codepoint = 0x4000 + land(codepoint, 0xfff)
-    else if codepoint >= 0x108000 and codepoint < 0x109000 then
-      codepoint = 0x5000 + land(codepoint, 0xfff)
-    else if codepoint >= 0x10000 then codepoint := 0xffff;
-    fullkey := lshift(fontnum, 16) + codepoint
-    key := lshift(fullkey, -2);
-    h1 := remainder(key, 10057);
-    % Hash table probe 1.
-    v := land(getv32(w := getv(metrics_hash!*, h1), 0), 0x7ffff);
-    if not (v = key) then <<
-      h2 := remainder(key, 4955) + 5000;
-      % Hash table probe 2.
-      v := land(getv32(w := getv(metrics_hash!*, h2), 0), 0x7ffff);
-      if not (v = key) then <<
-        h1 := h1 + h2;
-        if h1 >= 10057 then h1 := h1 - 10057;
-        % Hash table probe 3.
-        v := land(getv32(w := getv(metrics_hash!*, h1), 0), 0x7ffff);
-        if not (v = key) then return nil >> >>;
-    v := 2*land(fullkey, 3);
-    wlo := getv32(w, v+2);
-    if wlo = 0 then return nil; % in hash table but no character here.
-    whi := getv32(w, v+3);
-    c_width := land(lshift(whi, -19), 0x1fff);
-    c_llx := land(lshift(whi, -6), 0x1fff) - 3000;
-    c_lly := land(lshift(wlo, -26), 0x3f) +
-             land(lshift(whi, 6), 0xfc0) - 1000;
-    c_urx := land(lshift(wlo, -13), 0x1fff) - 500;
-    c_ury := land(wlo, 0x1fff) - 1000;
-    if v = 0 then c_kerninfo := land(lshift(getv32(w, 0), -19), 0x7ff)
-    else if v = 2 then c_kerninfo := land(lshift(getv32(w, 0), -30), 0x3) +
-                                     land(lshift(getv32(w, 1), 2), 0x7fc)
-    else if v = 4 then c_kerninfo := land(lshift(getv32(w, 1), -9), 0x7ff)
-    else c_kerninfo := land(lshift(getv32(w, 1), -20), 0x7ff);
-    if not zerop c_kerninfo then
-      c_kerninfo := c_kerninfo + getv16(fontkern!*, fontnum);
-    return t
-  end;
 
 symbolic procedure lookupkernadjustment codepoint;
   begin

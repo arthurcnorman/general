@@ -1,7 +1,6 @@
 (*
 *)
 
-PolyML.SaveState.loadState("charmetrics.dat");
 use "General.sml";
 use "Powers2.sml";
 use "BasicTypes.sml";
@@ -9,6 +8,7 @@ use "Distance.sml";
 use "Size.sml";
 use "FontTypes.sml";
 use "LoadFont.sml";
+use "charmetrics.sml";
 use "Metrics.sml";
 use "FontVector.sml";
 use "CharInfo.sml";
