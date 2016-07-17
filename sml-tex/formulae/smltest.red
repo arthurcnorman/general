@@ -56,7 +56,24 @@ off errcont;
 
 % First I will have a rather simple lambda-calculus interpreter. I do this
 % so it can cope with lexical scoping, higher order functions and the other
-% proper things that Stanrdard Lisp is a bit shoddy about.
+% proper things that Standard Lisp is a bit shoddy about.
+
+% Well at present if this code evaluates a name that is not visible in its
+% environment it looks up a static calue (with the 'smlvalue property tag).
+% This is incorrect as it stands. But leter on I can fix it by using some
+% alpha-conversion on the input. I will need to make a transformation
+% broadly along the lines
+%     ORIGINAL                 REWRITTEN
+%    val x = 1;               val x = 1;
+%    val x = 2;               val x' = 2;
+%    val x = 3;               val x'' = 3;
+% and then as I parse material I need to map the simple name "x" onto
+% whichever of x, x' or x'' is appropriate. If I do that I can keep top-
+% level values stored statically, which is something I expect to be good
+% for performance. This issue only matters if the source code will have
+% cases where top-level definitions are shadowed by replacements. I hope
+% that does not happen in the code I have at present, and so I can delay
+% implementing the renaming scheme. The "yagni" principle applies here...
 
 flag('(funcall), 'variadic);
 
@@ -83,17 +100,107 @@ symbolic procedure smltuple(u, env);
 
 put('tuple, 'smlspecial, 'smltuple);
 
-symbolic procedure smlplus u;
-  car u + cadr u;
-
-put('plus, 'smlprimitive, 'smlplus);
-
 symbolic procedure smltimes u;
   car u * cadr u;
 
 put('times, 'smlprimitive, 'smltimes);
 
-tr smlplus, smltimes;
+symbolic procedure smlquotient u;
+  car u / cadr u;
+
+put('quotient, 'smlprimitive, 'smlquotient);
+
+symbolic procedure smlremainder u;
+% Well I may want MODULUS not REMAINDER here...
+  remainder(car u, cadr u);
+
+put('remainder, 'smlprimitive, 'smlremainder);
+
+symbolic procedure smlplus u;
+  car u + cadr u;
+
+put('plus, 'smlprimitive, 'smlplus);
+
+symbolic procedure smldifference u;
+  car u - cadr u;
+
+put('difference, 'smlprimitive, 'smldifference);
+
+symbolic procedure smlstringconcat u;
+  concat(car u, cadr u);
+
+put('stringconcat, 'smlprimitive, 'smlstringconcat);
+
+symbolic procedure smlstringcons u;
+  car u . cadr u;
+
+put('stringcons, 'smlprimitive, 'smlstringcons);
+
+symbolic procedure smlappend u;
+  append(car u, cadr u);
+
+put('append, 'smlprimitive, 'smlappend);
+
+symbolic procedure smlgreaterp u;
+  car u > cadr u;
+
+put('greaterp, 'smlprimitive, 'greaterp);
+
+symbolic procedure smllessp u;
+  car u < cadr u;
+
+put('lessp, 'smlprimitive, 'smllessp);
+
+symbolic procedure smlgeq u;
+  car u >= cadr u;
+
+put('geq, 'smlprimitive, 'smlgeq);
+
+symbolic procedure smlleq u;
+  car u <= cadr u;
+
+put('leq, 'smlprimitive, 'smlleq);
+
+symbolic procedure smlequal u;
+  car u = cadr u;
+
+put('equal, 'smlprimitive, 'smlequal);
+
+symbolic procedure smlneq u;
+  car u neq cadr u;
+
+put('neq, 'smlprimitive, 'smlneq);
+
+symbolic procedure smlset u;
+  rplaca(car u, cadr u);
+
+put('set, 'smlprimitive, 'smlset);
+
+symbolic procedure smlcompose u;
+  rederr "function composition operator not implemented yet";
+
+put('compose, 'smlprimitive, 'smlneq);
+
+
+
+symbolic procedure smland(u, env);
+  if smleval(car u, env) then smleval(cadr u, env)
+  else nil;
+
+put('and, 'smlspecial, 'smland);
+
+symbolic procedure smlor(u, env);
+   if smleval(car u, env) then t
+   else smleval(cadr u, env);
+
+put('or, 'smlspecial, 'smlor);
+
+symbolic procedure smlif(u, env);
+   if smleval(car u, env) then smleval(cadr u, env)
+   else smleval(caddr u, env);
+
+put('if, 'smlspecial, 'smlif);
+
 
 % If smleval is handed a declaration it can return an updated environment.
 % At top level I need to transcribe that into static storage.
@@ -108,7 +215,6 @@ symbolic procedure smltoplevel u;
         put(car b, 'smlvalue, cdr b) >>
     else printf("%fValue: %p%n", w);
   end;
-    
 
 symbolic procedure smlapply(ff, arg);
   begin
@@ -233,6 +339,20 @@ symbolic procedure smldummypairlist(pl, env);
     env := smldummypair(car pl, env);
     smldummypairlist(cdr pl, env) >>;
 
+% The syntax allows
+%    val (a, b) = ...
+%    and rec (c, d) = ...
+%    and (e, f) = ...
+% and until I need to read the semantics to understand the exact implication
+% of "rec" and "and".
+%
+% What I implement at present only supports "rec" in the case that just one
+% binding is being introduced. This is wrong. I also go to some trouble
+% to support "val rec (a,b,c) = ..." with de-structuring and that is
+% not allowed by SML - because the RHS must be a simple lambda-expression and
+% that could never de-structure... @@@@@. 
+
+
 symbolic procedure smlrecpaireval(bvl, exp, env);
   begin
     scalar env1, env2;
@@ -263,6 +383,70 @@ symbolic procedure smlrecpaireval(bvl, exp, env);
   end;
 
 put('valbinds, 'smlspecial, 'smlval);
+
+% Now for function definitions. These are always to be processed
+% as recursive, and as with "val" there can be multiple definitions
+% made at once (using "and"). As a simplification the function name
+% is always just a simple symbol, but as a complication the definition
+% may be clausal with variants linked with "|".
+
+% (fvalbinds                         introduction
+%      (   ((f nil) nil)             list for clausal definition
+%          ((f (!:!: a b)) ...)   )  list of several functions co-defined
+%      (   (((g a) b) ...)        )
+% )
+%
+% I want to turn this into
+%    env' = ((f . (funarg F env'))
+%            (g . (funarg G env')) .
+%            old-env)
+% where F = (clausal (lambda nil nil)
+%                    (lambda (!:!: a b) ...))
+% and   G = (lambda b (lambda a ...))
+% and I then return env'. Note that if a function has only one clause
+% it is specified directly, if it has several it is wrapped up usiing
+% a "clkausal" list.
+
+
+
+symbolic procedure smlfval(u, env);
+  begin
+    scalar v, w, x;
+    printf("%fsmlfval %r%n", u);
+% first collect a list of function names.
+    v := for each d in u collect <<
+% d is a list of clausal options (  ((f x) E) ... ).
+      w := caar d;
+% w is the left hand side of the first (posisbly only) definition.
+      while not atom w do w := car w;
+% now w is the name of the function. I collect pairs ready to add
+% to my environment.
+      (w . '!?) >>;
+    v := env := append(v, env);
+% Now the environment has been extended wiith ((f . !?) (g . !?) ...) on
+% the front. So I will now scan the definitions again replacing the "?"
+% with function closures that refer to the extended environment. Beware that
+% while I do that I naturally create re-entrant data-structures and so
+% simple Lisp functions (including printing) can have trouble...
+    for each d in u do <<
+      if null cdr d then << % Simple single component of the definition
+        d := car d;
+        w := car d;     % left hand side of definition
+        d := cadr d;    % body of function
+% Convert ((f a) b) = E to f = (lambda b (lambda a E)) 
+        while not atom w do <<
+          d := list('lambda, cadr w, d);
+          w := car w >>;
+% Rewrite the top lambda as a funarg. 
+        d := list('funarg, cadr d, caddr d, env);
+        rplacd(car v, d); % Store definition where it need to go.
+        v := cdr v >>
+      else <<
+        rederr "clausal definitions not handled yet" >> >>;
+    return '!:newenv!: . env
+  end;
+
+put('fvalbinds, 'smlspecial, 'smlfval);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -396,6 +580,14 @@ infix_lookup := mkhash(30, 2, 1.5)$
    puthash('(8 . right), infix_lookup, get('!:infixr8, 'lex_fixed_code));
    puthash('(9 . right), infix_lookup, get('!:infixr9, 'lex_fixed_code));
    nil >>;
+
+symbolic procedure makeflhs(name, args);
+   begin
+     printf("%fmakeflhs %r %r%n", name, args);
+     for each x in args do name := list(name, x);
+     printf("=> %r%n", name);
+     return name
+  end;
 
 symbolic procedure makeinfix(id, prec, dirn);
   begin
@@ -601,9 +793,7 @@ on parse_errors_fatal;
          ((exp "handle" match))
          (("raise" exp))
          (("if" exp "then" exp "else" exp)
-             (list 'cond
-                (list !$2 !$4)
-                (list t !$6)))
+             (list 'if !$2 !$4 !$6))
          (("while" exp "do" exp)) 
          (("case" exp "of" match))
          (("fn" match))
@@ -774,13 +964,16 @@ on parse_errors_fatal;
                                   (list 'val !$1 !$3)))
            )
 
- (fvalbind ((nfvalbindings (opt "and" fvalbind))))
+ (fvalbind ((nfvalbindings)     (list 'fvalbinds !$1))
+           ((nfvalbindings "and" fvalbind)
+                                (cons 'fvalbinds (cons !$1 (cdr !$3)))))
 
- (nfvalbindings ((onefvalbinding))
-           ((nfvalbindings "|" onefvalbinding)))
+ (nfvalbindings ((onefvalbinding)              (list !$1))
+           ((nfvalbindings "|" onefvalbinding) (cons !$1 !$3)))
 
  (onefvalbinding
-          ((id_with_op (plus atpat) opttyp "=" exp)))
+          ((id_with_op (plus atpat) opttyp "=" exp)
+              (list (makeflhs !$1 !$2) !$5)))
 
  (typbind  ((!:symbol "=" typ (opt "and" typbind)))
            ((tyvarseq !:symbol "=" typ (opt "and" typbind))))
