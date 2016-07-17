@@ -4,7 +4,7 @@ SML ?= poly
 all: test1 test2
 
 .PHONY: test%
-test%:	charmetrics.dat
+test%:
 	echo 'use "all.sml"; $@();' | $(SML)
 
 
@@ -18,6 +18,14 @@ sml:
 	then R=$$O/bin/bootstrapreduce; \
 	else R=bootstrapreduce;fi && \
 	$$R -w sml.red -l sml.log
+
+smltest:
+	if test -x $$O/cslbuild/i686-pc-cygwin/csl/bootstrapreduce.exe;\
+	then R=$$O/cslbuild/i686-pc-cygwin/csl/bootstrapreduce.exe; \
+	elif test -x $$O/bin/bootstrapreduce;\
+	then R=$$O/bin/bootstrapreduce; \
+	else R=bootstrapreduce;fi && \
+	$$R -w smltest.red -l smltest.log
 
 
 # end of Makefile
