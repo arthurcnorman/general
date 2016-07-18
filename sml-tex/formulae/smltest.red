@@ -210,7 +210,7 @@ symbolic procedure smltoplevel u;
     scalar w;
     w := smleval(u, nil);
     if eqcar(w, '!:newenv!:) then
-      for each b in cdr w do <<
+      for each b in reverse cdr w do <<
         printf("%f%p = %p%n", car b, cdr b);
         put(car b, 'smlvalue, cdr b) >>
     else printf("%fValue: %p%n", w);
@@ -219,7 +219,8 @@ symbolic procedure smltoplevel u;
 symbolic procedure smlapply(ff, arg);
   begin
     scalar bvl, body, env;
-    if not eqcar(ff, 'funarg) then rederr "funarg expected";
+    if not eqcar(ff, 'funarg) then
+      rederr bldmsg("%r is not a known function", ff);
     bvl := car (ff := cdr ff);  
     body := car (ff := cdr ff);  
     env := cadr ff;  
@@ -255,7 +256,7 @@ symbolic procedure smlapply(ff, arg);
 %      ()      (unit)            nil
 %      [a,b,c] (list)            (:: a' (:: b' (:: c' nil)))
 %      []      (empty list)      nil
-%      { t1=v1, ... } (records)  ??? (!:record!: ...) ???
+%      { t1=v1, ... } (records)  ??? (smlrecord ...) ???
 %      datatype f=x|y|z          x, y or z
 %      datatype f = A of ..      (A ...)
 % where A is flagged to mark is as a constructor. Note that :: is
@@ -278,7 +279,7 @@ symbolic procedure smlpair(bvl, arg, env);
       else smlpair(caddr bvl, cdr arg, env) >>
 % I probably need to deal with records here, where matching is especially
 % messy because ordering ot components is not rigidly fixed.
-  else if eqcar(bvl, '!:record!:) then
+  else if eqcar(bvl, 'smlrecord) then
     rederr "destructuring records not coded yet"
   else if flagp(car bvl, 'smlconstructor) then % General constructor
     if eqcar(arg, car bvl) then smlpairlist(cdr bvl, cdr arg, env)
@@ -325,7 +326,7 @@ symbolic procedure smldummypair(bvl, env);
       smldummypair(caddr bvl, env) >>
 % I probably need to deal with records here, where matching is especially
 % messy because ordering of components is not rigidly fixed.
-  else if eqcar(bvl, '!:record!:) then
+  else if eqcar(bvl, 'smlrecord) then
     rederr "destructuring records not coded yet"
   else if flagp(car bvl, 'smlconstructor) then % General constructor
     smldummypairlist(cdr bvl, env)
@@ -681,7 +682,7 @@ on parse_errors_fatal;
          ((exp "," listtail) (cons !$1 !$3)))
 
  (seqtail
-         ((exp ")") nil)
+         ((exp ")") (list !$1))
          ((exp ";" seqtail) (cons !$1 !$3)))
 
  (id_with_op
@@ -697,7 +698,7 @@ on parse_errors_fatal;
 % a single token then in the process of that case being noted as a dipthong
 % the initial "-" will also be given its own lexer code... so I need to
 % list initial substrings of any dipthong here. In most cases the token
-% will start off as amere !:symbol items, but ones that I will map onto
+% will start off as a mere !:symbol items, but ones that I will map onto
 % custom Lisp names are best noted explicitly here I think.
 
  (opname  ((!:symbol))
@@ -737,14 +738,14 @@ on parse_errors_fatal;
          ((id_with_op) !$1)
          (("{" exprow "}"))
          (("#" lab))
-         ((unit))                            % Unit
-         (("(" exp "," tupletail))           % A tuple
-         ((emptylist) 'empty_list)           % Empty list
-         (("[" exp "]") (list 'list !$2))    % List of length 1
-         (("[" exp "," listtail))            % Longer list
-         (("(" exp ";" seqtail))             % Sequence
+         ((unit) nil)                           % Unit
+         (("(" exp "," tupletail) (cons 'smltuple (cons !$2 !$4))) % Tuple
+         ((emptylist) nil)                      % Empty list
+         (("[" exp "]") (list 'smllist !$2))    % List of length 1
+         (("[" exp "," listtail) (cons 'smllist (cons !$2 !$4))) % Longer list
+         (("(" exp ";" seqtail) (cons 'smlseq (cons !$2 !$4)))   % Sequence
          ((letid dec "in" seqexps endid))
-         (("(" exp ")") !$2))                % Mere parentheses
+         (("(" exp ")") !$2))                   % Mere parentheses
 
  (appexp ((atexp))
          ((appexp atexp)))
@@ -850,8 +851,8 @@ on parse_errors_fatal;
          ((id_with_op "as" pat1))
          )
 
- (pat    ((pat1))
-         ((pat ":" typ))
+ (pat    ((pat1)         !$1)
+         ((pat ":" typ)  !$1)
 % This rule is over-generous, in that the only case actually allowed
 % is '["op"] id ":" typ "as" pat1' but then if you see an identifier x
 % followed by a colon you know you next have to read a type, but until
@@ -866,16 +867,18 @@ on parse_errors_fatal;
          ((":" typ)))
 
  (atpat  ((con) !$1)
-         (("_"))
+         (("_") 'smlwildcard)
          ((id_with_op) !$1)
          (("{" patrow "}"))
-         ((unit))
-         ((emptylist))
-         (("[" patseq "]"))
-         (("(" patseq ")")))
+         ((unit) nil)
+         ((emptylist) nil)
+         (("[" patseq "]") (cond ((null (cdr !$2)) (car !$2))
+                                 (t (cons '!smllist !$2))))
+         (("(" patseq ")") (cond ((null (cdr !$2)) (car !$2))
+                                 (t (cons '!smltuple !$2)))))
 
- (patseq ((pat))
-         ((patseq "," pat)))
+ (patseq ((pat) (list !$1))
+         ((patseq "," pat) (append !$1 (list !$3))))
 
  (patrow (("..."))
          ((lab "=" pat optmorepatrow))

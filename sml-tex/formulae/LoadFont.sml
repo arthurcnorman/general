@@ -46,6 +46,9 @@ struct
       | #"D"  =>  let val d'  =  getDist size file
                   in  collect w  h  d' i  l  t  b  r  a  end
       | #"I"  =>  let val i'  =  getDist size file
+                      val () = print "Italic correcion for "
+                      val () = print (Int.toString i')
+                      val () = print " ha ha\n"
                   in  collect w  h  d  i' l  t  b  r  a  end
       | #"L"  =>  let val l'  =  SOME (getOctal file)
                   in  collect w  h  d  i  l' t  b  r  a  end
