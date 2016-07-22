@@ -92,13 +92,32 @@ symbolic procedure smleval(u, env);
       return funcall(w, cdr u, env)
     else if (w := get(car u, 'smlprimitive)) then
       return funcall(w, smleval(cadr u, env))
-    else return smlapply(smleval(car u, env), smleval(cadr u, env))
+    else <<
+      w := smleval(car u, env);
+      if not eqcar(w, 'funarg) then
+        rederr bldmsg("%r is not a known function", car u);
+      return smlapply(w, smleval(cadr u, env)) >>
+  end;
+
+symbolic procedure smlapply(ff, arg);
+  begin
+    scalar bvl, body, env;
+    bvl := car (ff := cdr ff);  
+    body := car (ff := cdr ff);  
+    env := cadr ff;  
+    env := smlpair(bvl, arg, env);
+    return smleval(body, env)
   end;
 
 symbolic procedure smltuple(u, env);
   for each x in u collect smleval(x, env);
 
-put('tuple, 'smlspecial, 'smltuple);
+put('smltuple, 'smlspecial, 'smltuple);
+
+symbolic procedure smllist(u, env);
+  for each x in u collect smleval(x, env);
+
+put('smllist, 'smlspecial, 'smllist);
 
 symbolic procedure smltimes u;
   car u * cadr u;
@@ -211,21 +230,9 @@ symbolic procedure smltoplevel u;
     w := smleval(u, nil);
     if eqcar(w, '!:newenv!:) then
       for each b in reverse cdr w do <<
-        printf("%f%p = %p%n", car b, cdr b);
+        printf("%f%q = %q%n", car b, cdr b);
         put(car b, 'smlvalue, cdr b) >>
-    else printf("%fValue: %p%n", w);
-  end;
-
-symbolic procedure smlapply(ff, arg);
-  begin
-    scalar bvl, body, env;
-    if not eqcar(ff, 'funarg) then
-      rederr bldmsg("%r is not a known function", ff);
-    bvl := car (ff := cdr ff);  
-    body := car (ff := cdr ff);  
-    env := cadr ff;  
-    env := smlpair(bvl, arg, env);
-    return smleval(body, env)
+    else printf("%fValue: %q%n", w);
   end;
 
 % Now for me to think about argument de-structuring I need to decide
@@ -277,6 +284,9 @@ symbolic procedure smlpair(bvl, arg, env);
       env := smlpair(cadr bvl, car arg, env);
       if env = 'fail then 'fail
       else smlpair(caddr bvl, cdr arg, env) >>
+% The pattern for a tuple has "smltuple" at the start, but the stored
+% representation of the tuple does not have any special tag on the front.
+  else if eqcar(bvl, 'smltuple) then smlpairlist(cdr bvl, arg, env)
 % I probably need to deal with records here, where matching is especially
 % messy because ordering ot components is not rigidly fixed.
   else if eqcar(bvl, 'smlrecord) then
@@ -674,7 +684,7 @@ on parse_errors_fatal;
          ((!:number)))
 
  (tupletail
-         ((exp ")") nil)
+         ((exp ")") (list !$1))
          ((exp "," tupletail) (cons !$1 !$3)))
 
  (listtail
@@ -753,28 +763,28 @@ on parse_errors_fatal;
 % Note that infix operators turn into function calls using tupled arguments,
 % and here I represent a 2-tuple as just a list of length 2.
  (infexp ((appexp))
-         ((infexp !:infix0 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infix1 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infix2 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infix3 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infix4 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp "=" infexp) (list 'equal (list 'tuple !$1 !$3)))
-         ((infexp !:infix5 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infix6 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infix7 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp "*" infexp) (list 'times (list 'tuple !$1 !$3)))
-         ((infexp !:infix8 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infix9 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infixr0 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infixr1 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infixr2 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infixr3 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infixr4 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infixr5 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infixr6 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infixr7 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infixr8 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
-         ((infexp !:infixr9 infexp) (list (get !$2 'lisp_name) (list 'tuple !$1 !$3)))
+         ((infexp !:infix0 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infix1 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infix2 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infix3 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infix4 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp "=" infexp) (list 'equal (list 'smltuple !$1 !$3)))
+         ((infexp !:infix5 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infix6 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infix7 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp "*" infexp) (list 'times (list 'smltuple !$1 !$3)))
+         ((infexp !:infix8 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infix9 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infixr0 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infixr1 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infixr2 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infixr3 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infixr4 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infixr5 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infixr6 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infixr7 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infixr8 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
+         ((infexp !:infixr9 infexp) (list (get !$2 'lisp_name) (list 'smltuple !$1 !$3)))
          )
 
 
@@ -1147,6 +1157,14 @@ a;
 b;
 c;
 
+(1);
+(1,2);
+(1,2,3);
+[];
+[1];
+[1,2];
+[1,2,3];
+
 fun fact n =
   if n = 0 then 1
   else n * (fact (n-1));
@@ -1154,8 +1172,8 @@ fun fact n =
 fact 6;
 
 fun bin(n, r) =
-  if n = 0 orelse n = r then 1
-  else bin(n-1, r-1) = bin(n-1, r);
+  if r = 0 orelse n = r then 1
+  else bin(n-1, r-1) + bin(n-1, r);
 
 bin(10, 4);
 
