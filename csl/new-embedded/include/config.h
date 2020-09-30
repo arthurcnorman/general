@@ -10,6 +10,10 @@
 /* True to tell sources that this build is part of CSL */
 #define CSL 1
 
+/* KaratsubaThreads doesn't seem to play nice with wasm */
+#define AVOID_THREADS 1
+
+
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
    */
 #define HAVE_DIRENT_H 1
@@ -24,7 +28,7 @@
 #endif
 
 /* True if we will use the FWIN terminal code */
-#define HAVE_FWIN 1
+#define HAVE_FWIN 0
 
 /* Define to 1 if the system has the type `int16_t'. */
 #define HAVE_INT16_T 1

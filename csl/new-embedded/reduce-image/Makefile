@@ -7,16 +7,16 @@
 # will need the include/config.h file adjusted.
 
 ifeq ($(shell uname),Darwin)
-CC=g++
+CC=em++
 #CC=clang++
 XCFLAGS= -I/opt/local/lib/libffi-3.2.1/include
 XLIBS=-lm
 else
 ifeq ($(shell uname -o),Cygwin)
-CC=g++
+CC=em++
 XLIBS=-lm
 else
-CC=g++
+CC=em++
 XLIBS=-lm -lpthread
 endif
 endif
@@ -26,7 +26,7 @@ OPT=-O0 -g
 
 CPPFLAGS=$(CFLAGS) -std=gnu++11 $(OPT) -I. -I../include \
     -DHAVE_CONFIG_H=1 -DEMBEDDED=1 $(XCFLAGS)
-LIBS=$(XLIBS) -lz -lffi
+LIBS=$(XLIBS) -s USE_ZLIB=1 #-lffi
 
 S=../../cslbase
 R=../../..
@@ -49,7 +49,10 @@ reduce:		allocate.o arith01.o arith02.o arith03.o arith04.o arith05.o \
 		eval4.o fasl.o fns1.o fns2.o fns3.o fwin.o cslgc.o lisphash.o \
 		isprime.o preserve.o print.o restart.o sysfwin.o termed.o \
 		inthash.o serialize.o stubs.o \
-		$(LIBS) -o reduce
+		$(LIBS) -s ERROR_ON_UNDEFINED_SYMBOLS=0 -g4 \
+		-s ALLOW_MEMORY_GROWTH=1 \
+		-s DISABLE_EXCEPTION_CATCHING=0 \
+		--source-map-base http://localhost:8000/new-embedded/reduce-image/ -o reduce.js
 
 .cpp.o:                                                                          <
 	$(CC) $(CPPFLAGS) -c -o $@ $<
@@ -58,7 +61,7 @@ reduce:		allocate.o arith01.o arith02.o arith03.o arith04.o arith05.o \
 
 reduce.img:	reduce
 	-rm -f reduce.img
-	./reduce -z -Dno_init_file $(S)/buildreduce.lsp \
+	node reduce.js -z -Dno_init_file $(S)/buildreduce.lsp \
 		-D@srcdir=$(S) -D@reduce=$(R) -o reduce.img -- image.log
 
 make-image:	../make-image.cpp
@@ -75,7 +78,7 @@ clean:
 
 HEADERS = ../include/config.h \
 	$(S)/md5.h       $(S)/termed.h    $(S)/arith.h       $(S)/openmath.h \
-	$(S)/uint128_t.h $(S)/bigvector.h $(S)/entries.h     $(S)/proc.h     \
+	$(S)/bigvector.h $(S)/entries.h     $(S)/proc.h     \
 	$(S)/uninames.h  $(S)/bytes.h     $(S)/externs.h     $(S)/int128_t.h \
 	$(S)/sockhdr.h   $(S)/version.h   $(S)/charmetrics.h $(S)/fwin.h     \
 	$(S)/inthash.h   $(S)/stream.h    $(S)/cslerror.h    $(S)/headers.h  \

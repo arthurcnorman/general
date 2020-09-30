@@ -351,6 +351,70 @@ delay_callback_t *delay_callback;
 
 extern const char *my_getenv(const char *s);
 
+#ifdef EMBEDDED
+// #if defined __ARM_EABI__ && !defined __linux__
+
+int rmdir(const char *s)
+{   return 0;
+}
+
+const char *getcwd(char *s, size_t n)
+{   return ".";
+}
+
+int chdir(const char *s)
+{   return 0;
+}
+
+uid_t getuid()
+{   return 100;
+}
+
+uid_t geteuid()
+{   return 0;
+}
+
+gid_t getegid()
+{   return 0;
+}
+
+struct passwd *getpwuid(int x)
+{   return nullptr;
+}
+
+void utime(const char *s, struct utimbuf *t)
+{
+}
+
+int ftruncate(int a, long b)
+{   return 0;
+}
+
+int lstat(char *n, struct stat b)
+{   return 0;
+}
+
+
+int mkdir(const char *d, mode_t m)
+{
+}
+
+std::FILE *popen(const char *s, const char *d)
+{   return nullptr;
+}
+
+int pclose(std::FILE *f)
+{   return 0;
+}
+
+int readlink(const char *name, char *b, size_t n)
+{   return 0;
+}
+
+//#endif // __ARM_EABI__
+#endif // EMBEDDED
+
+
 #ifdef WIN32
 static int programNameDotCom = 0;
 #endif // WIN32
@@ -2794,67 +2858,5 @@ int get_users_home_directory(char *b, size_t len)
 }
 
 #endif // DO_NOT_USE_GETUID
-
-#ifdef EMBEDDED
-#if defined __ARM_EABI__ && !defined __linux__
-
-int rmdir(const char *s)
-{   return 0;
-}
-
-const char *getcwd(char *s, size_t n)
-{   return ".";
-}
-
-int chdir(const char *s)
-{   return 0;
-}
-
-uid_t getuid()
-{   return 100;
-}
-
-struct passwd *getpwuid(int x)
-{   return nullptr;
-}
-
-void utime(const char *s, struct utimbuf *t)
-{
-}
-
-int ftruncate(int a, long b)
-{   return 0;
-}
-
-int lstat(char *n, struct stat b)
-{   return 0;
-}
-
-uid_t geteuid()
-{   return 0;
-}
-
-gid_t getegid()
-{   return 0;
-}
-
-int mkdir(const char *d, mode_t m)
-{
-}
-
-std::FILE *popen(const char *s, const char *d)
-{   return nullptr;
-}
-
-int pclose(std::FILE *f)
-{   return 0;
-}
-
-int readlink(const char *name, char *b, size_t n)
-{   return 0;
-}
-
-#endif // __ARM_EABI__
-#endif // EMBEDDED
 
 // end of fwin.cpp
