@@ -1585,1006 +1585,1006 @@ void cslstart(int argc, const char *argv[], character_writer *wout)
              * but if that is not used and the system tries to run in a window it will
              * create it starting off minimised.
              */
-//            {   "--", true, true,
-//                "-- NAME  Redirect output to the given file so it does not appear\n"
-//                "         on the screen.",
-//// -- <outfile> arranges that output is sent to the indicated file. It is
-//// intended to behave a little like "> outfile" as command-line output
-//// redirection, but is for use in windowed environments (in particular
-//// Windows NT) where this would not work.
-//// So              -- filename
-//// redirects the standard output to the named file.
-//                [&](string key, bool hasVal, string val)
-//                {   if (!hasVal || val.length() == 0)
-//                    {   badArgs.push_back(key);
-//                        return;
-//                    }
-//                    char filename[LONGEST_LEGAL_FILENAME];
-//                    std::FILE *f;
-//                    std::memset(filename, 0, sizeof(filename));
-//#ifdef WITH_GUI
-//                    f = open_file(filename, val.c_str(), val.length(), "w", nullptr);
-//                    if (f == nullptr)
-//                    {
-////
-//// Under FWIN if there is a "--" among the arguments I will start off
-//// with the main window minimized. Thus if an error is detected at a
-//// stage that the transcript file is not properly opened I need to
-//// maximize the window so I can see the error! Note that I will need to
-//// ensure that fwin only uses "-- file" not "--option" to do this...
-////
-//                        fwin_restore();
-//                        term_printf("Unable to write to \"%s\"\n", filename);
-//                        return;
-//                    }
-//                    else
-//                    {   term_printf("Output redirected to \"%s\"\n",
-//                                    filename);
-//                    }
-//                    if (alternative_stdout != nullptr)
-//                        std::fclose(alternative_stdout);
-//                    alternative_stdout = f;
-//#else // !WITH_GUI
-////
-//// I use freopen() on stdout here to get my output sent elsewhere.  Quite
-//// what sort of mess I am in if the freopen fails is hard to understand!
-//// Thus I write a message to stderr and exit promptly in case of trouble.
-//// I print a message explaining what I am doing BEFORE actually performing
-//// the redirection.
-////
-//                    std::fprintf(stderr, "Output to be redirected to \"%s\"\n",
-//                                 val.c_str());
-//                    f = open_file(filename, val.c_str(), val.length(), "w", stdout);
-//                    if (f == nullptr)
-//                    {   std::fprintf(stderr, "Unable to write to \"%s\"\n",
-//                                     filename);
-//                        throw EXIT_FAILURE;
-//                    }
-//#endif // !WITH_GUI
-//                }
-//            },
+            {   "--", true, true,
+                "-- NAME  Redirect output to the given file so it does not appear\n"
+                "         on the screen.",
+// -- <outfile> arranges that output is sent to the indicated file. It is
+// intended to behave a little like "> outfile" as command-line output
+// redirection, but is for use in windowed environments (in particular
+// Windows NT) where this would not work.
+// So              -- filename
+// redirects the standard output to the named file.
+                [&](string key, bool hasVal, string val)
+                {   if (!hasVal || val.length() == 0)
+                    {   badArgs.push_back(key);
+                        return;
+                    }
+                    char filename[LONGEST_LEGAL_FILENAME];
+                    std::FILE *f;
+                    std::memset(filename, 0, sizeof(filename));
+#ifdef WITH_GUI
+                    f = open_file(filename, val.c_str(), val.length(), "w", nullptr);
+                    if (f == nullptr)
+                    {
 //
-//            /*! options [--help] \item [{\ttfamily --help}] \index{{\ttfamily --help}}
-//             * It is probably obvious what this option does! Note that on Windows the
-//             * application was linked as a windows binary so it carefully creates a
-//             * console to display the help text in, and organizes a delay to give
-//             * people a chance to read it.
-//             */
-//            {   "--help", false, false,
-//                "--help   Generate this text.",
-//                [&](string key, bool hasVal, string val)
-//                {   std::vector<string>helpText;
-//                    for (auto a=&argTable[0]; a->name!=nullptr; a++)
-//                        helpText.push_back(a->help);
-//                    std::sort(helpText.begin(), helpText.end());
-//#ifdef HAVE_LIBWX
-//// NOTE that the LaTeX Project Public License requires that every
-//// component of a derived work contain priminent notices logging
-//// changes of LPPL material and that it also provides information
-//// sufficient to obtain complete, unmodified versions of the original.
-//// Having text that can be displated via the "--help" command-line option
-//// will (I hope) satisfy these requirements for binary versions of this
-//// code. Those who read the source can find this comment as well, which
-//// notes that csl/support-packages contains original archives of
-//// font-related files that I have used, and that csl/cslbase/wxfonts
-//// contains both fonts and documentation explaining what might have
-//// changed. And in case anybody receives this file separate from
-//// other parts of the code, I will note that all these files can be
-//// downloaded from reduce-algebra.sf.net.
-//                    helpText.push_back(
-//                        "This software contains code that is subject to the LaTeX Project\n"
-//                        "Public License. In accordance with Clause 6 of that (which governs\n"
-//                        "distribution, there are README in a directory called wxfonts or\n"
-//                        "reduce.wxfonts present as part of this distribution that explain\n"
-//                        "both changes that have been made and where to obtain copies of\n"
-//                        "relevant complete, unmodified original font-related material.\n");
-//#endif
-//                    term_printf("Options:\n");
-//                    for (auto s:helpText)
-//                    {   for (char &c : s) char_to_terminal(c, 0);
-//                        char_to_terminal('\n', 0);
-//                    }
-//                    my_exit(0);
-//                }
-//            },
+// Under FWIN if there is a "--" among the arguments I will start off
+// with the main window minimized. Thus if an error is detected at a
+// stage that the transcript file is not properly opened I need to
+// maximize the window so I can see the error! Note that I will need to
+// ensure that fwin only uses "-- file" not "--option" to do this...
 //
-//            /*! options [-k] \item [{\ttfamily -k}] \index{{\ttfamily -k}}
-//             * {\ttfamily -K nnn} sets the size of heap to be used.  If it is given then that much
-//             * memory will be allocated and the heap will never expand.  Without this
-//             * option a default amount is used, and (on many machines) it will grow
-//             * if space seems tight.
-//             *
-//             * The extended version of this option is {\ttfamily -K nnn/ss} and then ss is the
-//             * number of ``CSL pages'' to be allocated to the Lisp stack. The default
-//             * value (which is 1) should suffice for almost all users, and it should
-//             * be noted that the C stack is separate from and independent of this one and
-//             * it too could overflow.
-//             *
-//             * A suffix K, M or G on the number indicates units of kilobytes, megabytes or
-//             * gigabytes, with megabytes being the default. So {\ttfamily -K200M} might
-//             * represent typical usage for common-sized computations. In general CSL
-//             * will automatically expand its heap, and so it should normally never be
-//             * necessary to use this option.
-//             */
-//            {   "-k", true, true,
-//                "-k nnnK or -knnnM or -knnnG Suggest heap-size to use.\n"
-//                "         -knnn/ss sets the Lisp stack to use ss chunks each of which\n"
-//                "         is large enough that this option is basically never needed!\n"
-//                "         Since the system auto-expands memory as it needs to it is very\n"
-//                "         rare to need to use this option. See also --maxmem",
-//                [&](string key, bool hasVal, string val)
-//                {   if (!hasVal || val.length() == 0)
-//                    {   badArgs.push_back(key);
-//                        return;
-//                    }
-//// val should be a string of the form
-////              nnnK   nnnM or nnnG
-////              nnnK/mm
-//// where nnn indicates (approximately) the desired amount of memory in
-//// kilobytes, magabytes or gigabytes (default megabytes) and mm is a feature
-//// that is deprecated and will be removed soon but that might set the
-//// size of the Lisp stack segment in the range 1-10. It to be legal to
-//// express nnn as a floating point value, as in 2.5G. That may lead to be
-//// allowing 1.0e5K as well, which would perhaps seem an eccentric way of
-//// providing input unless I allow plain numbers without a K, M or G suffix
-//// to specify amounts in bytes, so that -K1.0e9 and -K1G are treated
-//// as meaning the same thing. Ignore case in the specifier.
-//                    string valLow(val);
-//                    std::transform(valLow.begin(), valLow.end(), valLow.begin(),
-//                                   [](int c)
-//                    {   return std::tolower(c);
-//                    });
-//                    const char *valS = valLow.c_str();
-//                    double valD;
-//                    int valI = 1;
-//                    unsigned int len=std::strlen(valS), pos;
-//// This is not an especially tidy way of parsing this, but I think it is
-//// easy to understand. It uses sscanf to check each potential valid input
-//// format and the "%n" in there is used to confirm that sscanf had used up
-//// all the characters in the input.
-//                    if (std::sscanf(valS, "%lg%n", &valD, &pos)==1 && pos==len)
-//                    {
-//                    }
-//                    else if (std::sscanf(valS, "%lgk%n", &valD, &pos)==1 && pos==len)
-//                    {   valD *= 1024.0;
-//                    }
-//                    else if (std::sscanf(valS, "%lgm%n", &valD, &pos)==1 && pos==len)
-//                    {   valD *= 1024.0*1024.0;
-//                    }
-//                    else if (std::sscanf(valS, "%lgg%n", &valD, &pos)==1 && pos==len)
-//                    {   valD *= 1024.0*1024.0*1024.0;
-//                    }
-//                    else if (std::sscanf(valS, "%lg/%u%n", &valD, &valI, &pos)==2 &&
-//                             pos==len)
-//                    {
-//                    }
-//                    else if (std::sscanf(valS, "%lgk/%u%n", &valD, &valI, &pos)==2 &&
-//                             pos==len)
-//                    {   valD *= 1024.0;
-//                    }
-//                    else if (std::sscanf(valS, "%lgm/%u%n", &valD, &valI, &pos)==2 &&
-//                             pos==len)
-//                    {   valD *= 1024.0*1024.0;
-//                    }
-//                    else if (std::sscanf(valS, "%lgg/%u%n", &valD, &valI, &pos)==2 &&
-//                             pos==len)
-//                    {   valD *= 1024.0*1024.0*1024.0;
-//                    }
-//                    else
-//                    {   badArgs.push_back(key.append(val));
-//                        return;
-//                    }
-//// Negative requests or requests for more than 256Gbytes (or requests for
-//// zero or more than 10 stack chunks) will be rejected.
-//                    if (valD <= 0 || valD >= 256.0e9 ||
-//                        valI < 1 || valI > 10)
-//                    {   badArgs.push_back(key.append(val));
-//                        return;
-//                    }
-//// If a user specifies an amount without a K, M or G suffix and it is
-//// no greater then 32 million than I will treat it as if it has a suffix M.
-//// So for instance -K128 will ask for 128 Mbytes. And a value up to 32
-//// and without a suffix will be treated as Gigabytes
-//                    if (valD <= 32.0) valD *= 1024.0*1024.0*1024.0;
-//                    else if (valD <= 32.0e6) valD *= 1024.0*1024.0;
-//                    store_size = valD;
-//                    stack_segsize = valI;
-//                }
-//            },
+                        fwin_restore();
+                        term_printf("Unable to write to \"%s\"\n", filename);
+                        return;
+                    }
+                    else
+                    {   term_printf("Output redirected to \"%s\"\n",
+                                    filename);
+                    }
+                    if (alternative_stdout != nullptr)
+                        std::fclose(alternative_stdout);
+                    alternative_stdout = f;
+#else // !WITH_GUI
 //
+// I use freopen() on stdout here to get my output sent elsewhere.  Quite
+// what sort of mess I am in if the freopen fails is hard to understand!
+// Thus I write a message to stderr and exit promptly in case of trouble.
+// I print a message explaining what I am doing BEFORE actually performing
+// the redirection.
 //
-//            /*! options [--cygwin] \item [{\ttfamily --cygwin}] \index{{\ttfamily --cygwin}}
-//             * On Windows this flag is used to specify that a cygwin rather that a native
-//             * windows version of Reduce is needed. This can be the situation in some
-//             * cases where the foreign function interface is to be used.
-//             */
-//            {   "--cygwin", false, false,
-//                "--cygwin [on Windows] Try to use the cygwin version of Reduce rather\n"
-//                "         than a native Windows version, regardless of other circumstances.",
-//                [&](string key, bool hasVal, string val)
-//                {
-//                }
-//            },
+                    std::fprintf(stderr, "Output to be redirected to \"%s\"\n",
+                                 val.c_str());
+                    f = open_file(filename, val.c_str(), val.length(), "w", stdout);
+                    if (f == nullptr)
+                    {   std::fprintf(stderr, "Unable to write to \"%s\"\n",
+                                     filename);
+                        throw EXIT_FAILURE;
+                    }
+#endif // !WITH_GUI
+                }
+            },
+#if 0
+
+            /*! options [--help] \item [{\ttfamily --help}] \index{{\ttfamily --help}}
+             * It is probably obvious what this option does! Note that on Windows the
+             * application was linked as a windows binary so it carefully creates a
+             * console to display the help text in, and organizes a delay to give
+             * people a chance to read it.
+             */
+            {   "--help", false, false,
+                "--help   Generate this text.",
+                [&](string key, bool hasVal, string val)
+                {   std::vector<string>helpText;
+                    for (auto a=&argTable[0]; a->name!=nullptr; a++)
+                        helpText.push_back(a->help);
+                    std::sort(helpText.begin(), helpText.end());
+#ifdef HAVE_LIBWX
+// NOTE that the LaTeX Project Public License requires that every
+// component of a derived work contain priminent notices logging
+// changes of LPPL material and that it also provides information
+// sufficient to obtain complete, unmodified versions of the original.
+// Having text that can be displated via the "--help" command-line option
+// will (I hope) satisfy these requirements for binary versions of this
+// code. Those who read the source can find this comment as well, which
+// notes that csl/support-packages contains original archives of
+// font-related files that I have used, and that csl/cslbase/wxfonts
+// contains both fonts and documentation explaining what might have
+// changed. And in case anybody receives this file separate from
+// other parts of the code, I will note that all these files can be
+// downloaded from reduce-algebra.sf.net.
+                    helpText.push_back(
+                        "This software contains code that is subject to the LaTeX Project\n"
+                        "Public License. In accordance with Clause 6 of that (which governs\n"
+                        "distribution, there are README in a directory called wxfonts or\n"
+                        "reduce.wxfonts present as part of this distribution that explain\n"
+                        "both changes that have been made and where to obtain copies of\n"
+                        "relevant complete, unmodified original font-related material.\n");
+#endif
+                    term_printf("Options:\n");
+                    for (auto s:helpText)
+                    {   for (char &c : s) char_to_terminal(c, 0);
+                        char_to_terminal('\n', 0);
+                    }
+                    my_exit(0);
+                }
+            },
+#endif
+            /*! options [-k] \item [{\ttfamily -k}] \index{{\ttfamily -k}}
+             * {\ttfamily -K nnn} sets the size of heap to be used.  If it is given then that much
+             * memory will be allocated and the heap will never expand.  Without this
+             * option a default amount is used, and (on many machines) it will grow
+             * if space seems tight.
+             *
+             * The extended version of this option is {\ttfamily -K nnn/ss} and then ss is the
+             * number of ``CSL pages'' to be allocated to the Lisp stack. The default
+             * value (which is 1) should suffice for almost all users, and it should
+             * be noted that the C stack is separate from and independent of this one and
+             * it too could overflow.
+             *
+             * A suffix K, M or G on the number indicates units of kilobytes, megabytes or
+             * gigabytes, with megabytes being the default. So {\ttfamily -K200M} might
+             * represent typical usage for common-sized computations. In general CSL
+             * will automatically expand its heap, and so it should normally never be
+             * necessary to use this option.
+             */
+            {   "-k", true, true,
+                "-k nnnK or -knnnM or -knnnG Suggest heap-size to use.\n"
+                "         -knnn/ss sets the Lisp stack to use ss chunks each of which\n"
+                "         is large enough that this option is basically never needed!\n"
+                "         Since the system auto-expands memory as it needs to it is very\n"
+                "         rare to need to use this option. See also --maxmem",
+                [&](string key, bool hasVal, string val)
+                {   if (!hasVal || val.length() == 0)
+                    {   badArgs.push_back(key);
+                        return;
+                    }
+// val should be a string of the form
+//              nnnK   nnnM or nnnG
+//              nnnK/mm
+// where nnn indicates (approximately) the desired amount of memory in
+// kilobytes, magabytes or gigabytes (default megabytes) and mm is a feature
+// that is deprecated and will be removed soon but that might set the
+// size of the Lisp stack segment in the range 1-10. It to be legal to
+// express nnn as a floating point value, as in 2.5G. That may lead to be
+// allowing 1.0e5K as well, which would perhaps seem an eccentric way of
+// providing input unless I allow plain numbers without a K, M or G suffix
+// to specify amounts in bytes, so that -K1.0e9 and -K1G are treated
+// as meaning the same thing. Ignore case in the specifier.
+                    string valLow(val);
+                    std::transform(valLow.begin(), valLow.end(), valLow.begin(),
+                                   [](int c)
+                    {   return std::tolower(c);
+                    });
+                    const char *valS = valLow.c_str();
+                    double valD;
+                    int valI = 1;
+                    unsigned int len=std::strlen(valS), pos;
+// This is not an especially tidy way of parsing this, but I think it is
+// easy to understand. It uses sscanf to check each potential valid input
+// format and the "%n" in there is used to confirm that sscanf had used up
+// all the characters in the input.
+                    if (std::sscanf(valS, "%lg%n", &valD, &pos)==1 && pos==len)
+                    {
+                    }
+                    else if (std::sscanf(valS, "%lgk%n", &valD, &pos)==1 && pos==len)
+                    {   valD *= 1024.0;
+                    }
+                    else if (std::sscanf(valS, "%lgm%n", &valD, &pos)==1 && pos==len)
+                    {   valD *= 1024.0*1024.0;
+                    }
+                    else if (std::sscanf(valS, "%lgg%n", &valD, &pos)==1 && pos==len)
+                    {   valD *= 1024.0*1024.0*1024.0;
+                    }
+                    else if (std::sscanf(valS, "%lg/%u%n", &valD, &valI, &pos)==2 &&
+                             pos==len)
+                    {
+                    }
+                    else if (std::sscanf(valS, "%lgk/%u%n", &valD, &valI, &pos)==2 &&
+                             pos==len)
+                    {   valD *= 1024.0;
+                    }
+                    else if (std::sscanf(valS, "%lgm/%u%n", &valD, &valI, &pos)==2 &&
+                             pos==len)
+                    {   valD *= 1024.0*1024.0;
+                    }
+                    else if (std::sscanf(valS, "%lgg/%u%n", &valD, &valI, &pos)==2 &&
+                             pos==len)
+                    {   valD *= 1024.0*1024.0*1024.0;
+                    }
+                    else
+                    {   badArgs.push_back(key.append(val));
+                        return;
+                    }
+// Negative requests or requests for more than 256Gbytes (or requests for
+// zero or more than 10 stack chunks) will be rejected.
+                    if (valD <= 0 || valD >= 256.0e9 ||
+                        valI < 1 || valI > 10)
+                    {   badArgs.push_back(key.append(val));
+                        return;
+                    }
+// If a user specifies an amount without a K, M or G suffix and it is
+// no greater then 32 million than I will treat it as if it has a suffix M.
+// So for instance -K128 will ask for 128 Mbytes. And a value up to 32
+// and without a suffix will be treated as Gigabytes
+                    if (valD <= 32.0) valD *= 1024.0*1024.0*1024.0;
+                    else if (valD <= 32.0e6) valD *= 1024.0*1024.0;
+                    store_size = valD;
+                    stack_segsize = valI;
+                }
+            },
+
+            /*! options [--cygwin] \item [{\ttfamily --cygwin}] \index{{\ttfamily --cygwin}}
+             * On Windows this flag is used to specify that a cygwin rather that a native
+             * windows version of Reduce is needed. This can be the situation in some
+             * cases where the foreign function interface is to be used.
+             */
+            {   "--cygwin", false, false,
+                "--cygwin [on Windows] Try to use the cygwin version of Reduce rather\n"
+                "         than a native Windows version, regardless of other circumstances.",
+                [&](string key, bool hasVal, string val)
+                {
+                }
+            },
+
+            /*! options [--wait] item [{ttfamily --wait}] index{{ttfamily --wait}}
+             * This displays the process number and waits for 15 seconds at the
+             * start of a run. This may be useful for those who have built everything
+             * with debugging options and then want to start it fairly normally and
+             * then attach from gdb or some other debugger.
+             */
+            {   "--wait", false, false,
+                "--wait   Pause for 15 second before starting anything.\n"
+                "         This may be useful for those who want to attach a debugger to\n"
+                "         during that time, so provided there is a console availabe\n"
+                "         the process number will be displayed on the standard output.",
+                [&](string key, bool hasVal, string val)
+                {   std::printf("Process identifier = %d\r\n", getpid());
+                    std::printf("Waiting 15 seconds in case you want to attach\r\n");
+                    std::printf("from gdb or some other debugger...\r\n");
+                    std::fflush(stdout);
+                    std::this_thread::sleep_for(std::chrono::seconds(15));
+                    std::printf("... continuing\r\n");
+                    std::fflush(stdout);
+                }
+            },
+
+            /*! options [-w] \item [{\ttfamily -w}] \index{{\ttfamily -w}}
+             * On a typical system if the system is launched it creates a new window and uses
+             * its own windowed intarface in that. If it is run such that at startup the
+             * standard input or output are associated with a file or pipe, or under X the
+             * variable {\ttfamily DISPLAY} is not set it will try to start up in console
+             * mode. The flag {\ttfamily -w} indicates that the system should run in console
+             * more regardless, while {\ttfamily -w+} attempts a window even if that seems
+             * doomed to failure. When running the system to obey a script it will often make
+             * sense to use the {\ttfamily -w} option. Note that on Windows the system is
+             * provided as two separate (but almost identical) binaries. For example the
+             * file {\ttfamily csl.exe} is linked in windows mode. A result is that if
+             * launched from the command line it detaches from its console, and if launched
+             * by double-clicking it does not create a console. It is in fact very ugly when
+             * double clicking on an application causes an unwanted console window to appear.
+             * In contrast {\ttfamily csl.com} is a console mode version of just the same
+             * program, so when launched from a command line it can communicate with the
+             * console in the ordinary expected manner.
+             *
+             * The option is in fact processed at an earlier stage then here if windowing
+             * is possible at all!
+             */
+
+            {   "-w", true, false,
+                "-w or -w+ or -w- When using a platform that supports a windowed mode\n"
+                "         -w or -w- forces the system to fall back to console mode, while -w+\n"
+                "         forces use of the GUI even when other issues might have inhibited it.",
+                [&](string key, bool hasVal, string val)
+                {   // Detected and processed by the GUI layer before we get here, so
+                    // no action is needed at this stage.
+                }
+            },
+
+            /*! options [--texmacs] \item [{\ttfamily --texmacs}] \index{{\ttfamily --texmacs}}
+             * If CSL/Reduce is launched from texmacs this command-line flag should be
+             * used to arrange that the {\ttfamily texmacs} flag is set in
+             * {\ttfamily lispsystem!*}, and the code may then do special things.
+             */
+            {   "--texmacs", false, false,
+                "--texmacs Run in texmacs mode. You must use the plugin from the\n"
+                "         cslbase/texmacs-plugin directory.",
+                [&](string key, bool hasVal, string val)
+                {   // Detected and processed by the GUI layer before we get here, so
+                    // no action is needed at this stage.
+                }
+            },
+
+            /*! options [--no-rcfile] \item [{\ttfamily --no-rcfile}] \index{{\ttfamily --no-rcfile}}
+             * Instruct the system not to read a user-specific configuation file, which
+             * make have such a names as ``{\ttfamily .reducerc}'', at startup time. This
+             * can be useful during system building where utterly self-contained and
+             * predictable behaviour is important.
+             */
+            {   "--no-rcfile", false, false,
+                "--no-rcfile Sets the Lisp variable no_init_file which for Reduce arranges\n"
+                "         that any file $HOME/.reducerc is ignored rather than read",
+                [&](string key, bool hasVal, string val)
+                {   symbolsToDefine.push_back(
+                        stringBoolString("no_init_file", true, ""));
+                }
+            },
+
+            /*! options [--gui] \item [{\ttfamily --gui}] \index{{\ttfamily --gui}}
+             * Encourage the system to run in its own window. Similar behaviour
+             * to {\ttfamily -w+}.
+             */
+            {   "--gui", false, false,
+                "--gui    Use a windowed interface if possible. Equivalent to \"-w+\".",
+                [&](string key, bool hasVal, string val)
+                {
+                }
+            },
+
+            /*! options [--nogui] \item [{\ttfamily --nogui}] \index{{\ttfamily --nogui}}
+             * Encourage the system to run as a console-style application. Similar
+             * to {\ttfamily -w-} or just simply {\ttfamily -w}.
+             */
+            {   "--nogui", false, false,
+                "--nogui  Use a console-mode interface (not a windowed one), Equivalent to \"-w-\".",
+                [&](string key, bool hasVal, string val)
+                {
+                }
+            },
+
+            /*! options [--guimin] \item [{\ttfamily --guimin}] \index{{\ttfamily --guimin}}
+             * Encourage the system to run as in its own window, but
+             * start that window off minimised. Similar
+             * to {\ttfamily -w.}.
+             */
+            {   "--guimin", false, false,
+                "--guimin Start up with window for the interface minimised. Equivalent to \"-w.\".",
+                [&](string key, bool hasVal, string val)
+                {
+                }
+            },
+
+            /*! options [--gc-trigger] \item [{\ttfamily --gc-trigger}] \index{{\ttfamily --gc-trigger}}
+             * --gc-trigger=NNNN causes a garbage collection to be forced on the NNNNth
+             * occasion when that could possibly happen. This may sometimes be relevant
+             * when trying to track down garbage collection related bugs. If the option
+             * is set every garbage collection displays the count that it corresponds to,
+             * and the intent is that these counts should be fairly deterministic.
+             */
+            {   "--gc-trigger", true, true,
+                "--gc-trigger NN Force garbage collection to happen on the NNth time it\n"
+                "         possibly could. Used when tracking garbage collection bugs and in\n"
+                "         particular one that may arise when GC is triggered from some particular\n"
+                "         context -- hence not useful for ordinary users.",
+                [&](string key, bool hasVal, string val)
+                {   try
+                    {   reclaim_trigger_target = std::stoull(val);
+                    }
+                    catch (...)
+                    {   reclaim_trigger_target = 0;
+                    }
+                }
+            },
+
+            /*! options [--stop-on-error] \item [{\ttfamily --stop-on-error}] \index{{\ttfamily --stop-on-error}}
+             * This utterly defeats errorset and arranges that if there is any error that
+             * after whatever backtrace might have been generated any inner errorset
+             * just propagates the error out, and at the top level the system exits.
+             */
+            {   "--stop-on-error", false, false,
+                "--stop-on-error  If any error arises then give up and stop.",
+                [&](string key, bool hasVal, string val)
+                {   stop_on_error=true;
+                }
+            },
+
+            /*! options [--force-verbos] \item [{\ttfamily --force-verbos}] \index{{\ttfamily --force-verbos}}
+             * Forces generation of messages from the garbage collector regardless of any
+             * attempt from with the system to change that. Intended for use during system
+             * debugging where it may be important to see when a garbage collection occurs
+             * but undesirable to change the input script at all.
+             */
+            {   "--force-verbos", false, false,
+                "--force-verbos Ensure that garbage collection messages are displayed.",
+                [&](string key, bool hasVal, string val)
+                {   force_verbos = true;
+                }
+            },
+
+            /*! options [--force-echo] \item [{\ttfamily --force-echo}] \index{{\ttfamily --force-echo}}
+             * Forces echoing of input regardless of any
+             * attempt from with the system to change that. Intended for use during system
+             * debugging where it may be important to observe progress through an
+             * input file but undesirable to change the input script at all.
+             */
+            {   "--force_echo", false, false,
+                "--force-echo Echo innput, regardless of system switches or other options.",
+                [&](string key, bool hasVal, string val)
+                {   force_echo = true;
+                }
+            },
+
+            /*! options [--force-backtrace//--bt] \item [{\ttfamily --force-backtrace, --bt}] \index{{\ttfamily --force-backtrace, --bt}}
+             * Forces any error to generate a backtrace regardless of any
+             * attempt from with the system to change that (eg via use of errorset).
+             * Intended for use during system  debugging where it may be important to
+             * observe behaviour otherwise hidden by (errorset X nil nil) but when it
+             * undesirable to change the input script at all.
+             */
+            {   "-force-backtrace", false, false,
+                "--force-backtrace Always generate a backtrace after any error.",
+                [&](string key, bool hasVal, string val)
+                {   force_backtrace = true;
+                }
+            },
+
+            {   "-force-bt", false, false,
+                "--force-bt More concise version of --force-backtrace.",
+                [&](string key, bool hasVal, string val)
+                {   force_backtrace = true;
+                }
+            },
+
+            /*! options [--version] \item [{\ttfamily --version}] \index{{\ttfamily --version}}
+             * It is probably obvious what this option does! But note that there is an
+             * issue here about whether one is looking at the CSL version identification or
+             * one for the Lisp application from an image file (eg often Reduce).
+             */
+            {   "--version", false, false,
+                "---version Display version information and stop.",
+                [&](string key, bool hasVal, string val)
+                {   term_printf(
+#ifndef COMMON
+                        "Codemist Standard Lisp revision %u for %s: %s\n",
+#else
+                        "Codemist Common Lisp revision %u for %s: %s\n",
+#endif
+                        REVISION, IMPNAME, __DATE__);
+                    my_exit(0);
+                }
+            },
+
+            /*! options [--maxmem] \item [{\ttfamily --maxmem}] \index{{\ttfamily --maxmem}}
+             * Normally this code goes back to the operating system and requests more memory
+             * at any time when it feels that would be useful.This option can be used to
+             * set an approximate limit on the amount it will use. See also -k
+             */
+            {   "--maxmem", true, true,
+                "--maxmem NNN Prevent memory expansion beyond NNN.",
+                [&](string key, bool hasVal, string val)
+                {   string valLow(val);
+                    std::transform(valLow.begin(), valLow.end(), valLow.begin(),
+                    [](int c)
+                    {   return std::tolower(c);
+                    });
+                    const char *valS = valLow.c_str();
+                    double valD;
+                    unsigned int len=std::strlen(valS), pos;
+// This is basically the same as the code used to decode "-kNNN".
+                    if (std::sscanf(valS, "%lg%n", &valD, &pos)==1 && pos==len)
+                    {
+                    }
+                    else if (std::sscanf(valS, "%lgk%n", &valD, &pos)==1 && pos==len)
+                    {   valD *= 1024.0;
+                    }
+                    else if (std::sscanf(valS, "%lgm%n", &valD, &pos)==1 && pos==len)
+                    {   valD *= 1024.0*1024.0;
+                    }
+                    else if (std::sscanf(valS, "%lgg%n", &valD, &pos)==1 && pos==len)
+                    {   valD *= 1024.0*1024.0*1024.0;
+                    }
+                    else
+                    {   badArgs.push_back(key.append(val));
+                        return;
+                    }
+// Negative requests or requests for more than 256Gbytes (or requests for
+// zero or more than 10 stack chunks) will be rejected.
+                    if (valD <= 0 || valD >= 256.0e9)
+                    {   badArgs.push_back(key.append(val));
+                        return;
+                    }
+                    if (valD <= 32.0) valD *= 1024.0*1024.0*1024.0;
+                    else if (valD <= 32.0e6) valD *= 1024.0*1024.0;
+                    max_store_size = valD;
+                }
+            },
+
+#ifndef AVOID_THREADS
+            /*! options [--kara] \item [{\ttfamily --kara}] \index{{\ttfamily --kara}}
+             * This it is intended for use by those maintaining CSL not for the general
+             * public. By default long multiplication can use a threaded implementation
+             * (to exploit multi-core machines). This happens when numbers get bigger
+             * than some magic threshold.
+             * This option allows one to override the default threshold so that
+             * performance effects can be measured and the cut-off adjusted to suit the
+             * machine involved.
+             */
+            {   "--kara", true, true,
+                "---kara NN Set transition between single and multi-thread Karatsuba\n"
+                "         multiplication.",
+                [&](string key, bool hasVal, string val)
+                {   try
+                    {   kparallel = std::stoi(val);
+                    }
+                    catch (...)
+                    {   kparallel = 0;
+                    }
+                    if (kparallel < KARATSUBA_CUTOFF) kparallel = KARATSUBA_CUTOFF;
+                }
+            },
+#endif // AVOID_THREADS
+
+            /*! options [--trace/--tr] \item [{\ttfamily --trace, --tr}] \index{{\ttfamily --trace, --tr}}
+             * When followed by the name of a function this command-line option has and
+             * effect as if (trace '(fname)) had been called at system start-up so that
+             * all calls to the named function are reported to the user. Perhaps often to
+             * be combined with --bt so that on any error a backtrace will get generated,
+             * and used when an input script leads to failure and one wants to investigate
+             * its behaviour without altering the script at all.
+             */
+            {   "--trace", true, true,
+                "---trace NAME Sets up tracing on the names Lisp function.",
+                [&](string key, bool hasVal, string val)
+                {   tracedFunctions.push_back(val);
+                }
+            },
+
+            {   "--tr", true, true,
+                "---tr NAME Equivalent to \"--trace NAME\".",
+                [&](string key, bool hasVal, string val)
+                {   tracedFunctions.push_back(val);
+                }
+            },
+
+            /*! options [-a] \item [{\ttfamily -a}] \index{{\ttfamily -a}}
+             * {\ttfamily -a} is a curious option, not intended for general or casual use.
+             * If given it causes the {\ttfamily (batchp)} function to return the opposite
+             * result from normal!  Without ``{attfamily -a}'' {\ttfamily (batchp)} returns
+             * {\ttfamily T} either if at least one file was specified on the command line,
+             * or if the standard input is ``not a tty'' (under some operating systems this
+             * makes sense -- for instance the standard input might not be a ``tty'' if it
+             * is provided via file redirection).  Otherwise (ie primary input is directly
+             * from a keyboard) {\ttfamily (batchp)} returns {\ttfamily nil}.  Sometimes
+             * this judgement about how ``batch'' the current run is will be wrong or
+             * unhelpful, so {\ttfamily -a} allows the user to coax the system into better
+             * behaviour.  I hope that this is never used!
+             */
+
+            {   "-a", false, false,
+                "- a       Causes the sense of the Lisp (batchp) function to be inverted.",
+                [&](string key, bool hasVal, string val)
+                {   batch_flag = true;
+                }
+            },
+
+            /*! options [-b] \item [{\ttfamily -b}] \index{{\ttfamily -b}}
+             * {\ttfamily -b} tells the system to avoid any attempt to recolour prompts
+             * and input text. It will mainly be needed on X terminals that have been
+             * set up so that they use colours that make the defaults here unhelpful.
+             * Specifically white-on-black and so on.
+             * {\ttfamily -b} can be followed by colour specifications to make things yet
+             * more specific. It is supposed to be the idea that three colours can be
+             * specified after it for output, input and prompts, with the letters KRGYbMCW
+             * standing for blacK, Red, Green, Yellow, blue, Magenta, Cyan and White.
+             * This may not fully work yet!
+             */
+            {   "-b", true, false,
+                "-b or -bCOLOURS Just \"-b\" sets black and white mode, while COLOURS\n"
+                "         can be one of blacK, Red, Green, Yellow, blue, Magenta, Cyan\n"
+                "         or White (with blue indicated by a lower case \"b\" and black by\n"
+                "         a \"k\" for each of output, input and prompts.",
+                [&](string key, bool hasVal, string val)
+                {   // Processed earlier by fwin.
+                }
+            },
+
+            /*! options [-c] \item [{\ttfamily -c}] \index{{\ttfamily -c}}
+             * Displays a notice relating to the authorship of CSL. Note that this
+             * is an authorship statement not a Copyright notice, because if any
+             * (L)GPL code is involved that would place requirements on what was
+             * displayed in a Copyright Notice.
+             */
+            {   "-c", false, false,
+                "-c       Display an authorship (but not a copyright) message that documents\n"
+                "         the license under which this code is distributed.",
+                [&](string key, bool hasVal, string val)
+                {   fwin_restore();
+                    term_printf("\nCSL was coded by A C Norman, Codemist, 1988-2020\n");
+                    term_printf("Distributed under the Modified BSD License\n");
+                    term_printf("See also --help\n");
+                }
+            },
+
+            /*! options [-d] \item [{\ttfamily -d}] \index{{\ttfamily -d}}
+             * A command line entry {\ttfamily -Dname=value} or {\ttfamily -D name=value}
+             * sets the value of the named lisp variable to the value as a string.
+             */
+            {   "-d", true, true,
+                "-d       -dNAME=VAL defines the symbol NAME to have the given value,\n"
+                "         Note that when a value is given it will be passed as a string,\n"
+                "         so \"-dN=3\" sets the variable N to the string \"3\". Use \"--d\"\n"
+                "         if you want the value interpreted and converted.",
+                [&](string key, bool hasVal, string val)
+                {   string name, value;
+                    auto n = val.find('=');
+                    if (n == string::npos)
+                    {   name = val;
+                        value = "t";
+                    }
+                    else
+                    {   name = val.substr(0, n);
+                        value = val.substr(n+1);
+                    }
+                    stringsToDefine.push_back(stringBoolString(name, true, value));
+                }
+            },
+
+            /*! options [-dd] \item [{\ttfamily -dd}] \index{{\ttfamily -dd}}
+             * A command line entry {\ttfamily -Dname=value} or {\ttfamily -DD name=value}
+             * sets the value of the named lisp variable to the value, interpreted as a
+             * name, number, string etc using normal Lisp conventions. Cf -D which always
+             * leaves the value as a string.
+             */
+            {   "-dd", true, true,
+                "-dd      -dd NAME=VAL defines the symbol NAME to have the given value,\n"
+                "         Note that when a value is given it will be passed through the\n"
+                "         Lisp reader, so numbers and symbols can be generated.",
+                [&](string key, bool hasVal, string val)
+                {   string name, value;
+                    auto n = val.find('=');
+                    if (n == string::npos)
+                    {   name = val;
+                        value = "t";
+                    }
+                    else
+                    {   name = val.substr(0, n);
+                        value = val.substr(n+1);
+                    }
+                    symbolsToDefine.push_back(stringBoolString(name, true, value));
+                }
+            },
+
+            /*! options [-e] \item [{\ttfamily -e}] \index{{\ttfamily -e}}
+             * If you follow "-e" with a Lisp form then that gets evaluated and
+             * its result printed during startup. This may be useful for forcing
+             * settings or other debugging.
+             */
+            {   "-e", true, true,
+                "-e       Can be followed by a Lisp form top be evaluated during startup.",
+                [&](string key, bool hasVal, string val)
+                {   if (val != "") stringsToEvaluate.push_back(val);
+                }
+            },
+
+            /*! options [-f] \item [{\ttfamily -f}] \index{{\ttfamily -f}}
+             * At one stage CSL could run as a socket server, and {\ttfamily -f portnumber}
+             * activated that mode. {\ttfamily -f-} used a default port, 1206 (a number
+             * inspired by an account number on Titan that I used in the 1960s). The code
+             * that supports this may be a useful foundation to others who want to make a
+             * network service out of this code-base, but is currently disabled.
+             */
 //
-//            /*! options [--wait] item [{ttfamily --wait}] index{{ttfamily --wait}}
-//             * This displays the process number and waits for 15 seconds at the
-//             * start of a run. This may be useful for those who have built everything
-//             * with debugging options and then want to start it fairly normally and
-//             * then attach from gdb or some other debugger.
-//             */
-//            {   "--wait", false, false,
-//                "--wait   Pause for 15 second before starting anything.\n"
-//                "         This may be useful for those who want to attach a debugger to\n"
-//                "         during that time, so provided there is a console availabe\n"
-//                "         the process number will be displayed on the standard output.",
-//                [&](string key, bool hasVal, string val)
-//                {   std::printf("Process identifier = %d\r\n", getpid());
-//                    std::printf("Waiting 15 seconds in case you want to attach\r\n");
-//                    std::printf("from gdb or some other debugger...\r\n");
-//                    std::fflush(stdout);
-//                    std::this_thread::sleep_for(std::chrono::seconds(15));
-//                    std::printf("... continuing\r\n");
-//                    std::fflush(stdout);
-//                }
-//            },
+//                     -F
+// No longer used, so SPARE!
+// I *ONCE* had a scheme where Reduce could run as a remote server accessed
+// via the network. That has not been used for a long while now and if
+// something similar becomes needed in the future it should be re-implemented
+// from the ground up. Here I will not even issue a complaint if somebody
+// specifies "-f".
+            {   "-f", false, false,
+                "-f       Not in use.",
+                [&](string key, bool hasVal, string val)
+                {   timeTestCons = true; // Ha ha!
+                }
+            },
+
+
+            /*! options [-g] \item [{\ttfamily -g}] \index{{\ttfamily -g}}
+             * In line with the implication of this option for C compilers, this enables
+             * a debugging mode. It sets a lisp variable {\ttfamily !*backtrace} and
+             * arranges that all backtraces are displayed notwithstanding use of
+             * {\ttfamily errorset}.
+             */
+
+            {   "-g", true, false,
+                "-g       Set various options that may help with debugging.\n"
+                "         -gw not only sets the options but delays by 15 seconds.",
+                [&](string key, bool hasVal, string val)
+                {   symbolsToDefine.push_back(
+                        stringBoolString("*backtrace", true, "t"));
+                    errorset_min = 3;
+                    errorset_max = 3;
+// -gw switches on debugging and also causes a 5-second pause before the code
+// really gets going. The intent of this pause is so that a debugger can start
+// and perhaps have time to attach to the task.
+                    if (val == "w")
+                    {   std::printf("Process identifier = %d\r\n", getpid());
+                        std::printf("Waiting 15 seconds in case you want to attach\r\n");
+                        std::printf("from gdb or some other debugger...\r\n");
+                        std::fflush(stdout);
+                        std::this_thread::sleep_for(std::chrono::seconds(15));
+                        std::printf("... continuing\r\n");
+                        std::fflush(stdout);
+                    }
+                }
+            },
+
+            /*! options [-h] \item [{\ttfamily -h}] \index{{\ttfamily -h}}
+             * This option is a left-over. When the X-windows version of the code first
+             * started to use Xft it viewed that as optional and could allow a build even when
+             * it was not available. And then even if Xft was detected and liable to be used
+             * by default it provided this option to disable its use. The remnants of the
+             * switch that disabled use of Xft (relating to fonts living on the Host or
+             * the Server) used this switch, but it now has no effect.
+             */
+#ifndef HAVE_LIBWX
+// If I am using wxWidgets this option is not supported.
+#endif
 //
-//            /*! options [-w] \item [{\ttfamily -w}] \index{{\ttfamily -w}}
-//             * On a typical system if the system is launched it creates a new window and uses
-//             * its own windowed intarface in that. If it is run such that at startup the
-//             * standard input or output are associated with a file or pipe, or under X the
-//             * variable {\ttfamily DISPLAY} is not set it will try to start up in console
-//             * mode. The flag {\ttfamily -w} indicates that the system should run in console
-//             * more regardless, while {\ttfamily -w+} attempts a window even if that seems
-//             * doomed to failure. When running the system to obey a script it will often make
-//             * sense to use the {\ttfamily -w} option. Note that on Windows the system is
-//             * provided as two separate (but almost identical) binaries. For example the
-//             * file {\ttfamily csl.exe} is linked in windows mode. A result is that if
-//             * launched from the command line it detaches from its console, and if launched
-//             * by double-clicking it does not create a console. It is in fact very ugly when
-//             * double clicking on an application causes an unwanted console window to appear.
-//             * In contrast {\ttfamily csl.com} is a console mode version of just the same
-//             * program, so when launched from a command line it can communicate with the
-//             * console in the ordinary expected manner.
-//             *
-//             * The option is in fact processed at an earlier stage then here if windowing
-//             * is possible at all!
-//             */
+// Actually, like the "-w" option, it is TOO LATE to do this here because
+// lower-level parts of fwin may already have adjusted font paths using
+// mechanisms based on whether Xft is to be activated or not. So fwin
+// checks for "-h" and "-H" and interprets what it finds. So what I do here
+// is just a redundant reminder. Ugh.
 //
-//            {   "-w", true, false,
-//                "-w or -w+ or -w- When using a platform that supports a windowed mode\n"
-//                "         -w or -w- forces the system to fall back to console mode, while -w+\n"
-//                "         forces use of the GUI even when other issues might have inhibited it.",
-//                [&](string key, bool hasVal, string val)
-//                {   // Detected and processed by the GUI layer before we get here, so
-//                    // no action is needed at this stage.
-//                }
-//            },
-//
-//            /*! options [--texmacs] \item [{\ttfamily --texmacs}] \index{{\ttfamily --texmacs}}
-//             * If CSL/Reduce is launched from texmacs this command-line flag should be
-//             * used to arrange that the {\ttfamily texmacs} flag is set in
-//             * {\ttfamily lispsystem!*}, and the code may then do special things.
-//             */
-//            {   "--texmacs", false, false,
-//                "--texmacs Run in texmacs mode. You must use the plugin from the\n"
-//                "         cslbase/texmacs-plugin directory.",
-//                [&](string key, bool hasVal, string val)
-//                {   // Detected and processed by the GUI layer before we get here, so
-//                    // no action is needed at this stage.
-//                }
-//            },
-//
-//            /*! options [--no-rcfile] \item [{\ttfamily --no-rcfile}] \index{{\ttfamily --no-rcfile}}
-//             * Instruct the system not to read a user-specific configuation file, which
-//             * make have such a names as ``{\ttfamily .reducerc}'', at startup time. This
-//             * can be useful during system building where utterly self-contained and
-//             * predictable behaviour is important.
-//             */
-//            {   "--no-rcfile", false, false,
-//                "--no-rcfile Sets the Lisp variable no_init_file which for Reduce arranges\n"
-//                "         that any file $HOME/.reducerc is ignored rather than read",
-//                [&](string key, bool hasVal, string val)
-//                {   symbolsToDefine.push_back(
-//                        stringBoolString("no_init_file", true, ""));
-//                }
-//            },
-//
-//            /*! options [--gui] \item [{\ttfamily --gui}] \index{{\ttfamily --gui}}
-//             * Encourage the system to run in its own window. Similar behaviour
-//             * to {\ttfamily -w+}.
-//             */
-//            {   "--gui", false, false,
-//                "--gui    Use a windowed interface if possible. Equivalent to \"-w+\".",
-//                [&](string key, bool hasVal, string val)
-//                {
-//                }
-//            },
-//
-//            /*! options [--nogui] \item [{\ttfamily --nogui}] \index{{\ttfamily --nogui}}
-//             * Encourage the system to run as a console-style application. Similar
-//             * to {\ttfamily -w-} or just simply {\ttfamily -w}.
-//             */
-//            {   "--nogui", false, false,
-//                "--nogui  Use a console-mode interface (not a windowed one), Equivalent to \"-w-\".",
-//                [&](string key, bool hasVal, string val)
-//                {
-//                }
-//            },
-//
-//            /*! options [--guimin] \item [{\ttfamily --guimin}] \index{{\ttfamily --guimin}}
-//             * Encourage the system to run as in its own window, but
-//             * start that window off minimised. Similar
-//             * to {\ttfamily -w.}.
-//             */
-//            {   "--guimin", false, false,
-//                "--guimin Start up with window for the interface minimised. Equivalent to \"-w.\".",
-//                [&](string key, bool hasVal, string val)
-//                {
-//                }
-//            },
-//
-//            /*! options [--gc-trigger] \item [{\ttfamily --gc-trigger}] \index{{\ttfamily --gc-trigger}}
-//             * --gc-trigger=NNNN causes a garbage collection to be forced on the NNNNth
-//             * occasion when that could possibly happen. This may sometimes be relevant
-//             * when trying to track down garbage collection related bugs. If the option
-//             * is set every garbage collection displays the count that it corresponds to,
-//             * and the intent is that these counts should be fairly deterministic.
-//             */
-//            {   "--gc-trigger", true, true,
-//                "--gc-trigger NN Force garbage collection to happen on the NNth time it\n"
-//                "         possibly could. Used when tracking garbage collection bugs and in\n"
-//                "         particular one that may arise when GC is triggered from some particular\n"
-//                "         context -- hence not useful for ordinary users.",
-//                [&](string key, bool hasVal, string val)
-//                {   try
-//                    {   reclaim_trigger_target = std::stoull(val);
-//                    }
-//                    catch (...)
-//                    {   reclaim_trigger_target = 0;
-//                    }
-//                }
-//            },
-//
-//            /*! options [--stop-on-error] \item [{\ttfamily --stop-on-error}] \index{{\ttfamily --stop-on-error}}
-//             * This utterly defeats errorset and arranges that if there is any error that
-//             * after whatever backtrace might have been generated any inner errorset
-//             * just propagates the error out, and at the top level the system exits.
-//             */
-//            {   "--stop-on-error", false, false,
-//                "--stop-on-error  If any error arises then give up and stop.",
-//                [&](string key, bool hasVal, string val)
-//                {   stop_on_error=true;
-//                }
-//            },
-//
-//            /*! options [--force-verbos] \item [{\ttfamily --force-verbos}] \index{{\ttfamily --force-verbos}}
-//             * Forces generation of messages from the garbage collector regardless of any
-//             * attempt from with the system to change that. Intended for use during system
-//             * debugging where it may be important to see when a garbage collection occurs
-//             * but undesirable to change the input script at all.
-//             */
-//            {   "--force-verbos", false, false,
-//                "--force-verbos Ensure that garbage collection messages are displayed.",
-//                [&](string key, bool hasVal, string val)
-//                {   force_verbos = true;
-//                }
-//            },
-//
-//            /*! options [--force-echo] \item [{\ttfamily --force-echo}] \index{{\ttfamily --force-echo}}
-//             * Forces echoing of input regardless of any
-//             * attempt from with the system to change that. Intended for use during system
-//             * debugging where it may be important to observe progress through an
-//             * input file but undesirable to change the input script at all.
-//             */
-//            {   "--force_echo", false, false,
-//                "--force-echo Echo innput, regardless of system switches or other options.",
-//                [&](string key, bool hasVal, string val)
-//                {   force_echo = true;
-//                }
-//            },
-//
-//            /*! options [--force-backtrace//--bt] \item [{\ttfamily --force-backtrace, --bt}] \index{{\ttfamily --force-backtrace, --bt}}
-//             * Forces any error to generate a backtrace regardless of any
-//             * attempt from with the system to change that (eg via use of errorset).
-//             * Intended for use during system  debugging where it may be important to
-//             * observe behaviour otherwise hidden by (errorset X nil nil) but when it
-//             * undesirable to change the input script at all.
-//             */
-//            {   "-force-backtrace", false, false,
-//                "--force-backtrace Always generate a backtrace after any error.",
-//                [&](string key, bool hasVal, string val)
-//                {   force_backtrace = true;
-//                }
-//            },
-//
-//            {   "-force-bt", false, false,
-//                "--force-bt More concise version of --force-backtrace.",
-//                [&](string key, bool hasVal, string val)
-//                {   force_backtrace = true;
-//                }
-//            },
-//
-//            /*! options [--version] \item [{\ttfamily --version}] \index{{\ttfamily --version}}
-//             * It is probably obvious what this option does! But note that there is an
-//             * issue here about whether one is looking at the CSL version identification or
-//             * one for the Lisp application from an image file (eg often Reduce).
-//             */
-//            {   "--version", false, false,
-//                "---version Display version information and stop.",
-//                [&](string key, bool hasVal, string val)
-//                {   term_printf(
-//#ifndef COMMON
-//                        "Codemist Standard Lisp revision %u for %s: %s\n",
-//#else
-//                        "Codemist Common Lisp revision %u for %s: %s\n",
-//#endif
-//                        REVISION, IMPNAME, __DATE__);
-//                    my_exit(0);
-//                }
-//            },
-//
-//            /*! options [--maxmem] \item [{\ttfamily --maxmem}] \index{{\ttfamily --maxmem}}
-//             * Normally this code goes back to the operating system and requests more memory
-//             * at any time when it feels that would be useful.This option can be used to
-//             * set an approximate limit on the amount it will use. See also -k
-//             */
-//            {   "--maxmem", true, true,
-//                "--maxmem NNN Prevent memory expansion beyond NNN.",
-//                [&](string key, bool hasVal, string val)
-//                {   string valLow(val);
-//                    std::transform(valLow.begin(), valLow.end(), valLow.begin(),
-//                    [](int c)
-//                    {   return std::tolower(c);
-//                    });
-//                    const char *valS = valLow.c_str();
-//                    double valD;
-//                    unsigned int len=std::strlen(valS), pos;
-//// This is basically the same as the code used to decode "-kNNN".
-//                    if (std::sscanf(valS, "%lg%n", &valD, &pos)==1 && pos==len)
-//                    {
-//                    }
-//                    else if (std::sscanf(valS, "%lgk%n", &valD, &pos)==1 && pos==len)
-//                    {   valD *= 1024.0;
-//                    }
-//                    else if (std::sscanf(valS, "%lgm%n", &valD, &pos)==1 && pos==len)
-//                    {   valD *= 1024.0*1024.0;
-//                    }
-//                    else if (std::sscanf(valS, "%lgg%n", &valD, &pos)==1 && pos==len)
-//                    {   valD *= 1024.0*1024.0*1024.0;
-//                    }
-//                    else
-//                    {   badArgs.push_back(key.append(val));
-//                        return;
-//                    }
-//// Negative requests or requests for more than 256Gbytes (or requests for
-//// zero or more than 10 stack chunks) will be rejected.
-//                    if (valD <= 0 || valD >= 256.0e9)
-//                    {   badArgs.push_back(key.append(val));
-//                        return;
-//                    }
-//                    if (valD <= 32.0) valD *= 1024.0*1024.0*1024.0;
-//                    else if (valD <= 32.0e6) valD *= 1024.0*1024.0;
-//                    max_store_size = valD;
-//                }
-//            },
-//
-//#ifndef AVOID_THREADS
-//            /*! options [--kara] \item [{\ttfamily --kara}] \index{{\ttfamily --kara}}
-//             * This it is intended for use by those maintaining CSL not for the general
-//             * public. By default long multiplication can use a threaded implementation
-//             * (to exploit multi-core machines). This happens when numbers get bigger
-//             * than some magic threshold.
-//             * This option allows one to override the default threshold so that
-//             * performance effects can be measured and the cut-off adjusted to suit the
-//             * machine involved.
-//             */
-//            {   "--kara", true, true,
-//                "---kara NN Set transition between single and multi-thread Karatsuba\n"
-//                "         multiplication.",
-//                [&](string key, bool hasVal, string val)
-//                {   try
-//                    {   kparallel = std::stoi(val);
-//                    }
-//                    catch (...)
-//                    {   kparallel = 0;
-//                    }
-//                    if (kparallel < KARATSUBA_CUTOFF) kparallel = KARATSUBA_CUTOFF;
-//                }
-//            },
-//#endif // AVOID_THREADS
-//
-//            /*! options [--trace/--tr] \item [{\ttfamily --trace, --tr}] \index{{\ttfamily --trace, --tr}}
-//             * When followed by the name of a function this command-line option has and
-//             * effect as if (trace '(fname)) had been called at system start-up so that
-//             * all calls to the named function are reported to the user. Perhaps often to
-//             * be combined with --bt so that on any error a backtrace will get generated,
-//             * and used when an input script leads to failure and one wants to investigate
-//             * its behaviour without altering the script at all.
-//             */
-//            {   "--trace", true, true,
-//                "---trace NAME Sets up tracing on the names Lisp function.",
-//                [&](string key, bool hasVal, string val)
-//                {   tracedFunctions.push_back(val);
-//                }
-//            },
-//
-//            {   "--tr", true, true,
-//                "---tr NAME Equivalent to \"--trace NAME\".",
-//                [&](string key, bool hasVal, string val)
-//                {   tracedFunctions.push_back(val);
-//                }
-//            },
-//
-//            /*! options [-a] \item [{\ttfamily -a}] \index{{\ttfamily -a}}
-//             * {\ttfamily -a} is a curious option, not intended for general or casual use.
-//             * If given it causes the {\ttfamily (batchp)} function to return the opposite
-//             * result from normal!  Without ``{attfamily -a}'' {\ttfamily (batchp)} returns
-//             * {\ttfamily T} either if at least one file was specified on the command line,
-//             * or if the standard input is ``not a tty'' (under some operating systems this
-//             * makes sense -- for instance the standard input might not be a ``tty'' if it
-//             * is provided via file redirection).  Otherwise (ie primary input is directly
-//             * from a keyboard) {\ttfamily (batchp)} returns {\ttfamily nil}.  Sometimes
-//             * this judgement about how ``batch'' the current run is will be wrong or
-//             * unhelpful, so {\ttfamily -a} allows the user to coax the system into better
-//             * behaviour.  I hope that this is never used!
-//             */
-//
-//            {   "-a", false, false,
-//                "- a       Causes the sense of the Lisp (batchp) function to be inverted.",
-//                [&](string key, bool hasVal, string val)
-//                {   batch_flag = true;
-//                }
-//            },
-//
-//            /*! options [-b] \item [{\ttfamily -b}] \index{{\ttfamily -b}}
-//             * {\ttfamily -b} tells the system to avoid any attempt to recolour prompts
-//             * and input text. It will mainly be needed on X terminals that have been
-//             * set up so that they use colours that make the defaults here unhelpful.
-//             * Specifically white-on-black and so on.
-//             * {\ttfamily -b} can be followed by colour specifications to make things yet
-//             * more specific. It is supposed to be the idea that three colours can be
-//             * specified after it for output, input and prompts, with the letters KRGYbMCW
-//             * standing for blacK, Red, Green, Yellow, blue, Magenta, Cyan and White.
-//             * This may not fully work yet!
-//             */
-//            {   "-b", true, false,
-//                "-b or -bCOLOURS Just \"-b\" sets black and white mode, while COLOURS\n"
-//                "         can be one of blacK, Red, Green, Yellow, blue, Magenta, Cyan\n"
-//                "         or White (with blue indicated by a lower case \"b\" and black by\n"
-//                "         a \"k\" for each of output, input and prompts.",
-//                [&](string key, bool hasVal, string val)
-//                {   // Processed earlier by fwin.
-//                }
-//            },
-//
-//            /*! options [-c] \item [{\ttfamily -c}] \index{{\ttfamily -c}}
-//             * Displays a notice relating to the authorship of CSL. Note that this
-//             * is an authorship statement not a Copyright notice, because if any
-//             * (L)GPL code is involved that would place requirements on what was
-//             * displayed in a Copyright Notice.
-//             */
-//            {   "-c", false, false,
-//                "-c       Display an authorship (but not a copyright) message that documents\n"
-//                "         the license under which this code is distributed.",
-//                [&](string key, bool hasVal, string val)
-//                {   fwin_restore();
-//                    term_printf("\nCSL was coded by A C Norman, Codemist, 1988-2020\n");
-//                    term_printf("Distributed under the Modified BSD License\n");
-//                    term_printf("See also --help\n");
-//                }
-//            },
-//
-//            /*! options [-d] \item [{\ttfamily -d}] \index{{\ttfamily -d}}
-//             * A command line entry {\ttfamily -Dname=value} or {\ttfamily -D name=value}
-//             * sets the value of the named lisp variable to the value as a string.
-//             */
-//            {   "-d", true, true,
-//                "-d       -dNAME=VAL defines the symbol NAME to have the given value,\n"
-//                "         Note that when a value is given it will be passed as a string,\n"
-//                "         so \"-dN=3\" sets the variable N to the string \"3\". Use \"--d\"\n"
-//                "         if you want the value interpreted and converted.",
-//                [&](string key, bool hasVal, string val)
-//                {   string name, value;
-//                    auto n = val.find('=');
-//                    if (n == string::npos)
-//                    {   name = val;
-//                        value = "t";
-//                    }
-//                    else
-//                    {   name = val.substr(0, n);
-//                        value = val.substr(n+1);
-//                    }
-//                    stringsToDefine.push_back(stringBoolString(name, true, value));
-//                }
-//            },
-//
-//            /*! options [-dd] \item [{\ttfamily -dd}] \index{{\ttfamily -dd}}
-//             * A command line entry {\ttfamily -Dname=value} or {\ttfamily -DD name=value}
-//             * sets the value of the named lisp variable to the value, interpreted as a
-//             * name, number, string etc using normal Lisp conventions. Cf -D which always
-//             * leaves the value as a string.
-//             */
-//            {   "-dd", true, true,
-//                "-dd      -dd NAME=VAL defines the symbol NAME to have the given value,\n"
-//                "         Note that when a value is given it will be passed through the\n"
-//                "         Lisp reader, so numbers and symbols can be generated.",
-//                [&](string key, bool hasVal, string val)
-//                {   string name, value;
-//                    auto n = val.find('=');
-//                    if (n == string::npos)
-//                    {   name = val;
-//                        value = "t";
-//                    }
-//                    else
-//                    {   name = val.substr(0, n);
-//                        value = val.substr(n+1);
-//                    }
-//                    symbolsToDefine.push_back(stringBoolString(name, true, value));
-//                }
-//            },
-//
-//            /*! options [-e] \item [{\ttfamily -e}] \index{{\ttfamily -e}}
-//             * If you follow "-e" with a Lisp form then that gets evaluated and
-//             * its result printed during startup. This may be useful for forcing
-//             * settings or other debugging.
-//             */
-//            {   "-e", true, true,
-//                "-e       Can be followed by a Lisp form top be evaluated during startup.",
-//                [&](string key, bool hasVal, string val)
-//                {   if (val != "") stringsToEvaluate.push_back(val);
-//                }
-//            },
-//
-//            /*! options [-f] \item [{\ttfamily -f}] \index{{\ttfamily -f}}
-//             * At one stage CSL could run as a socket server, and {\ttfamily -f portnumber}
-//             * activated that mode. {\ttfamily -f-} used a default port, 1206 (a number
-//             * inspired by an account number on Titan that I used in the 1960s). The code
-//             * that supports this may be a useful foundation to others who want to make a
-//             * network service out of this code-base, but is currently disabled.
-//             */
-////
-////                     -F
-//// No longer used, so SPARE!
-//// I *ONCE* had a scheme where Reduce could run as a remote server accessed
-//// via the network. That has not been used for a long while now and if
-//// something similar becomes needed in the future it should be re-implemented
-//// from the ground up. Here I will not even issue a complaint if somebody
-//// specifies "-f".
-//            {   "-f", false, false,
-//                "-f       Not in use.",
-//                [&](string key, bool hasVal, string val)
-//                {   timeTestCons = true; // Ha ha!
-//                }
-//            },
-//
-//
-//            /*! options [-g] \item [{\ttfamily -g}] \index{{\ttfamily -g}}
-//             * In line with the implication of this option for C compilers, this enables
-//             * a debugging mode. It sets a lisp variable {\ttfamily !*backtrace} and
-//             * arranges that all backtraces are displayed notwithstanding use of
-//             * {\ttfamily errorset}.
-//             */
-//
-//            {   "-g", true, false,
-//                "-g       Set various options that may help with debugging.\n"
-//                "         -gw not only sets the options but delays by 15 seconds.",
-//                [&](string key, bool hasVal, string val)
-//                {   symbolsToDefine.push_back(
-//                        stringBoolString("*backtrace", true, "t"));
-//                    errorset_min = 3;
-//                    errorset_max = 3;
-//// -gw switches on debugging and also causes a 5-second pause before the code
-//// really gets going. The intent of this pause is so that a debugger can start
-//// and perhaps have time to attach to the task.
-//                    if (val == "w")
-//                    {   std::printf("Process identifier = %d\r\n", getpid());
-//                        std::printf("Waiting 15 seconds in case you want to attach\r\n");
-//                        std::printf("from gdb or some other debugger...\r\n");
-//                        std::fflush(stdout);
-//                        std::this_thread::sleep_for(std::chrono::seconds(15));
-//                        std::printf("... continuing\r\n");
-//                        std::fflush(stdout);
-//                    }
-//                }
-//            },
-//
-//            /*! options [-h] \item [{\ttfamily -h}] \index{{\ttfamily -h}}
-//             * This option is a left-over. When the X-windows version of the code first
-//             * started to use Xft it viewed that as optional and could allow a build even when
-//             * it was not available. And then even if Xft was detected and liable to be used
-//             * by default it provided this option to disable its use. The remnants of the
-//             * switch that disabled use of Xft (relating to fonts living on the Host or
-//             * the Server) used this switch, but it now has no effect.
-//             */
-//#ifndef HAVE_LIBWX
-//// If I am using wxWidgets this option is not supported.
-//#endif
-////
-//// Actually, like the "-w" option, it is TOO LATE to do this here because
-//// lower-level parts of fwin may already have adjusted font paths using
-//// mechanisms based on whether Xft is to be activated or not. So fwin
-//// checks for "-h" and "-H" and interprets what it finds. So what I do here
-//// is just a redundant reminder. Ugh.
-////
-//            {   "-h", false, false,
-//                "-h       Obsolete option!",
-//                [&](string key, bool hasVal, string val)
-//                {   fwin_use_xft = 0;
-//                }
-//            },
-//
-//            /*! options [-i] \item [{\ttfamily -i}] \index{{\ttfamily -i}}
-//             * CSL and Reduce use image files to keep both initial heap images and
-//             * ``fasl'' loadable modules. By default if the executable launched has some name,
-//             * say xxx, then an image file xxx.img is used. But to support greater
-//             * generality {\ttfamily -i} introduces a new image, {\ttfamily -i-} indicates
-//             * the default one and a sequence of such directives list image files that are
-//             * searched in the order given. These are read-only. The similar option
-//             * {\ttfamily -o} equally introduces image files that are scanned for input, but
-//             * that can also be used for output. Normally there would only be one
-//             * {\ttfamily -o} directive.
-//             */
-//            {   "-i", true, true,
-//                "-i       The option \"-i xxx.img\" causes the image file named to be available\n"
-//                "         for reading.",
-//                [&](string key, bool hasVal, string val)
-//                {   if (val == "-") val = standard_directory;
-//                    fasl_files.push_back(faslFileRecord(val, false));
-//                }
-//            },
-//
-//            /*! options [-j] \item [{\ttfamily -j}] \index{{\ttfamily -j}}
-//             * Follow this directive with a file-name, and a record of all the files read
-//             * during the Lisp run will be dumped there with a view that it can be included
-//             * in a Makefile to document dependencies.
-//             */
-//            {   "-j", true, true,
-//                "-j       If you go \"-j FILE\" then Reduce puts some dependency information\n"
-//                "         into the named file as if builds modules for you.",
-//                [&](string key, bool hasVal, string val)
-//                {   if (!val.empty()) dependency_file = mystrdup(val.c_str());
-//                }
-//            },
-//
-//            /*! options [-l] \item [{\ttfamily -l}] \index{{\ttfamily -l}}
-//             * This is to send a copy of the standard output to a named log file. It is
-//             * very much as if the Lisp function {\ttfamily (spool ``logfile'')} had been
-//             * invoked at the start of the run.
-//             */
-//            {   "-l", true, true,
-//                "-l FILE  Send a copy of all output to the named file. If no FILE is\n"
-//                "         specified try \"logfile.log\".",
-//                [&](string key, bool hasVal, string val)
-//                {   char filename[LONGEST_LEGAL_FILENAME];
-//                    std::memset(filename, 0, sizeof(filename));
-//                    const char *w = val.c_str();
-//                    if (std::strlen(w) == 0) w = "logfile.log";
-//                    spool_file = open_file(filename, w, std::strlen(w), "w", nullptr);
-//                    if (spool_file == nullptr)
-//                    {   fwin_restore();
-//                        term_printf("Unable to write to \"%s\"\n", filename);
-//                    }
-//                    else
-//                    {   std::time_t t0 = std::time(nullptr);
-//                        std::strncpy(spool_file_name, filename, 128);
-//                        spool_file_name[127] = 0;
-//#ifdef COMMON
-//                        std::fprintf(spool_file,
-//                                     "Starts dribbling to %s (%.24s).\n",
-//                                     spool_file_name, std::ctime(&t0));
-//#else
-//                        std::fprintf(spool_file,
-//                                     "+++ Transcript to %s started at %.24s +++\n",
-//                                     spool_file_name, std::ctime(&t0));
-//#endif
-//                    }
-//                }
-//            },
-//
-//            /*! options [-m] \item [{\ttfamily -m}] \index{{\ttfamily -m}}
-//             * Not used at present.
-//             */
-//            {   "-m", false, false,
-//                "-m       Unused..",
-//                [&](string key, bool hasVal, string val)
-//                {
-//                }
-//            },
-//
-//            /*! options [-n] \item [{\ttfamily -n}] \index{{\ttfamily -n}}
-//             * Normally when the system is started it will run a ``restart function'' as
-//             * indicated in its heap image. There can be cases where a heap image has been
-//             * created in a bad way such that the saved restart function always fails
-//             * abruptly, and hence working out what was wrong becomes hard. In such cases
-//             * it may be useful to give the {\ttfamily -n} option that forces CSL to
-//             * ignore any startup function and merely always begin in a minimal Lisp-style
-//             * read-eval-print loop. This is intended for experts to do disaster recovery
-//             * and diagnosis of damaged image files.
-//             */
-//            {   "-n", false, false,
-//                "-n       Ignore any restart function and run a Lisp read-eval-print-loop.",
-//                [&](string key, bool hasVal, string val)
-//                {   ignore_restart_fn = true;
-//                }
-//            },
-//
-//
-//            /*! options [-o] \item [{\ttfamily -o}] \index{{\ttfamily -o}}
-//             * See {\ttfamily -i}. This specifies an image file used for output via
-//             * {\ttfamily faslout} and {\ttfamily reserve}.
-//             */
-//            {   "-o", true, true,
-//                "-o FILE.img Make the named file an image file that is written to.\n"
-//                "         See also \"-i\".",
-//                [&](string key, bool hasVal, string val)
-//                {   if (val == "-") val = standard_directory;
-//                    output_directory = fasl_files.size();
-//                    fasl_files.push_back(faslFileRecord(val, true));
-//                }
-//            },
-//
-//            /*! options [-p] \item [{\ttfamily -p}] \index{{\ttfamily -p}}
-//             * If a suitable profile option gets implemented one day this will activate it,
-//             * but for now it has no effect.
-//             */
-//            {   "-p", false, false,
-//                "-p       Reserved for a profiling option.",
-//                [&](string key, bool hasVal, string val)
-//                {
-//                }
-//            },
-//
-//            /*! options [-q] \item [{\ttfamily -q}] \index{{\ttfamily -q}}
-//             * This option sets {\ttfamily !*echo} to {\ttfamily nil} and switches off
-//             * garbage collector messages to give a slightly quieter run.
-//             */
-//            {   "-q", false, false,
-//                "-q       Set *echo to nil to avoid echoed input.",
-//                [&](string key, bool hasVal, string val)
-//                {   symbolsToDefine.push_back(stringBoolString("echo", true, "nil"));
-//                }
-//            },
-//
-//            /*! options [-r] \item [{\ttfamily -r}] \index{{\ttfamily -r}}
-//             * The random-number generator in CSL is normally initialised to a value
-//             * that is intended not to be reproducible from run to run.
-//             * In many cases that behavious is desirable, but for debugging it can be useful
-//             * to force a seed. The directive {\ttfamily -r nnn,mmm} sets the seed to
-//             * up to 64 bits taken from the values nnn and mmm. The second value if optional,
-//             * and specifying {\ttfamily -r0}  explicitly asks for the non-reproducible
-//             * behaviour (I hope). Note that the main Reduce-level random number source is
-//             * coded at a higher level and does not get reset this way -- this is the
-//             * lower level CSL generator.
-//             */
-//            {   "-r", true, true,
-//                "-r NNN   Use NNN as an initial seed for the random number generator.\n"
-//                "         The case \"-r0\" which is the default asks for a random seed\n"
-//                "         that will depend on the date, time of day and as much genuine\n"
-//                "         randomness as the operating system is willing to provide.\n"
-//                "         Note that the Reduce-level code uses its own random source not\n"
-//                "         the one controlled here.",
-//                [&](string key, bool hasVal, string val)
-//                {   try
-//                    {   initial_random_seed = std::stoll(val);
-//                    }
-//                    catch (...)
-//                    {   initial_random_seed = 0;
-//                    }
-//                }
-//            },
-//
-//            /*! options [-s] \item [{\ttfamily -s}] \index{{\ttfamily -s}}
-//             * Sets the Lisp variable {\ttfamily !*plap} and hence the compiler generates
-//             * an assembly listing.
-//             */
-//            {   "-s", false, false,
-//                "-s       Sets the variable *plap to true so that Lisp compilation displays\n"
-//                "         the code that it generates.",
-//                [&](string key, bool hasVal, string val)
-//                {   symbolsToDefine.push_back(stringBoolString("*plap", true, "t"));
-//                }
-//            },
-//
-//            /*! options [-t] \item [{\ttfamily -t}] \index{{\ttfamily -t}}
-//             * {\ttfamily -t name} reports the time-stamp on the named module, and then
-//             * exits. This is for use in perl scripts and the like, and is
-//             * needed because the stamps on modules within an image or
-//             * library file are not otherwise instantly available.
-//             *
-//             * Note that especially on windowed systems it may be necessary to use this
-//             * with {\ttfamily -- filename} since the information generated here goes to
-//             * the default output, which in some cases is just the screen.
-//             */
-//            {   "-t", true, true,
-//                "-t NAME  Rather than run any user code, this checks the date-stamp\n"
-//                "         on a loadable module with the given name. It was provided\n"
-//                "         in case it would be useful in scripts to remake modules\n"
-//                "         based on which had been updated recently enough.",
-//                [&](string key, bool hasVal, string val)
-//                {   module_enquiry = val;
-//                }
-//            },
-//
-//            /*! options [-u] \item [{\ttfamily -u}] \index{{\ttfamily -u}}
-//             * See {\ttfamily -d}, but this forcibly undefines a symbol. There are probably
-//             * very very few cases where it is useful since I do not have a large
-//             * number of system-specific predefined names.
-//             */
-//            {   "-u", true, true,
-//                "-u NAME  Undefine the named symbol.",
-//                [&](string key, bool hasVal, string val)
-//                {   cout << "Undefine " << val << endl;
-//                    symbolsToDefine.push_back(stringBoolString(val, false, ""));
-//                }
-//            },
-//
-//            /*! options [-v] \item [{\ttfamily -v}] \index{{\ttfamily -v}}
-//             * An option to make things mildly more verbose. It displays more of a banner
-//             * at startup and switches garbage collection messages on.
-//             */
-//            {   "-v", false, false,
-//                "-v       Print a larger startup banner and force echoing of input.",
-//                [&](string key, bool hasVal, string val)
-//                {   init_flags &= ~INIT_QUIET;
-//                    init_flags |= INIT_VERBOSE;
-//                    symbolsToDefine.push_back(stringBoolString("*echo", true, "t"));
-//                }
-//            },
-//
-//            /*! options [-x] \item [{\ttfamily -x}] \index{{\ttfamily -x}}
-//             * {\ttfamily -x} is an option intended for use only by system
-//             * support experts -- it disables trapping if segment violations by
-//             * errorset and so makes it easier to track down low level disasters --
-//             * maybe!  This can be valuable when running under a debugger since if the
-//             * code traps signals in its usual way and tries to recover it can make it a lot
-//             * harder to find out just what was going wrong.
-//             */
-//            {   "-x", false, false,
-//                "-x       Disable trapping of signals/exceptions so that a debugger can see them.",
-//                [&](string key, bool hasVal, string val)
-//                {   segvtrap = false;
-//                }
-//            },
-//
-//            /*! options [-y] \item [{\ttfamily -y}] \index{{\ttfamily -y}}
-//             * {\ttfamily -y } is at present unused.
-//             */
-//
-//            {   "-y", false, false,
-//                "-y       Currently not used.",
-//                [&](string key, bool hasVal, string val)
-//                {
-//                }
-//            },
-//
-//            /*! options [-z] \item [{\ttfamily -z}] \index{{\ttfamily -z}}
-//             * When bootstrapping it is necessary to start up the system for one initial time
-//             * without the benefit of any image file at all. The option {\ttfamily -z} makes
-//             * this happen, so when it is specified the system starts up with a minimal
-//             * environment and only those capabilities that are present in the CSL
-//             * kernel. It will normally make sense to start loading some basic Lisp
-//             * definitions rather rapidly. The files {\ttfamily compat.lsp},
-//             * {\ttfamily extras.lsp} and {\ttfamily compiler.lsp} have Lisp source for the
-//             * main things I use, and once they are loaded the Lisp compiler can be used
-//             * to compile itself.
-//             */
-//            {   "-z", false, false,
-//                "-z       This forces a cold start. It is for use while bootstrapping the\n"
-//                "         system, since with a cold start only a subset of Lisp capabilities\n"
-//                "         are available. For use by system-builders and sometimes during\n"
-//                "         debugging.",
-//                [&](string key, bool hasVal, string val)
-//                {   restartp = false;
-//                }
-//            },
-//
-//// This is now the end of the table that describes arguments...
-//            {   nullptr, false, false,
-//                "[Termination record for table]",
-//                [&](string key, bool hasVal, string val)
-//                {   std::abort();   // Should never arise!
-//                }
-//            }
+            {   "-h", false, false,
+                "-h       Obsolete option!",
+                [&](string key, bool hasVal, string val)
+                {   fwin_use_xft = 0;
+                }
+            },
+
+            /*! options [-i] \item [{\ttfamily -i}] \index{{\ttfamily -i}}
+             * CSL and Reduce use image files to keep both initial heap images and
+             * ``fasl'' loadable modules. By default if the executable launched has some name,
+             * say xxx, then an image file xxx.img is used. But to support greater
+             * generality {\ttfamily -i} introduces a new image, {\ttfamily -i-} indicates
+             * the default one and a sequence of such directives list image files that are
+             * searched in the order given. These are read-only. The similar option
+             * {\ttfamily -o} equally introduces image files that are scanned for input, but
+             * that can also be used for output. Normally there would only be one
+             * {\ttfamily -o} directive.
+             */
+            {   "-i", true, true,
+                "-i       The option \"-i xxx.img\" causes the image file named to be available\n"
+                "         for reading.",
+                [&](string key, bool hasVal, string val)
+                {   if (val == "-") val = standard_directory;
+                    fasl_files.push_back(faslFileRecord(val, false));
+                }
+            },
+
+            /*! options [-j] \item [{\ttfamily -j}] \index{{\ttfamily -j}}
+             * Follow this directive with a file-name, and a record of all the files read
+             * during the Lisp run will be dumped there with a view that it can be included
+             * in a Makefile to document dependencies.
+             */
+            {   "-j", true, true,
+                "-j       If you go \"-j FILE\" then Reduce puts some dependency information\n"
+                "         into the named file as if builds modules for you.",
+                [&](string key, bool hasVal, string val)
+                {   if (!val.empty()) dependency_file = mystrdup(val.c_str());
+                }
+            },
+
+            /*! options [-l] \item [{\ttfamily -l}] \index{{\ttfamily -l}}
+             * This is to send a copy of the standard output to a named log file. It is
+             * very much as if the Lisp function {\ttfamily (spool ``logfile'')} had been
+             * invoked at the start of the run.
+             */
+            {   "-l", true, true,
+                "-l FILE  Send a copy of all output to the named file. If no FILE is\n"
+                "         specified try \"logfile.log\".",
+                [&](string key, bool hasVal, string val)
+                {   char filename[LONGEST_LEGAL_FILENAME];
+                    std::memset(filename, 0, sizeof(filename));
+                    const char *w = val.c_str();
+                    if (std::strlen(w) == 0) w = "logfile.log";
+                    spool_file = open_file(filename, w, std::strlen(w), "w", nullptr);
+                    if (spool_file == nullptr)
+                    {   fwin_restore();
+                        term_printf("Unable to write to \"%s\"\n", filename);
+                    }
+                    else
+                    {   std::time_t t0 = std::time(nullptr);
+                        std::strncpy(spool_file_name, filename, 128);
+                        spool_file_name[127] = 0;
+#ifdef COMMON
+                        std::fprintf(spool_file,
+                                     "Starts dribbling to %s (%.24s).\n",
+                                     spool_file_name, std::ctime(&t0));
+#else
+                        std::fprintf(spool_file,
+                                     "+++ Transcript to %s started at %.24s +++\n",
+                                     spool_file_name, std::ctime(&t0));
+#endif
+                    }
+                }
+            },
+
+            /*! options [-m] \item [{\ttfamily -m}] \index{{\ttfamily -m}}
+             * Not used at present.
+             */
+            {   "-m", false, false,
+                "-m       Unused..",
+                [&](string key, bool hasVal, string val)
+                {
+                }
+            },
+
+            /*! options [-n] \item [{\ttfamily -n}] \index{{\ttfamily -n}}
+             * Normally when the system is started it will run a ``restart function'' as
+             * indicated in its heap image. There can be cases where a heap image has been
+             * created in a bad way such that the saved restart function always fails
+             * abruptly, and hence working out what was wrong becomes hard. In such cases
+             * it may be useful to give the {\ttfamily -n} option that forces CSL to
+             * ignore any startup function and merely always begin in a minimal Lisp-style
+             * read-eval-print loop. This is intended for experts to do disaster recovery
+             * and diagnosis of damaged image files.
+             */
+            {   "-n", false, false,
+                "-n       Ignore any restart function and run a Lisp read-eval-print-loop.",
+                [&](string key, bool hasVal, string val)
+                {   ignore_restart_fn = true;
+                }
+            },
+
+
+            /*! options [-o] \item [{\ttfamily -o}] \index{{\ttfamily -o}}
+             * See {\ttfamily -i}. This specifies an image file used for output via
+             * {\ttfamily faslout} and {\ttfamily reserve}.
+             */
+            {   "-o", true, true,
+                "-o FILE.img Make the named file an image file that is written to.\n"
+                "         See also \"-i\".",
+                [&](string key, bool hasVal, string val)
+                {   if (val == "-") val = standard_directory;
+                    output_directory = fasl_files.size();
+                    fasl_files.push_back(faslFileRecord(val, true));
+                }
+            },
+
+            /*! options [-p] \item [{\ttfamily -p}] \index{{\ttfamily -p}}
+             * If a suitable profile option gets implemented one day this will activate it,
+             * but for now it has no effect.
+             */
+            {   "-p", false, false,
+                "-p       Reserved for a profiling option.",
+                [&](string key, bool hasVal, string val)
+                {
+                }
+            },
+
+            /*! options [-q] \item [{\ttfamily -q}] \index{{\ttfamily -q}}
+             * This option sets {\ttfamily !*echo} to {\ttfamily nil} and switches off
+             * garbage collector messages to give a slightly quieter run.
+             */
+            {   "-q", false, false,
+                "-q       Set *echo to nil to avoid echoed input.",
+                [&](string key, bool hasVal, string val)
+                {   symbolsToDefine.push_back(stringBoolString("echo", true, "nil"));
+                }
+            },
+
+            /*! options [-r] \item [{\ttfamily -r}] \index{{\ttfamily -r}}
+             * The random-number generator in CSL is normally initialised to a value
+             * that is intended not to be reproducible from run to run.
+             * In many cases that behavious is desirable, but for debugging it can be useful
+             * to force a seed. The directive {\ttfamily -r nnn,mmm} sets the seed to
+             * up to 64 bits taken from the values nnn and mmm. The second value if optional,
+             * and specifying {\ttfamily -r0}  explicitly asks for the non-reproducible
+             * behaviour (I hope). Note that the main Reduce-level random number source is
+             * coded at a higher level and does not get reset this way -- this is the
+             * lower level CSL generator.
+             */
+            {   "-r", true, true,
+                "-r NNN   Use NNN as an initial seed for the random number generator.\n"
+                "         The case \"-r0\" which is the default asks for a random seed\n"
+                "         that will depend on the date, time of day and as much genuine\n"
+                "         randomness as the operating system is willing to provide.\n"
+                "         Note that the Reduce-level code uses its own random source not\n"
+                "         the one controlled here.",
+                [&](string key, bool hasVal, string val)
+                {   try
+                    {   initial_random_seed = std::stoll(val);
+                    }
+                    catch (...)
+                    {   initial_random_seed = 0;
+                    }
+                }
+            },
+
+            /*! options [-s] \item [{\ttfamily -s}] \index{{\ttfamily -s}}
+             * Sets the Lisp variable {\ttfamily !*plap} and hence the compiler generates
+             * an assembly listing.
+             */
+            {   "-s", false, false,
+                "-s       Sets the variable *plap to true so that Lisp compilation displays\n"
+                "         the code that it generates.",
+                [&](string key, bool hasVal, string val)
+                {   symbolsToDefine.push_back(stringBoolString("*plap", true, "t"));
+                }
+            },
+
+            /*! options [-t] \item [{\ttfamily -t}] \index{{\ttfamily -t}}
+             * {\ttfamily -t name} reports the time-stamp on the named module, and then
+             * exits. This is for use in perl scripts and the like, and is
+             * needed because the stamps on modules within an image or
+             * library file are not otherwise instantly available.
+             *
+             * Note that especially on windowed systems it may be necessary to use this
+             * with {\ttfamily -- filename} since the information generated here goes to
+             * the default output, which in some cases is just the screen.
+             */
+            {   "-t", true, true,
+                "-t NAME  Rather than run any user code, this checks the date-stamp\n"
+                "         on a loadable module with the given name. It was provided\n"
+                "         in case it would be useful in scripts to remake modules\n"
+                "         based on which had been updated recently enough.",
+                [&](string key, bool hasVal, string val)
+                {   module_enquiry = val;
+                }
+            },
+
+            /*! options [-u] \item [{\ttfamily -u}] \index{{\ttfamily -u}}
+             * See {\ttfamily -d}, but this forcibly undefines a symbol. There are probably
+             * very very few cases where it is useful since I do not have a large
+             * number of system-specific predefined names.
+             */
+            {   "-u", true, true,
+                "-u NAME  Undefine the named symbol.",
+                [&](string key, bool hasVal, string val)
+                {   cout << "Undefine " << val << endl;
+                    symbolsToDefine.push_back(stringBoolString(val, false, ""));
+                }
+            },
+
+            /*! options [-v] \item [{\ttfamily -v}] \index{{\ttfamily -v}}
+             * An option to make things mildly more verbose. It displays more of a banner
+             * at startup and switches garbage collection messages on.
+             */
+            {   "-v", false, false,
+                "-v       Print a larger startup banner and force echoing of input.",
+                [&](string key, bool hasVal, string val)
+                {   init_flags &= ~INIT_QUIET;
+                    init_flags |= INIT_VERBOSE;
+                    symbolsToDefine.push_back(stringBoolString("*echo", true, "t"));
+                }
+            },
+
+            /*! options [-x] \item [{\ttfamily -x}] \index{{\ttfamily -x}}
+             * {\ttfamily -x} is an option intended for use only by system
+             * support experts -- it disables trapping if segment violations by
+             * errorset and so makes it easier to track down low level disasters --
+             * maybe!  This can be valuable when running under a debugger since if the
+             * code traps signals in its usual way and tries to recover it can make it a lot
+             * harder to find out just what was going wrong.
+             */
+            {   "-x", false, false,
+                "-x       Disable trapping of signals/exceptions so that a debugger can see them.",
+                [&](string key, bool hasVal, string val)
+                {   segvtrap = false;
+                }
+            },
+
+            /*! options [-y] \item [{\ttfamily -y}] \index{{\ttfamily -y}}
+             * {\ttfamily -y } is at present unused.
+             */
+
+            {   "-y", false, false,
+                "-y       Currently not used.",
+                [&](string key, bool hasVal, string val)
+                {
+                }
+            },
+
+            /*! options [-z] \item [{\ttfamily -z}] \index{{\ttfamily -z}}
+             * When bootstrapping it is necessary to start up the system for one initial time
+             * without the benefit of any image file at all. The option {\ttfamily -z} makes
+             * this happen, so when it is specified the system starts up with a minimal
+             * environment and only those capabilities that are present in the CSL
+             * kernel. It will normally make sense to start loading some basic Lisp
+             * definitions rather rapidly. The files {\ttfamily compat.lsp},
+             * {\ttfamily extras.lsp} and {\ttfamily compiler.lsp} have Lisp source for the
+             * main things I use, and once they are loaded the Lisp compiler can be used
+             * to compile itself.
+             */
+            {   "-z", false, false,
+                "-z       This forces a cold start. It is for use while bootstrapping the\n"
+                "         system, since with a cold start only a subset of Lisp capabilities\n"
+                "         are available. For use by system-builders and sometimes during\n"
+                "         debugging.",
+                [&](string key, bool hasVal, string val)
+                {   restartp = false;
+                }
+            },
+
+// This is now the end of the table that describes arguments...
+            {   nullptr, false, false,
+                "[Termination record for table]",
+                [&](string key, bool hasVal, string val)
+                {   std::abort();   // Should never arise!
+                }
+            }
         };
 
         setupArgs(argTable, argc, argv);
