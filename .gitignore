@@ -2,4 +2,6 @@
 *.o
 *.map
 *.js.img
+csl/new-embedded/reduce-image/reduce.js
+csl/new-embedded/reduce-image/reduce.wasm
 cslbuild

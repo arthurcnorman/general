@@ -52,6 +52,8 @@ reduce:		allocate.o arith01.o arith02.o arith03.o arith04.o arith05.o \
 		$(LIBS) -s ERROR_ON_UNDEFINED_SYMBOLS=0 -g4 \
 		-s ALLOW_MEMORY_GROWTH=1 \
 		-s DISABLE_EXCEPTION_CATCHING=0 \
+		--pre-js mountfs.js \
+		-s NODERAWFS=1 \
 		--source-map-base http://localhost:8000/new-embedded/reduce-image/ -o reduce.js
 
 .cpp.o:                                                                          <

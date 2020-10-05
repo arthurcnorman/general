@@ -13,6 +13,9 @@
 /* KaratsubaThreads doesn't seem to play nice with wasm */
 #define AVOID_THREADS 1
 
+/* wasm */
+#define WASM 1
+
 
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
    */
