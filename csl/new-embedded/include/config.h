@@ -100,3 +100,4 @@
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "CSL"
 
+#define WITHOUT_FFI 1

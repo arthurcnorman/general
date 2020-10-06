@@ -396,7 +396,7 @@ int lstat(char *n, struct stat b)
 
 
 int mkdir(const char *d, mode_t m)
-{
+{   return 0;
 }
 
 std::FILE *popen(const char *s, const char *d)
