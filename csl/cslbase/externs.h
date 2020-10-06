@@ -35,7 +35,7 @@
  *************************************************************************/
 
 
-// $Id: externs.h 5346 2020-05-06 12:55:38Z arthurcnorman $
+// $Id: externs.h 5421 2020-10-06 16:42:36Z arthurcnorman $
 
 #ifndef header_externs_h
 #define header_externs_h 1
@@ -581,7 +581,7 @@ extern LispObject *repeat_heap;
 extern size_t repeat_count;
 
 #ifdef BUILTIN_IMAGE
-const unsigned char *binary_read_filep;
+extern const unsigned char *binary_read_filep;
 #else
 extern std::FILE *binary_read_file;
 #endif
@@ -1138,7 +1138,7 @@ extern LispObject tagbody_fn(LispObject args, LispObject env);
 // The variables here are always extern - they never survive in an image
 // file.
 //
-[[noreturn]] extern void resource_exceeded();
+[[noreturn]] extern LispObject resource_exceeded();
 extern int64_t time_base,  space_base,  io_base,  errors_base;
 extern int64_t time_now,   space_now,   io_now,   errors_now;
 extern int64_t time_limit, space_limit, io_limit, errors_limit;

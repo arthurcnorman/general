@@ -4,5 +4,5 @@
   (if (zerop n)
       1
       (times n (fact (sub1 n)))))
-(fact 9)
+(fact 5)
 (stop 0)

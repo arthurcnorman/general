@@ -7,16 +7,18 @@
 # will need the include/config.h file adjusted.
 
 ifeq ($(shell uname),Darwin)
-CC=g++
-#CC=clang++
+#CC=g++
+CC=clang++
 XCFLAGS= -I/opt/local/lib/libffi-3.2.1/include
 XLIBS=-lm
 else
 ifeq ($(shell uname -o),Cygwin)
-CC=g++
+#CC=g++
+CC=clang++
 XLIBS=-lm
 else
-CC=g++
+#CC=g++
+CC=clang++
 XLIBS=-lm -lpthread
 endif
 endif

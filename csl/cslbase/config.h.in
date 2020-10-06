@@ -458,6 +458,9 @@
 /* True for a (potentially) Windowed system */
 #undef WINDOW_SYSTEM
 
+/* remove the foreign function support */
+#undef WITHOUT_FFI
+
 /* Not even an attempt at support for GUI */
 #undef WITHOUT_GUI
 

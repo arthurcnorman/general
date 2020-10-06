@@ -32,7 +32,7 @@
 # **************************************************************************
 
 
-# $Id: configure.ac 5398 2020-09-11 19:24:14Z arthurcnorman $
+# $Id: configure.ac 5414 2020-10-03 14:43:05Z arthurcnorman $
 
 #
 # Special flags that can be used here:
@@ -138,6 +138,18 @@ AC_ARG_WITH(gui,
   AC_HELP_STRING([--with-gui], [this option is ignored here!]),
   [],
   [])
+
+AC_ARG_WITH(ffi,
+  AC_HELP_STRING([--with-ffi], [--without-ffi can be used to avoid use of libffi]),
+  [],
+  [with_ffi="yes"])
+
+if test "x$with_ffi" = "xno"
+then
+  AC_DEFINE(WITHOUT_FFI, [1], [remove the foreign function support])
+fi
+
+
 
 # What host am I on?
 AC_CANONICAL_HOST()

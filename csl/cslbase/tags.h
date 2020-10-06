@@ -35,7 +35,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id: tags.h 5390 2020-09-03 20:57:57Z arthurcnorman $
+// $Id: tags.h 5421 2020-10-06 16:42:36Z arthurcnorman $
 
 
 #ifndef header_tags_h
@@ -1259,8 +1259,7 @@ inline int type_of_vector(LispObject v)
 // LispObjects that can be stored.
 
 inline size_t bytes_in_bytevector(LispObject v)
-{   if (is_basic_vector(v)) return length_of_byteheader(vechdr(
-                                           v)) - CELL;
+{   if (is_basic_vector(v)) return length_of_byteheader(vechdr(v)) - CELL;
     size_t n = (length_of_header(vechdr(v))-CELL)/CELL;
 // Observe that the final chunk has its length treated individually. This
 // adds to the cost, but the extra cost only arises when the vector is
@@ -1270,8 +1269,7 @@ inline size_t bytes_in_bytevector(LispObject v)
 }
 
 inline size_t hwords_in_hwordvector(LispObject v)
-{   if (is_basic_vector(v)) return length_of_hwordheader(vechdr(
-                                           v)) - (CELL/2);
+{   if (is_basic_vector(v)) return length_of_hwordheader(vechdr(v)) - (CELL/2);
     size_t n = (length_of_header(vechdr(v))-CELL)/CELL;
 // Observe that the final chunk has its length treated individually. This
 // adds to the cost, but the extra cost only arises when the vector is
@@ -1281,8 +1279,7 @@ inline size_t hwords_in_hwordvector(LispObject v)
 }
 
 inline size_t bits_in_bitvector(LispObject v)
-{   if (is_basic_vector(v)) return length_of_bitheader(vechdr(
-                                           v)) - 8*CELL;
+{   if (is_basic_vector(v)) return length_of_bitheader(vechdr(v)) - 8*CELL;
     size_t n = (length_of_header(vechdr(v))-CELL)/CELL;
 // Observe that the final chunk has its length treated individually. This
 // adds to the cost, but the extra cost only arises when the vector is
@@ -1411,8 +1408,7 @@ inline double& delt(LispObject v, size_t n)
 }
 
 inline bool is_header(LispObject x)
-{   return (static_cast<int>(x) & (0x3<<Tw)) !=
-           0; // valid if TAG_HDR_IMMED
+{   return (static_cast<int>(x) & (0x3<<Tw)) != 0; // valid if TAG_HDR_IMMED
 }
 
 inline bool is_char(LispObject x)
@@ -1755,7 +1751,7 @@ inline fourup_args*& qfn4up(LispObject p)
                              (11*CELL-TAG_SYMBOL));
 }
 
-[[noreturn]] extern void aerror1(const char *s, LispObject a);
+[[noreturn]] extern LispObject aerror1(const char *s, LispObject a);
 
 // When I have functions with 4 or more args I may need to
 // extract them..

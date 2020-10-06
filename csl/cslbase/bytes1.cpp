@@ -1130,19 +1130,19 @@ LispObject cdrerror(LispObject a)
     error(1, err_bad_cdr, a);
 }
 
-void car_fails(LispObject a)
+[[noreturn]] LispObject car_fails(LispObject a)
 {   error(1, err_bad_car, a);
 }
 
-void cdr_fails(LispObject a)
+[[noreturn]] LispObject cdr_fails(LispObject a)
 {   error(1, err_bad_cdr, a);
 }
 
-void rplaca_fails(LispObject a)
+[[noreturn]] LispObject rplaca_fails(LispObject a)
 {   error(1, err_bad_rplac, a);
 }
 
-void rplacd_fails(LispObject a)
+[[noreturn]] LispObject rplacd_fails(LispObject a)
 {   error(1, err_bad_rplac, a);
 }
 

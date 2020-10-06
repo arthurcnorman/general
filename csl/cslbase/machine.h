@@ -42,7 +42,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id: machine.h 5390 2020-09-03 20:57:57Z arthurcnorman $
+// $Id: machine.h 5414 2020-10-03 14:43:05Z arthurcnorman $
 
 
 #ifndef header_machine_h
@@ -269,7 +269,9 @@ using std::atomic;    // If I am going to be multi-threaded then very many
 #undef PACKAGE_TARNAME
 #undef PACKAGE_URL
 
+#ifndef WITHOUT_FFI
 #include <ffi.h>
+#endif // WITHOUT_FFI
 
 #undef PACKAGE
 #undef PACKAGE_NAME

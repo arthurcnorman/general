@@ -114,11 +114,6 @@
 #include "headers.h"
 #undef   INCLUDE_ERROR_STRING_TABLE
 
-#ifdef WASM
-//#include <emscripten.h>
-//EM_ASM(console.log('test'));
-#endif
-
 #ifndef WIN32
 #include <sys/wait.h>
 #endif
@@ -294,7 +289,7 @@ void DebugTrace(const char *fmt, int i)
 
 #define ARG_CUT_OFF 10
 
-[[noreturn]] void error(int nargs, int code, ...)
+[[noreturn]] LispObject error(int nargs, int code, ...)
 //
 // nargs indicates how many values have been provided AFTER the
 // code.  Thus nargs==0 will just display a simple message, nargs==1
@@ -341,7 +336,7 @@ void DebugTrace(const char *fmt, int i)
     throw LispError();
 }
 
-[[noreturn]] void cerror(int nargs, int code1, int code2, ...)
+[[noreturn]] LispObject cerror(int nargs, int code1, int code2, ...)
 // nargs indicated the number of EXTRA args after code1 & code2.
 {   LispObject w1;
     std::va_list a;
@@ -379,7 +374,7 @@ void DebugTrace(const char *fmt, int i)
 //
 // This can be used when a resource expires...
 //
-[[noreturn]] void resource_exceeded()
+[[noreturn]] LispObject resource_exceeded()
 {   exit_reason = UNWIND_RESOURCE;
     exit_value = exit_tag = nil;
     exit_count = 0;
@@ -450,7 +445,7 @@ void interrupted()
     throw LispError();
 }
 
-[[noreturn]] void aerror(const char *s)
+[[noreturn]] LispObject aerror(const char *s)
 {   LispObject w;
     if (miscflags & HEADLINE_FLAG)
         err_printf("+++ Error bad args for %s\n", s);
@@ -467,7 +462,7 @@ void interrupted()
     throw LispError();
 }
 
-[[noreturn]] void aerror0(const char *s)
+[[noreturn]] LispObject aerror0(const char *s)
 {   LispObject w;
     if (miscflags & HEADLINE_FLAG)
         err_printf("+++ Error: %s\n", s);
@@ -484,7 +479,7 @@ void interrupted()
     throw LispError();
 }
 
-[[noreturn]] void aerror1(const char *s, LispObject a)
+[[noreturn]] LispObject aerror1(const char *s, LispObject a)
 {   LispObject w;
     if (miscflags & HEADLINE_FLAG)
     {   err_printf("+++ Error: %s ", s);
@@ -504,7 +499,7 @@ void interrupted()
     throw LispError();
 }
 
-[[noreturn]] void aerror2(const char *s, LispObject a, LispObject b)
+[[noreturn]] LispObject aerror2(const char *s, LispObject a, LispObject b)
 {   LispObject w;
     if (miscflags & HEADLINE_FLAG)
     {   err_printf("+++ Error: %s ", s);
@@ -526,7 +521,7 @@ void interrupted()
     throw LispError();
 }
 
-[[noreturn]] void aerror2(const char *s, const char *a, LispObject b)
+[[noreturn]] LispObject aerror2(const char *s, const char *a, LispObject b)
 {   LispObject w;
     if (miscflags & HEADLINE_FLAG)
     {   err_printf("+++ Error: %s %s ", s, a);
@@ -546,7 +541,7 @@ void interrupted()
     throw LispError();
 }
 
-[[noreturn]] void aerror3(const char *s, LispObject a, LispObject b,
+[[noreturn]] LispObject aerror3(const char *s, LispObject a, LispObject b,
                           LispObject c)
 {   LispObject w;
     if (miscflags & HEADLINE_FLAG)
@@ -606,135 +601,135 @@ void interrupted()
     aerror(msg);
 }
 
-[[noreturn]] void got_0_wanted_1(LispObject env)
+[[noreturn]] LispObject got_0_wanted_1(LispObject env)
 {   wrong(0, 1, env);
 }
 
-[[noreturn]] void got_0_wanted_2(LispObject env)
+[[noreturn]] LispObject got_0_wanted_2(LispObject env)
 {   wrong(0, 2, env);
 }
 
-[[noreturn]] void got_0_wanted_3(LispObject env)
+[[noreturn]] LispObject got_0_wanted_3(LispObject env)
 {   wrong(0, 3, env);
 }
 
-[[noreturn]] void got_0_wanted_4up(LispObject env)
+[[noreturn]] LispObject got_0_wanted_4up(LispObject env)
 {   wrong(0, 4, env);
 }
 
-[[noreturn]] void got_0_wanted_other(LispObject env)
+[[noreturn]] LispObject got_0_wanted_other(LispObject env)
 {   wrong(0, env);
 }
 
 
-[[noreturn]] void got_1_wanted_0(LispObject env, LispObject a1)
+[[noreturn]] LispObject got_1_wanted_0(LispObject env, LispObject a1)
 {   wrong(0, 1, env);
 }
 
-[[noreturn]] void got_1_wanted_2(LispObject env, LispObject a1)
+[[noreturn]] LispObject got_1_wanted_2(LispObject env, LispObject a1)
 {   wrong(2, 1, env);
 }
 
-[[noreturn]] void got_1_wanted_3(LispObject env, LispObject a1)
+[[noreturn]] LispObject got_1_wanted_3(LispObject env, LispObject a1)
 {   wrong(3, 1, env);
 }
 
-[[noreturn]] void got_1_wanted_4up(LispObject env, LispObject a1)
+[[noreturn]] LispObject got_1_wanted_4up(LispObject env, LispObject a1)
 {   wrong(4, 1, env);
 }
 
-[[noreturn]] void got_1_wanted_other(LispObject env, LispObject a1)
+[[noreturn]] LispObject got_1_wanted_other(LispObject env, LispObject a1)
 {   wrong(1, env);
 }
 
 
-[[noreturn]] void got_2_wanted_0(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_2_wanted_0(LispObject env, LispObject a1,
                                  LispObject a2)
 {   wrong(0, 2, env);
 }
 
-[[noreturn]] void got_2_wanted_1(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_2_wanted_1(LispObject env, LispObject a1,
                                  LispObject a2)
 {   wrong(1, 2, env);
 }
 
-[[noreturn]] void got_2_wanted_3(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_2_wanted_3(LispObject env, LispObject a1,
                                  LispObject a2)
 {   wrong(3, 2, env);
 }
 
-[[noreturn]] void got_2_wanted_4up(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_2_wanted_4up(LispObject env, LispObject a1,
                                    LispObject a2)
 {   wrong(4, 2, env);
 }
 
-[[noreturn]] void got_2_wanted_other(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_2_wanted_other(LispObject env, LispObject a1,
                                      LispObject a2)
 {   wrong(2, env);
 }
 
 
-[[noreturn]] void got_3_wanted_0(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_3_wanted_0(LispObject env, LispObject a1,
                                  LispObject a2, LispObject a3)
 {   wrong(0, 3, env);
 }
 
-[[noreturn]] void got_3_wanted_1(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_3_wanted_1(LispObject env, LispObject a1,
                                  LispObject a2, LispObject a3)
 {   wrong(1, 3, env);
 }
 
-[[noreturn]] void got_3_wanted_2(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_3_wanted_2(LispObject env, LispObject a1,
                                  LispObject a2, LispObject a3)
 {   wrong(2, 3, env);
 }
 
-[[noreturn]] void got_3_wanted_4up(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_3_wanted_4up(LispObject env, LispObject a1,
                                    LispObject a2, LispObject a3)
 {   wrong(4, 3, env);
 }
 
-[[noreturn]] void got_3_wanted_other(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_3_wanted_other(LispObject env, LispObject a1,
                                      LispObject a2, LispObject a3)
 {   wrong(3, env);
 }
 
 
-[[noreturn]] void got_4up_wanted_0(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_4up_wanted_0(LispObject env, LispObject a1,
                                    LispObject a2, LispObject a3,
                                    LispObject a4up)
 {   wrong(0, 4, env);
 }
 
-[[noreturn]] void got_4up_wanted_1(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_4up_wanted_1(LispObject env, LispObject a1,
                                    LispObject a2, LispObject a3,
                                    LispObject a4up)
 {   wrong(1, 4, env);
 }
 
-[[noreturn]] void got_4up_wanted_2(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_4up_wanted_2(LispObject env, LispObject a1,
                                    LispObject a2, LispObject a3,
                                    LispObject a4up)
 {   wrong(2, 4, env);
 }
 
-[[noreturn]] void got_4up_wanted_3(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_4up_wanted_3(LispObject env, LispObject a1,
                                    LispObject a2, LispObject a3,
                                    LispObject a4up)
 {   wrong(3, 4, env);
 }
 
-[[noreturn]] void got_4up_wanted_other(LispObject env, LispObject a1,
+[[noreturn]] LispObject got_4up_wanted_other(LispObject env, LispObject a1,
                                        LispObject a2, LispObject a3,
                                        LispObject a4up)
 {   wrong(4, env);
 }
 
-void bad_specialn(LispObject, int, ...)
+[[noreturn]] LispObject bad_specialn(LispObject, int, ...)
 {   aerror("call to special form");
 }
 
-void fatal_error(int code, ...)
+[[noreturn]] void fatal_error(int code, ...)
 {
 //
 // Note that FATAL error messages are sent to the terminal, not to the
@@ -1649,7 +1644,6 @@ void cslstart(int argc, const char *argv[], character_writer *wout)
 #endif // !WITH_GUI
                 }
             },
-#if 0
 
             /*! options [--help] \item [{\ttfamily --help}] \index{{\ttfamily --help}}
              * It is probably obvious what this option does! Note that on Windows the
@@ -1694,7 +1688,7 @@ void cslstart(int argc, const char *argv[], character_writer *wout)
                     my_exit(0);
                 }
             },
-#endif
+
             /*! options [-k] \item [{\ttfamily -k}] \index{{\ttfamily -k}}
              * {\ttfamily -K nnn} sets the size of heap to be used.  If it is given then that much
              * memory will be allocated and the heap will never expand.  Without this
@@ -1798,6 +1792,7 @@ void cslstart(int argc, const char *argv[], character_writer *wout)
                     stack_segsize = valI;
                 }
             },
+
 
             /*! options [--cygwin] \item [{\ttfamily --cygwin}] \index{{\ttfamily --cygwin}}
              * On Windows this flag is used to specify that a cygwin rather that a native

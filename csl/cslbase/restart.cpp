@@ -1042,10 +1042,20 @@ static LispObject make_undefined_global(const char *name)
     return v;
 }
 
-static void cold_setup()
-{   LispObject w;
+LispObject make_constant(const char *name, LispObject value)
+{   LispObject w = make_undefined_global(name);
+    setvalue(w, value);
+    return w;
+}
 
-    miscflags = 3;
+LispObject make_variable(const char *name, LispObject value)
+{   LispObject w = make_undefined_fluid(name);
+    setvalue(w, value);
+    return w;
+}
+
+static void cold_setup()
+{   miscflags = 3;
     setplist(nil, nil);
     setfastgets(nil, nil);
     setenv(nil, nil);        // points to self in undefined case
@@ -1056,29 +1066,31 @@ static void cold_setup()
     ifn4up(nil) = (intptr_t)undefined_4up;
     setheader(nil, TAG_HDR_IMMED+TYPE_SYMBOL+SYM_GLOBAL_VAR);
     setvalue(nil, nil);
-//
+    qcount(nil) = zeroCount;
 // When I am debugging CSL I can validate the heap, for instance whenever
-// I allocate vector. The call to make_string here does that, and so I MUST
-// have a tidy world in place here.
-//
+// I allocate vector. I am about to need to call make_string to create a
+// record of the name "nil", and during that call the pname field of nil
+// had better be valid - so I fill it in with a nil.
     setpname(nil, nil);
+// Similarly the package field for nil needs a (temporary) safe value.
+    setpackage(nil, nil);
+    exit_reason = UNWIND_NULL;
+// eq_hash_tables is not an ordinary list-base, si I need to clear it
+// individually.
+    eq_hash_tables = nil;
     for (LispObject **p=list_bases; *p!=nullptr; p++) **p = nil;
     eq_hash_tables = nil;
 #ifdef COMMON
-    setpackage(nil, nil);
     setpname(nil, make_string("NIL"));
 #else
-    setpackage(nil, nil);
     setpname(nil, make_string("nil"));
 #endif
-    qcount(nil) = zeroCount;
-    exit_tag = exit_value = nil;
-    exit_reason = UNWIND_NULL;
-    eq_hash_tables = nil;
 
 // The package I am using at present will always be a package object
 // stored in the value cell of "current-package". But that symbol does not
 // quite exist yet - so as a temporary provision I use the value cell of NIL.
+// This has in fact been done as part of the general initialization of
+// list-bases, but I repeat it here for extra clarity.
     current_package = nil;
 //
 // The code here is generally coded on the supposition that there will NEVER
@@ -1090,6 +1102,17 @@ static void cold_setup()
 // collection - that can probably be assured by ensuring that on restart there
 // is at least a little bit of space in hand.
 //
+// Well garbage collection even at this early stage should now be valid when
+// the conservative GC is active.
+//
+#ifdef CONSERVATIVE
+    simple_print(nil);
+    std::printf("\r\n");
+    Lgc0(nil);
+    simple_print(nil);
+    Lterpri(nil);
+    my_abort();
+#endif // CONSERVATIVE
     setvalue(nil, get_basic_vector_init(sizeof(Package), nil));
 #ifdef COMMON
     setpackage(nil, qvalue(nil));    // For sake of restart code
@@ -1243,13 +1266,6 @@ static void cold_setup()
     print_array_sym     = make_undefined_symbol("*print-array*");
     read_base           = make_undefined_symbol("*read-base*");
     initial_element     = make_undefined_symbol(":initial-element");
-
-#define make_constant(name, value)                   \
-        w = make_undefined_global(name);             \
-        setvalue(w, value);
-#define make_variable(name, value)                   \
-        w = make_undefined_fluid(name);              \
-        setvalue(w, value);
     make_constant("most-positive-fixnum", MOST_POSITIVE_FIXNUM);
     make_constant("most-negative-fixnum", MOST_NEGATIVE_FIXNUM);
     make_constant("pi",
@@ -1263,8 +1279,8 @@ static void cold_setup()
     current_function    = // system-startup
         startup_symbol      = make_undefined_symbol("system-startup");
     mv_call_symbol      = make_symbol("multiple-value-call", 0,
-                                      BAD_SPECIAL_0, mv_call_fn, BAD_SPECIAL_2, BAD_SPECIAL_3,
-                                      BAD_SPECIAL_4up);
+                                      bad_specialfn_0, mv_call_fn, bad_specialfn_2, bad_specialfn_3,
+                                      bad_specialfn_4up);
     autoload_symbol     = make_undefined_symbol("autoload");
     bytecoded_symbol    = make_undefined_symbol("bytecoded-definition");
     traceprint_symbol   = make_undefined_symbol("trace-print");
@@ -1375,21 +1391,21 @@ void set_up_functions(int restart_flag)
     CP = find_package("LISP", 4);
 #endif
     function_symbol          = make_symbol("function", restart_flag,
-                                           BAD_SPECIAL_0, function_fn, BAD_SPECIAL_2, BAD_SPECIAL_3,
-                                           BAD_SPECIAL_4up);
+                                           bad_specialfn_0, function_fn, bad_specialfn_2, bad_specialfn_3,
+                                           bad_specialfn_4up);
     setheader(function_symbol,
               qheader(function_symbol) | SYM_SPECIAL_FORM);
     quote_symbol             = make_symbol("quote", restart_flag,
-                                           BAD_SPECIAL_0, quote_fn, BAD_SPECIAL_2, BAD_SPECIAL_3,
-                                           BAD_SPECIAL_4up);
+                                           bad_specialfn_0, quote_fn, bad_specialfn_2, bad_specialfn_3,
+                                           bad_specialfn_4up);
     setheader(quote_symbol, qheader(quote_symbol) | SYM_SPECIAL_FORM);
     progn_symbol             = make_symbol("progn", restart_flag,
-                                           BAD_SPECIAL_0, progn_fn, BAD_SPECIAL_2, BAD_SPECIAL_3,
-                                           BAD_SPECIAL_4up);
+                                           bad_specialfn_0, progn_fn, bad_specialfn_2, bad_specialfn_3,
+                                           bad_specialfn_4up);
     setheader(progn_symbol, qheader(progn_symbol) | SYM_SPECIAL_FORM);
     declare_symbol           = make_symbol("declare", restart_flag,
-                                           BAD_SPECIAL_0, declare_fn, BAD_SPECIAL_2, BAD_SPECIAL_3,
-                                           BAD_SPECIAL_4up);
+                                           bad_specialfn_0, declare_fn, bad_specialfn_2, bad_specialfn_3,
+                                           bad_specialfn_4up);
     setheader(declare_symbol, qheader(declare_symbol) | SYM_SPECIAL_FORM);
     special_symbol           = make_undefined_symbol("special");
     large_modulus            = fixnum_of_int(1);
