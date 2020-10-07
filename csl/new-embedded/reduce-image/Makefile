@@ -6,27 +6,18 @@
 # I expect that other platforms might not be too hard... but some
 # will need the include/config.h file adjusted.
 
-ifeq ($(shell uname),Darwin)
-CC=em++
-#CC=clang++
-XCFLAGS= -I/opt/local/lib/libffi-3.2.1/include
-XLIBS=-lm
-else
-ifeq ($(shell uname -o),Cygwin)
-CC=em++
-XLIBS=-lm
-else
-CC=em++
-XLIBS=-lm -lpthread
-endif
-endif
+CC=em++ -s DISABLE_EXCEPTION_CATCHING=0 -s STACK_OVERFLOW_CHECK=2 \
+        -s EXIT_RUNTIME=1 -s TOTAL_STACK=5mb \
+        -s MALLOC="emmalloc" -s INITIAL_MEMORY=16777216 \
+        -s ALLOW_MEMORY_GROWTH=1 -s SAFE_HEAP=1 \
+        -s DEMANGLE_SUPPORT=1 
 
 OPT=-O0 -g
 #OPT=-O3
 
 CPPFLAGS=$(CFLAGS) -std=gnu++11 $(OPT) -I. -I../include \
     -DHAVE_CONFIG_H=1 -DEMBEDDED=1 $(XCFLAGS)
-LIBS=$(XLIBS) -s USE_ZLIB=1 #-lffi
+LIBS=$(XLIBS) -s USE_ZLIB=1
 
 S=../../cslbase
 R=../../..
