@@ -1,8 +1,12 @@
 (setq !*echo t)
-(enable!-errorset 3 3)
-(de fact (n)
-  (if (zerop n)
-      1
-      (times n (fact (sub1 n)))))
-(fact 5)
+
+(tagbody
+  (terpri)
+  (print "A")
+  (go x)
+  (print "B")
+x
+  (print "C")
+  "D")
+
 (stop 0)

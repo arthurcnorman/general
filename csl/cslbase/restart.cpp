@@ -112,6 +112,7 @@ LispObject cons_symbol, eval_symbol, apply_symbol, work_symbol,
            evalhook;
 LispObject list_symbol, liststar_symbol, eq_symbol, eql_symbol;
 LispObject cl_equal_symbol, equal_symbol, equalp_symbol;
+LispObject go_symbol, cond_symbol;
 LispObject applyhook, macroexpand_hook, append_symbol, exit_tag;
 LispObject exit_value, catch_tags, keyword_package, current_package;
 LispObject startfn, all_packages, package_symbol, internal_symbol;
@@ -1059,11 +1060,11 @@ static void cold_setup()
     setplist(nil, nil);
     setfastgets(nil, nil);
     setenv(nil, nil);        // points to self in undefined case
-    ifn0(nil) = (intptr_t)undefined_0;
-    ifn1(nil) = (intptr_t)undefined_1;
-    ifn2(nil) = (intptr_t)undefined_2;
-    ifn3(nil) = (intptr_t)undefined_3;
-    ifn4up(nil) = (intptr_t)undefined_4up;
+    qfn0(nil) = undefined_0;
+    qfn1(nil) = undefined_1;
+    qfn2(nil) = undefined_2;
+    qfn3(nil) = undefined_3;
+    qfn4up(nil) = undefined_4up;
     setheader(nil, TAG_HDR_IMMED+TYPE_SYMBOL+SYM_GLOBAL_VAR);
     setvalue(nil, nil);
     qcount(nil) = zeroCount;
@@ -1399,6 +1400,14 @@ void set_up_functions(int restart_flag)
                                            bad_specialfn_0, quote_fn, bad_specialfn_2, bad_specialfn_3,
                                            bad_specialfn_4up);
     setheader(quote_symbol, qheader(quote_symbol) | SYM_SPECIAL_FORM);
+    go_symbol                = make_symbol("go", restart_flag,
+                                           bad_specialfn_0, go_fn, bad_specialfn_2, bad_specialfn_3,
+                                           bad_specialfn_4up);
+    setheader(go_symbol, qheader(go_symbol) | SYM_SPECIAL_FORM);
+    cond_symbol              = make_symbol("cond", restart_flag,
+                                           bad_specialfn_0, cond_fn, bad_specialfn_2, bad_specialfn_3,
+                                           bad_specialfn_4up);
+    setheader(cond_symbol, qheader(cond_symbol) | SYM_SPECIAL_FORM);
     progn_symbol             = make_symbol("progn", restart_flag,
                                            bad_specialfn_0, progn_fn, bad_specialfn_2, bad_specialfn_3,
                                            bad_specialfn_4up);
@@ -2706,6 +2715,8 @@ LispObject *list_bases[] =
     &cl_equal_symbol,
     &equal_symbol,
     &equalp_symbol,
+    &go_symbol,
+    &cond_symbol,
     &echo_symbol,
     &emsg_star,
     &evalhook,
