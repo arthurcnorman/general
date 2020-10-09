@@ -10,12 +10,12 @@ CC=em++ -s DISABLE_EXCEPTION_CATCHING=0 -s STACK_OVERFLOW_CHECK=2 \
         -s EXIT_RUNTIME=1 -s TOTAL_STACK=5mb \
         -s MALLOC="dlmalloc" -s INITIAL_MEMORY=16777216 \
         -s ALLOW_MEMORY_GROWTH=1 -s SAFE_HEAP=1 \
-        -s DEMANGLE_SUPPORT=1 
+        -s DEMANGLE_SUPPORT=1
 
 #OPT=-O0 -g
 OPT=-O2
 
-CPPFLAGS=$(CFLAGS) -std=gnu++11 $(OPT) -I. -I../include \
+CPPFLAGS=$(CFLAGS) -std=gnu++11 $(OPT) -I. -I../include -I../../cslbase \
     -DHAVE_CONFIG_H=1 -DEMBEDDED=1 $(XCFLAGS)
 LIBS=$(XLIBS) -s USE_ZLIB=1
 
@@ -32,26 +32,26 @@ reduce:		allocate.o arith01.o arith02.o arith03.o arith04.o arith05.o \
 		csl.o cslmpi.o cslread.o eval1.o eval2.o eval3.o \
 		eval4.o fasl.o fns1.o fns2.o fns3.o fwin.o cslgc.o lisphash.o \
 		isprime.o preserve.o print.o restart.o sysfwin.o termed.o \
-		inthash.o serialize.o stubs.o \
-		u01.o u02.o u03.o u04.o u05.o u06.0 u07.o u08.o u09.o u10.o \
-		u11.o u12.o u13.o u14.o u15.o u16.0 u17.o u18.o u19.o u20.o \
-		u21.o u22.o u23.o u24.o u25.o u26.0 u27.o u28.o u29.o u30.o \
-		u31.o u32.o u33.o u34.o u35.o u36.0 u37.o u38.o u39.o u40.o \
-		u41.o u42.o u43.o u44.o u45.o u46.0 u47.o u48.o u49.o u50.o \
-		u51.o u52.o u53.o u54.o u55.o u56.0 u57.o u58.o u59.o u60.o
+		inthash.o serialize.o \
+		u01.o u02.o u03.o u04.o u05.o u06.o u07.o u08.o u09.o u10.o \
+		u11.o u12.o u13.o u14.o u15.o u16.o u17.o u18.o u19.o u20.o \
+		u21.o u22.o u23.o u24.o u25.o u26.o u27.o u28.o u29.o u30.o \
+		u31.o u32.o u33.o u34.o u35.o u36.o u37.o u38.o u39.o u40.o \
+		u41.o u42.o u43.o u44.o u45.o u46.o u47.o u48.o u49.o u50.o \
+		u51.o u52.o u53.o u54.o u55.o u56.o u57.o u58.o u59.o u60.o
 	$(CC) allocate.o arith01.o arith02.o arith03.o arith04.o arith05.o \
 		arith06.o arith07.o arith08.o arith09.o arith10.o \
 		arith11.o arith12.o arith13.o arith14.o bytes.o char.o \
 		csl.o cslmpi.o cslread.o eval1.o eval2.o eval3.o \
 		eval4.o fasl.o fns1.o fns2.o fns3.o fwin.o cslgc.o lisphash.o \
 		isprime.o preserve.o print.o restart.o sysfwin.o termed.o \
-		inthash.o serialize.o stubs.o \
-		u01.o u02.o u03.o u04.o u05.o u06.0 u07.o u08.o u09.o u10.o \
-		u11.o u12.o u13.o u14.o u15.o u16.0 u17.o u18.o u19.o u20.o \
-		u21.o u22.o u23.o u24.o u25.o u26.0 u27.o u28.o u29.o u30.o \
-		u31.o u32.o u33.o u34.o u35.o u36.0 u37.o u38.o u39.o u40.o \
-		u41.o u42.o u43.o u44.o u45.o u46.0 u47.o u48.o u49.o u50.o \
-		u51.o u52.o u53.o u54.o u55.o u56.0 u57.o u58.o u59.o u60.o
+		inthash.o serialize.o \
+		u01.o u02.o u03.o u04.o u05.o u06.o u07.o u08.o u09.o u10.o \
+		u11.o u12.o u13.o u14.o u15.o u16.o u17.o u18.o u19.o u20.o \
+		u21.o u22.o u23.o u24.o u25.o u26.o u27.o u28.o u29.o u30.o \
+		u31.o u32.o u33.o u34.o u35.o u36.o u37.o u38.o u39.o u40.o \
+		u41.o u42.o u43.o u44.o u45.o u46.o u47.o u48.o u49.o u50.o \
+		u51.o u52.o u53.o u54.o u55.o u56.o u57.o u58.o u59.o u60.o \
 		$(LIBS) -s ERROR_ON_UNDEFINED_SYMBOLS=0 -g4 \
 		-s ALLOW_MEMORY_GROWTH=1 \
 		-s DISABLE_EXCEPTION_CATCHING=0 \
@@ -137,7 +137,7 @@ u02.o:		$(S)/u02.cpp $(HEADERS)
 u03.o:		$(S)/u03.cpp $(HEADERS)
 u04.o:		$(S)/u04.cpp $(HEADERS)
 u05.o:		$(S)/u05.cpp $(HEADERS)
-u06.0:		$(S)/u06.cpp $(HEADERS)
+u06.o:		$(S)/u06.cpp $(HEADERS)
 u07.o:		$(S)/u07.cpp $(HEADERS)
 u08.o:		$(S)/u08.cpp $(HEADERS)
 u09.o:		$(S)/u09.cpp $(HEADERS)
@@ -147,7 +147,7 @@ u12.o:		$(S)/u12.cpp $(HEADERS)
 u13.o:		$(S)/u13.cpp $(HEADERS)
 u14.o:		$(S)/u14.cpp $(HEADERS)
 u15.o:		$(S)/u15.cpp $(HEADERS)
-u16.0:		$(S)/u16.cpp $(HEADERS)
+u16.o:		$(S)/u16.cpp $(HEADERS)
 u17.o:		$(S)/u17.cpp $(HEADERS)
 u18.o:		$(S)/u18.cpp $(HEADERS)
 u19.o:		$(S)/u19.cpp $(HEADERS)
@@ -157,7 +157,7 @@ u22.o:		$(S)/u22.cpp $(HEADERS)
 u23.o:		$(S)/u23.cpp $(HEADERS)
 u24.o:		$(S)/u24.cpp $(HEADERS)
 u25.o:		$(S)/u25.cpp $(HEADERS)
-u26.0:		$(S)/u26.cpp $(HEADERS)
+u26.o:		$(S)/u26.cpp $(HEADERS)
 u27.o:		$(S)/u27.cpp $(HEADERS)
 u28.o:		$(S)/u28.cpp $(HEADERS)
 u29.o:		$(S)/u29.cpp $(HEADERS)
@@ -167,7 +167,7 @@ u32.o:		$(S)/u32.cpp $(HEADERS)
 u33.o:		$(S)/u33.cpp $(HEADERS)
 u34.o:		$(S)/u34.cpp $(HEADERS)
 u35.o:		$(S)/u35.cpp $(HEADERS)
-u36.0:		$(S)/u36.cpp $(HEADERS)
+u36.o:		$(S)/u36.cpp $(HEADERS)
 u37.o:		$(S)/u37.cpp $(HEADERS)
 u38.o:		$(S)/u38.cpp $(HEADERS)
 u39.o:		$(S)/u39.cpp $(HEADERS)
@@ -177,7 +177,7 @@ u42.o:		$(S)/u42.cpp $(HEADERS)
 u43.o:		$(S)/u43.cpp $(HEADERS)
 u44.o:		$(S)/u44.cpp $(HEADERS)
 u45.o:		$(S)/u45.cpp $(HEADERS)
-u46.0:		$(S)/u46.cpp $(HEADERS)
+u46.o:		$(S)/u46.cpp $(HEADERS)
 u47.o:		$(S)/u47.cpp $(HEADERS)
 u48.o:		$(S)/u48.cpp $(HEADERS)
 u49.o:		$(S)/u49.cpp $(HEADERS)
@@ -187,7 +187,7 @@ u52.o:		$(S)/u52.cpp $(HEADERS)
 u53.o:		$(S)/u53.cpp $(HEADERS)
 u54.o:		$(S)/u54.cpp $(HEADERS)
 u55.o:		$(S)/u55.cpp $(HEADERS)
-u56.0:		$(S)/u56.cpp $(HEADERS)
+u56.o:		$(S)/u56.cpp $(HEADERS)
 u57.o:		$(S)/u57.cpp $(HEADERS)
 u58.o:		$(S)/u58.cpp $(HEADERS)
 u59.o:		$(S)/u59.cpp $(HEADERS)
