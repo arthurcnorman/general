@@ -44,7 +44,6 @@ diffBw() {
 install="no"
 keep="no"
 platform=""
-slow="no"
 
 csl="no"
 jscsl="no"
@@ -215,12 +214,7 @@ fi
 
 if test "x$timeoutcmd" != "x"
 then
-  if test "x$slow" = "xyes"
-  then
-    timeoutcmd="$timeoutcmd 2400"
-  else
-    timeoutcmd="$timeoutcmd 600"
-  fi
+  timeoutcmd="$timeoutcmd 6000"
 fi
 
 # If I am running on Windows I need to have the file name in
@@ -259,7 +253,7 @@ fi
 # slowest ones may take almost 15 seconds. The idea behind applying a
 # ulimit here is to avoid trouble when and if a test script loops.
  
-ulimit -c 60 2>/dev/null
+ulimit -c 600 2>/dev/null
 
 # There are a number of "sed" operations I use to tidy up logs files
 # so that comparisons do not show up frivolous differences. I put the
