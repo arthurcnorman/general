@@ -78,7 +78,7 @@ int main(int argc, const char *argv[])
         return 1;
     }
     if (std::strcmp(argv[1], "-") == 0) f1 = stdin;
-    else f1 = myfopen(argv[1], "rb");
+    else f1 = myfopen(argv[1], "r"); // "rb");
     if (f1 == nullptr)
     {   std::fprintf(stderr, "File \"%s\" not found\n", argv[1]);
         return 1;
