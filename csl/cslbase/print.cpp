@@ -3952,7 +3952,30 @@ LispObject Lprint_imports(LispObject env)
 }
 
 LispObject Lprint_csl_headers(LispObject env)
-{   const char *p;
+{
+#ifdef OLD_HEADERS_IN_GENERATED_C_CODE
+// At one stage I went to some trouble to arrange that all the genarated C
+// or C++ files had the CSL headers transcribed into them. The motivation was
+// that I imagined a dynamic compilation process that compiled user Lisp into
+// C++, compiled that into a DLL and loaded that in with the running system.
+// For this to work with a copy of CSL that had been shipped to users and so
+// was not within a development tree it was necessary to ensure that the
+// generated C++ did not depend on any other files. Specifically the CSL
+// header files.
+// Well two things have happened since then. First I got that scheme working
+// but did not find it attractive, so it has never been pushed as usable
+// by others. Secondly on revisiting it I find that the header files I
+// transcribe into the generated C++ themselves contain a couple of #include
+// directives, so I would need to adjust and update the whole scheme if I
+// wanted it to serve its original purpose.
+// But an easier path seems to be to let each generated file just go
+//    #include "headers.h"
+// and accept that it can only be used within a CSL source tree.
+//
+// I keep the old code around guarded by and #ifdef in case I find that I
+// need to revert to it.
+//
+    const char *p;
     int i, ch;
     LispObject stream;
     stream = qvalue(standard_output);
@@ -3962,6 +3985,9 @@ LispObject Lprint_csl_headers(LispObject env)
     {   while ((ch = *p++) != 0) putc_stream(ch, stream);
         putc_stream('\n', stream);
     }
+#else
+    stdout_printf("#include \"headers.h\"\n");
+#endif
     return onevalue(nil);
 }
 
