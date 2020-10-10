@@ -338,7 +338,7 @@ fi
 
 if test "$csl" = "yes"
 then
-  csltest "csl" "old-reduce-image/reduce" "CSL" "$v"
+  csltest "csl" "old-reduce-image/reduce -i old-reduce-image/reduce.img" "CSL" "$v"
 
   if test "$install" = "yes"
   then
@@ -350,7 +350,7 @@ fi
 
 if test "$jscsl" = "yes"
 then
-  csltest "jscsl" "node reduce-image/reduce.js -i reduce.img" "JSCSL" "$v"
+  csltest "jscsl" "node reduce-image/reduce.js -i reduce-image/reduce.img" "JSCSL" "$v"
 
   if test "$install" = "yes"
   then
