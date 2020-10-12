@@ -36,7 +36,7 @@ endif
 #OPT=-O0 -g
 OPT=-O3
 
-CPPFLAGS=$(CFLAGS) -std=gnu++11 $(OPT) -I. -I../include -I$(S) \
+CPPFLAGS=$(CFLAGS) -std=gnu++17 $(OPT) -I. -I../include -I$(S) \
     -DHAVE_CONFIG_H=1 -DEMBEDDED=1 $(XCFLAGS) $(USERFLAGS)
 LIBS=$(XLIBS) -lz -lffi
 
@@ -46,37 +46,6 @@ R=../../..
 VPATH=$(S)
 
 all:	reduce reduce.img image.cpp
-
-objtype:	$(S)/objtype.cpp
-	g++ $(S)/objtype.cpp -o objtype
-
-makeheaders:	$(S)/makeheaders.cpp
-	g++ $(S)/makeheaders.cpp -o makeheaders
-
-machineid.cpp:	cslread.o ../include/config.h objtype makeheaders Makefile \
-		$(S)/machine.h $(S)/int128_t.h \
-		$(S)/log.h $(S)/$(FWIN) \
-		$(S)/tags.h $(S)/cslerror.h \
-		$(S)/thread_local.h \
-		$(S)/externs.h $(S)/arith.h \
-		$(S)/entries.h $(S)/lispthrow.h \
-		$(S)/allocate.h $(S)/newallocate.h
-	./objtype cslread.o \
-		machineid-1.cpp g++
-	./makeheaders ../include/config.h \
-		$(S)/machine.h \
-		$(S)/$(FWIN) \
-		$(S)/int128_t.h \
-		$(S)/log.h \
-		$(S)/tags.h \
-		$(S)/thread_local.h \
-		$(S)/cslerror.h \
-		$(S)/externs.h \
-		$(S)/arith.h \
-		$(S)/entries.h \
-		$(S)/lispthrow.h \
-		> machineid-2.cpp
-	cat machineid-1.cpp machineid-2.cpp > machineid.cpp
 
 bootstrapreduce:		allocate.o arith01.o arith02.o arith03.o arith04.o arith05.o \
 		arith06.o arith07.o arith08.o arith09.o arith10.o \
@@ -160,7 +129,7 @@ image.cpp:	make-image reduce.img
 
 clean:
 	-rm -f *.o reduce hello *.img *.log make-image image.cpp
-	-rm -f machineid* makeheaders objtype bootstrapreduce *.bak
+	-rm -f bootstrapreduce *.bak
 
 
 HEADERS = ../include/config.h \
@@ -209,7 +178,7 @@ lisphash.o:	$(S)/lisphash.cpp $(HEADERS)
 isprime.o:	$(S)/isprime.cpp $(HEADERS)
 preserve.o:	$(S)/preserve.cpp $(HEADERS)
 print.o:	$(S)/print.cpp $(HEADERS)
-restart.o:	$(S)/restart.cpp machineid.cpp $(HEADERS)
+restart.o:	$(S)/restart.cpp $(HEADERS)
 sysfwin.o:	$(S)/sysfwin.cpp $(HEADERS)
 termed.o:	$(S)/termed.cpp $(HEADERS)
 inthash.o:	$(S)/inthash.cpp $(HEADERS)

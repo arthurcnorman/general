@@ -3,17 +3,9 @@
 
 // $Id$
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <cctype>
-#include <cstdarg>
-#include <ctime>
-#include <csetjmp>
-#include <exception>
 #include "config.h"
-
 #include "headers.h"
+
 
 
 // Code for mk!+real!+inner!+product

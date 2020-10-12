@@ -41,37 +41,6 @@ VPATH=$(S)
 
 all:	reduce.js reduce.img image.cpp
 
-objtype.js:	objtype.o
-	$(CC) objtype.o $(LIBS) $(JSOPTS) -o objtype.js
-#
-makeheaders.js:	makeheaders.o
-	$(CC) makeheaders.o $(LIBS) $(JSOPTS) -o makeheaders.js
-#
-machineid.cpp:	cslread.o ../include/config.h objtype.js makeheaders.js Makefile \
-		$(S)/machine.h $(S)/int128_t.h \
-		$(S)/log.h $(S)/$(FWIN) \
-		$(S)/tags.h $(S)/cslerror.h \
-		$(S)/thread_local.h \
-		$(S)/externs.h $(S)/arith.h \
-		$(S)/entries.h $(S)/lispthrow.h \
-		$(S)/allocate.h $(S)/newallocate.h
-	node objtype.js cslread.o \
-		machineid-1.cpp g++
-	node makeheaders.js ../include/config.h \
-		$(S)/machine.h \
-		$(S)/$(FWIN) \
-		$(S)/int128_t.h \
-		$(S)/log.h \
-		$(S)/tags.h \
-		$(S)/thread_local.h \
-		$(S)/cslerror.h \
-		$(S)/externs.h \
-		$(S)/arith.h \
-		$(S)/entries.h \
-		$(S)/lispthrow.h \
-		> machineid-2.cpp
-	cat machineid-1.cpp machineid-2.cpp > machineid.cpp
-
 bootstrapreduce.js:		allocate.o arith01.o arith02.o arith03.o arith04.o arith05.o \
 		arith06.o arith07.o arith08.o arith09.o arith10.o \
 		arith11.o arith12.o arith13.o arith14.o bytes.o char.o \
@@ -87,6 +56,10 @@ bootstrapreduce.js:		allocate.o arith01.o arith02.o arith03.o arith04.o arith05.
 		isprime.o preserve.o print.o restart.o sysfwin.o termed.o \
 		inthash.o serialize.o stubs.o \
 		$(LIBS) $(JSOPTS) -o bootstrapreduce.js
+
+.PHONY:	bootstrapreduce
+bootstrapreduce:	bootstrapreduce.js
+	echo Building bootstrapreduce.js
 
 # I am going to build both reduce and bootstrapreduce in the same directory
 # and they use overlapping source files. To keep things clean I put the object
@@ -109,7 +82,7 @@ bootstrapreduce.img:	bootstrapreduce.js
 
 
 c-code:	bootstrapreduce.img
-	node bootstrapreduce.js -i bootstrapreduce.img -w $(CSLFLAGS) \
+	node bootstrapreduce.js -w $(CSLFLAGS) \
 		-Dno_init_file \
 		$(S)/make-c-code.red \
 		-D@destdir=$(R)/cslbuild/generated-c \
@@ -147,6 +120,9 @@ reduce.js:		allocate.oo arith01.oo arith02.oo arith03.oo arith04.oo arith05.oo \
 		u51.oo u52.oo u53.oo u54.oo u55.oo u56.oo u57.oo u58.oo u59.oo u60.oo \
 		$(LIBS) $(JSOPTS) -o reduce.js
 
+.PHONY:	reduce
+reduce:	reduce.js
+	echo Building reduce.js
 
 reduce.img:	reduce.js
 	-rm -f reduce.img
@@ -163,7 +139,7 @@ image.cpp:	make-image.js reduce.img
 
 clean:
 	-rm -f *.o *.oo reduce* *.log make-image* image.cpp
-	-rm -f machineid* makeheaders* objtype* bootstrapreduce* *.bak *.map
+	-rm -f bootstrapreduce* *.bak *.map
 
 HEADERS = ../include/config.h \
 	$(S)/md5.h       $(S)/termed.h    $(S)/arith.h       $(S)/openmath.h \
@@ -211,7 +187,7 @@ lisphash.o:	$(S)/lisphash.cpp $(HEADERS)
 isprime.o:	$(S)/isprime.cpp $(HEADERS)
 preserve.o:	$(S)/preserve.cpp $(HEADERS)
 print.o:	$(S)/print.cpp $(HEADERS)
-restart.o:	$(S)/restart.cpp machineid.cpp $(HEADERS)
+restart.o:	$(S)/restart.cpp $(HEADERS)
 sysfwin.o:	$(S)/sysfwin.cpp $(HEADERS)
 termed.o:	$(S)/termed.cpp $(HEADERS)
 inthash.o:	$(S)/inthash.cpp $(HEADERS)
@@ -257,7 +233,7 @@ lisphash.oo:	$(S)/lisphash.cpp $(HEADERS)
 isprime.oo:	$(S)/isprime.cpp $(HEADERS)
 preserve.oo:	$(S)/preserve.cpp $(HEADERS)
 print.oo:	$(S)/print.cpp $(HEADERS)
-restart.oo:	$(S)/restart.cpp machineid.cpp $(HEADERS)
+restart.oo:	$(S)/restart.cpp $(HEADERS)
 sysfwin.oo:	$(S)/sysfwin.cpp $(HEADERS)
 termed.oo:	$(S)/termed.cpp $(HEADERS)
 inthash.oo:	$(S)/inthash.cpp $(HEADERS)
@@ -323,6 +299,4 @@ u58.oo:		$(S)/u58.cpp $(HEADERS)
 u59.oo:		$(S)/u59.cpp $(HEADERS)
 u60.oo:		$(S)/u60.cpp $(HEADERS)
 
-
 # end of Makefile
-

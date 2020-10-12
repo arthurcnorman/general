@@ -513,11 +513,13 @@ LispObject tagbody_fn(LispObject args, LispObject env)
     {   f = car(p);
         if (!is_cons(f)) continue; // Do not evaluate labels
         push(p, env, f);
+#ifdef FUTURE
 // As a possible optimisation here I will direct use of GO or COND here,
 // and then uses of GO within the consequents within the COND. This can
 // avoid use of catch and throw, which on some platforms or in some
 // contexts may carry overheads that I dislike.
-#ifdef FUTURE
+//
+// I believe that the code here is broken at present!
         LispObject ff = car(f);
         if (ff == go_symbol)
         {   ff = car(cdr(f));

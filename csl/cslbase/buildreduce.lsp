@@ -1,4 +1,4 @@
-% "buildreduce.lsp"                        Copyright (C) Codemist 2016-2019
+% "buildreduce.lsp"                        Copyright (C) Codemist 2016-2020
 %
 % Build a CSL REDUCE.
 %
@@ -26,9 +26,8 @@
 
 % Author: Anthony C. Hearn, Stanley L. Kameny and Arthur Norman
 
-% $Id: buildreduce.lsp 5165 2019-10-10 14:22:18Z arthurcnorman $
+% $Id: buildreduce.lsp 5165 2020-10-10 14:22:18Z arthurcnorman $
 
-(setq !*echo t)
 (verbos 3)
 
 (window!-heading "basic CSL")
@@ -36,6 +35,7 @@
 (make!-special '!*savedef)
 (make!-special '!*backtrace)
 
+% "-Dbootstrap" can force !*savedef even in an embedded world.
 (setq !*savedef (and (or (boundp 'bootstrap)
                          (not (memq 'embedded lispsystem!*)))
                      (zerop (cdr (assoc 'c!-code lispsystem!*)))))
@@ -57,7 +57,8 @@
       (t (enable!-errorset 3 3)
          (setq !*backtrace t))))
 
-(setq !*echo !*backtrace)
+(cond
+   (!*backtrace (setq !*echo t)))
 
 (make!-special '!*native_code)
 (setq !*native_code nil)
@@ -109,7 +110,6 @@
          (setq name (compress (cons '!"
             (append (explodec "$reduce/cslbuild/generated-c/")
                     (cdr (explode name))))))))
-      (princ "=== read file ") (print name)
       (rdf name)
       (go top)))))
 
@@ -713,7 +713,8 @@ symbolic procedure get_configuration_data();
     reduce_regression_tests := nil;
 % The embedded build may not support the list!-directory function and so
 % I arrange that if it fails I just omit being aware of the regression
-% test scripts.
+% test scripts. Soon the embedded system (built ising C++17) will in fact
+% support this!
     r := errorset(list('list!-directory, "$reduce/packages/regressions"),
                   nil, nil);
     if atom r then r :=nil else r := car r;
@@ -1590,7 +1591,7 @@ package!-remake2('remake,'support);
 % is ready for use, while the last list indicates which modules have
 % associated test scripts.
 %
-% When the modules have been rebuild the system does a restart that
+% When the modules have been rebuilt the system does a restart that
 % kicks it back into REDUCE by calling begin(). This then continues
 % reading from the stream that had been the standard input when this
 % job started. Thus this script MUST be invoked as
@@ -1745,4 +1746,3 @@ symbolic;
 
 lisp stop(0);
 bye;
-

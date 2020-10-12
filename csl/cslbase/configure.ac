@@ -1333,7 +1333,6 @@ then
   fi
 
   AC_CHECK_HEADERS(curses.h ncurses.h)
-
   AC_MSG_NOTICE([curses=$HAVE_CURSES_H ncurses=$HAVE_NCURSES_H])
 
 # There is a misery here! "term.h" (on some machines) needs curses.h
@@ -1511,6 +1510,9 @@ AC_CHECK_TYPE([socklen_t],[],[],[#include <sys/socket.h>])
 
 AC_SEARCH_LIBS([socket], [socket])
 AC_SEARCH_LIBS([gethostbyname], [nsl])
+
+AC_CHECK_HEADERS(filesystem)
+AC_MSG_NOTICE([filesystem=$HAVE_FILESYSTEM])
 
 # Checks for library functions.
 AC_FUNC_CLOSEDIR_VOID

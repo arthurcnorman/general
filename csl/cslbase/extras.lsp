@@ -32,7 +32,7 @@
 %%
 
 
-% $Id: extras.lsp 4188 2017-09-08 07:44:29Z arthurcnorman $
+% $Id: $
 
 (dm df (u !&optional env) (prog (g w) (setq g (gensym)) (setq w (list (quote 
 list) (quote (quote let!*)) (list (quote list) (list (quote list) (mkquote (
