@@ -5,3 +5,5 @@
 *.js.img
 csl/new-embedded/reduce-image/reduce.js
 csl/new-embedded/reduce-image/reduce.wasm
+csl/new-embedded/csl-times/*
+csl/new-embedded/jscsl-times/*
