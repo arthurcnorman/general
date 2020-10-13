@@ -30,7 +30,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 // This file is derived from one made available by the Unicode Formum.
 // The Unicode character name list is from the Unicode web site and

@@ -37,7 +37,7 @@
 %
 %
 
-% $Id: extras.red 5165 2019-10-10 14:22:18Z arthurcnorman $
+% $Id $
 
 % CSL does not support user-defined special forms! So
 %    (df name (u) body)

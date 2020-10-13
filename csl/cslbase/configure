@@ -22839,7 +22839,6 @@ fi
 
 done
 
-
   { $as_echo "$as_me:${as_lineno-$LINENO}: curses=$HAVE_CURSES_H ncurses=$HAVE_NCURSES_H" >&5
 $as_echo "$as_me: curses=$HAVE_CURSES_H ncurses=$HAVE_NCURSES_H" >&6;}
 
@@ -24082,6 +24081,21 @@ if test "$ac_res" != no; then :
 
 fi
 
+
+for ac_header in filesystem
+do :
+  ac_fn_cxx_check_header_mongrel "$LINENO" "filesystem" "ac_cv_header_filesystem" "$ac_includes_default"
+if test "x$ac_cv_header_filesystem" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_FILESYSTEM 1
+_ACEOF
+
+fi
+
+done
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: filesystem=$HAVE_FILESYSTEM" >&5
+$as_echo "$as_me: filesystem=$HAVE_FILESYSTEM" >&6;}
 
 # Checks for library functions.
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether closedir returns void" >&5

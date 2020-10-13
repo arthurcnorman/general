@@ -29,7 +29,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 // This is free-standing code.
 // It provides a function "bool isprime(uint64_t n)" that tests if n

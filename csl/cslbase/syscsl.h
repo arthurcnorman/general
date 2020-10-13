@@ -36,7 +36,7 @@
  *************************************************************************/
 
 
-// $Id: syscsl.h 5396 2020-09-09 09:45:32Z arthurcnorman $
+// $Id $
 
 
 #ifndef header_syscsl_h
@@ -52,7 +52,13 @@
 extern const char *find_image_directory(int argc, const char *argv[]);
 
 //
-// process_file_name expands the old name into filename.
+// process_file_name expands the old name into filename. Its job is to
+// turn the sorts of names that CSL accepts into things suitable to
+// pass down to C++. It can expand an initial "$xxx" based on the value of
+// and environent variable called "xxx" or a Lisp variable called "$xxx" or
+// "@xxx". It knowsn about paths liuke "~/xxx" and expands the "~" to the
+// users home directory. On or for cygwin it may do things with an initial
+// "/cygpath/X/" in its input.
 //
 
 extern void process_file_name(char *filename, const char *old,
@@ -92,7 +98,11 @@ extern bool file_exists(char *filename, const char *old, size_t n,
 // zero on success, and non-zero on failure. Each does file-name
 // conversion so that Unix-style names can be used even with Windows.
 // delete_wildcard "globs" its argument and deletes all files that
-// match...
+// match... but I would not at present give any guarantees about how it
+// behaves if the argument indicates directories etc, eg case like
+//    "./top*/*mid*/*lower.x"
+// make me feel queasy! Giving a simple file name with a wildcard
+// such as "tempfile*.log" should be safe!
 //
 
 extern int create_directory(char *filename, const char *old,
@@ -174,32 +184,13 @@ extern char *change_directory(char *filename, const char *old,
 //
 extern char *get_truename(char *filename, const char *old, size_t n);
 
-#ifdef NAG_VERSION
-
-//
-// list_directory_members allocates (using malloc) both a vector
-// (of type char **) and a load of strings to go in there, and updates
-// filelist to point at it. The caller must free() the space at some
-// later stage.
-//
-
-extern int list_directory_members(char *filename, const char *old,
-                                  char **filelist[],
-                                  size_t n);
-
-#else // !NAG_VERSION
-
-//
 // list_directory_members calls the given callback function handing it
 // the name of each file in given directory.
-//
 
-typedef void directory_callback(const char *, int, long int);
+typedef void directory_callback(string name, string leafname, int, long int);
 
 extern void list_directory_members(char *filename, const char *old,
                                    size_t n, directory_callback *fn);
-
-#endif // !NAG_VERSION
 
 //
 // (f) is an open file - truncate it at position (where).
@@ -209,53 +200,41 @@ extern int truncate_file(std::FILE *f, long int where);
 //
 // If I am to process directories I need a set of routines that will
 // scan sub-directories for me. The specification I want is:
-//       int scan_directory(const char *dir,
-//                    void (*proc)(const char *name, int why, long int size));
+//       void scan_directory(string dir,
+//                           void (*proc)(string name, string leafname,
+//                                        int why, long int size));
 //
 // This is called with a file- or directory-name as its first argument
 // and a function as its second.
 // It calls the function for every directory and every file that can be found
-// rooted from the given place.  If the file to scan is specified as nullptr
-// the current directory is processed.
+// rooted from the given place.
 // When a simple file is found the procedure is called with the name of the
 // file, why=0, and the length (in bytes) of the file.  For a directory
-// the function is called with why=1, then the contents of the directory are
-// processed. For directories the size information will be 0.  There is no
-// guarantee of useful behaviour if some of the files to be scanned are
-// flagged as  "invisible" or "not readable" or if they are otherwise special.
-// The value returned is the number of characters that should be removed
-// the start of file-names returned to get rid of any initial directory
-// specified.  If dir is passed as nullptr this will be zero and names will
-// come back plain, otherwise it will be 1+strlen(dir)
+// the function is called with why=1.
+// There is no guarantee of useful behaviour if some of the files to be
+// scanned are flagged as  "invisible" or "not readable" or if they are
+// otherwise special. Files are not processed in alphabetic order based
+// on their full name (ie if the input argument is "ddd" then the "full
+// name of some file could be "ddd/subdir/somefile.ext".
 //
 
 extern void set_hostcase(int a);
 
 #define SCAN_FILE       0
-#define SCAN_STARTDIR   1
-#define SCAN_ENDDIR     2
+#define SCAN_DIR        1
 
-extern void scan_directory(const char *dir,
-                           void (*proc)(const char *name, int why, long int size));
-
-//
-// When scan_directory calls the procedure it has been passed, it will have
-// set scan_leafstart to the offset in the passed filename where the
-// original directory ended and the new information starts. Thus if the
-// input string was (say) "/usr/users/acn/xxx" and some particular sub-file
-// was reported as "/usr/users/acn/xxx/subdir/subfile.ext" then
-// (name+scan_leafstart) gives the relative name "subdir/subfile.ext".
-//
-
-extern int scan_leafstart;
+extern void scan_directory(string dir,
+                           void (*proc)(string name, string leafname,
+                                        int why, long int size));
 
 //
 // scan_files() is just like scan_directory() excepr that it does not
 // recurse into sub-directories.
 //
 
-extern void scan_files(const char *dir,
-                       void (*proc)(const char *name, int why, long int size));
+extern void scan_files(string dir,
+                       void (*proc)(string name, string leafname,
+                                    int why, long int size));
 
 extern void unpack_date(unsigned long int r,
                         int *year, int *mon, int *day,

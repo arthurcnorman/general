@@ -45,7 +45,7 @@
 %                                                        M A Dmitriev
 %                                                        A C Norman
 
-% $Id: i86comp.red 5182 2019-11-02 21:47:16Z arthurcnorman $
+% $Id $
 
 global '(i_machine);
 

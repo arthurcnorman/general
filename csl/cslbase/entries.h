@@ -1,8 +1,8 @@
-// entries.h                               Copyright (C) Codemist 1991-2019
+// entries.h                               Copyright (C) Codemist 1991-2020
 
 
 /**************************************************************************
- * Copyright (C) 2019, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -30,7 +30,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id: entries.h 5421 2020-10-06 16:42:36Z arthurcnorman $
+// $Id: entries.h 5422 2020-10-06 19:55:14Z arthurcnorman $
 
 #ifndef header_entries_h
 #define header_entries_h 1

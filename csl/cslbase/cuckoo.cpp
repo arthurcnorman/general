@@ -29,7 +29,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 // The code here is for the offline creation of a hash table that will
 // follow in the spirit of cuckoo hashing using 1, 2 or 3 probes (but

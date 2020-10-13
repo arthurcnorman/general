@@ -38,7 +38,7 @@
 
 
 
-// $Id$
+// $Id $
 
 #include "headers.h"
 #ifdef WITH_CILK

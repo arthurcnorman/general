@@ -30,7 +30,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 // created by reswrap from file fwin.ico
 const unsigned char fwin[]=

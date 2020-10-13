@@ -38,7 +38,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-/* $Id$ */
+/* $Id $
 
 
 // I am now using the SoftFloat-3a library by John R Hauser. This is

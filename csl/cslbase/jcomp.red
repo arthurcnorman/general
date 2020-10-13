@@ -38,7 +38,7 @@
 %% DAMAGE.                                                                *
 %%
 
-% $Id: jcomp.red 5182 2019-11-02 21:47:16Z arthurcnorman $
+% $Id $
 
 symbolic;
 

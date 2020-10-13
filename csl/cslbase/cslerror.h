@@ -33,7 +33,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id: cslerror.h 5421 2020-10-06 16:42:36Z arthurcnorman $
+// $Id: cslerror.h 5422 2020-10-06 19:55:14Z arthurcnorman $
 
 #ifndef header_cslerror_h
 #define header_cslerror_h 1

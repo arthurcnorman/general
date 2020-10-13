@@ -37,7 +37,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 
 //
@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
     std::fprintf(out, " * elsewhere in the Reduce project.\n");
     std::fprintf(out, " */\n\n");
     std::fprintf(out,
-                 "/* $Id$ */\n");
+                 "/* $Id $
     std::fprintf(out, "\n#include <cstdint>\n\n");
     std::fprintf(out, "typedef struct _fontmap\n");
     std::fprintf(out, "{\n");

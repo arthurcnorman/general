@@ -29,7 +29,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 // This is a refresh of the Lisp hash table support for CSL, installed
 // in 2017. It uses a scheme fairly traditional double hashing and by
@@ -1321,7 +1321,7 @@ void simple_print1(LispObject x)
                  vector_i8(vechdr(x)))
         {   len = length_of_byteheader(vechdr(x)) - CELL;
             std::fprintf(stderr, "<Header is %" PRIxPTR ">",
-                         (uintptr_t)vechdr(x));
+                         static_cast<uintptr_t>(vechdr(x)));
             simple_lineend(2*len+3);
             std::fprintf(stderr, "#8[");
             for (size_t i=0; i<len; i++)

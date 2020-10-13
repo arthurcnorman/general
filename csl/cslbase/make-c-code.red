@@ -29,7 +29,7 @@
 %* DAMAGE.                                                                *
 %*************************************************************************/
 
-% $Id: make-c-code.red 5165 2019-10-10 14:22:18Z arthurcnorman $
+% $Id $
 
 on echo, backtrace;
 off int;
@@ -375,7 +375,7 @@ symbolic procedure generate_cpp();
       scalar name, bulk, total, defn;
       name := car fnames;
       princ "About to create "; printc name;
-      c!:ccompilestart(name, name, "$destdir", nil);
+      c!:ccompilestart(name, name, "$destdir");
       bulk := 0;
       while bulk < size_per_file and w_reduce and how_many > 0 do begin
         scalar name, defn;

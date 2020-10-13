@@ -49,7 +49,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 #include <cstdio>
 #include <cstdlib>
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
     std::fprintf(out, "// extracted from %s\n *\n", FONT_PATH);
     std::fprintf(out, "//\n");
     std::fprintf(out,
-                 "\n\n// $Id$\n\n\n");
+                 "\n\n// $Id $
     std::fprintf(out, "#include <stdint.h>\n\n");
     std::fprintf(out, "typedef struct font_width {\n");
     std::fprintf(out, "   const char *name;\n");

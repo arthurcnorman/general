@@ -52,7 +52,7 @@
 // implemented here is not quite the one I will want in the real application
 // of this within my garbage collector!
 
-// $Id$
+// $Id $
 
 
 #include <iostream>

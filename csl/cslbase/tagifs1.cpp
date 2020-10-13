@@ -52,7 +52,7 @@
 // line that reads "   #   if   XXX" will not be treated kindly.
 
 
-// $Id$
+// $Id $
 
 #include <cstdio>
 #include <cstring>
