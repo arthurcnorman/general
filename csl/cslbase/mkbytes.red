@@ -39,7 +39,7 @@
 %% DAMAGE.                                                                *
 %%
 
-% $Id: mkbytes.red 3884 2017-02-05 19:17:16Z arthurcnorman $
+% $Id $
 
 symbolic;
 

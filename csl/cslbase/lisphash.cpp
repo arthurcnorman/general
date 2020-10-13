@@ -29,7 +29,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 // This is a refresh of the Lisp hash table support for CSL, installed
 // in 2017. It uses a scheme fairly traditional double hashing and by

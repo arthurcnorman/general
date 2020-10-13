@@ -33,7 +33,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-/* $Id$ */
+/* $Id $
 
 
 // The first few lines are essentially taken from the wxWidgets documentation

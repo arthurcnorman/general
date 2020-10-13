@@ -42,7 +42,7 @@
  *************************************************************************/
 
 
-// $Id$
+// $Id $
 
 
 #ifdef CREATE
@@ -1566,7 +1566,7 @@ int main(int argc, char *argv[])
                      " *************************************************************************/\n");
         std::fprintf(dest, "\n");
         std::fprintf(dest,
-                     "// $Id$\n");
+                     "// $Id $
         std::fprintf(dest, "\n");
         std::fprintf(dest, "\n");
         std::fprintf(dest, "#ifndef __STDC_CONSTANT_MACROS\n");
@@ -1667,7 +1667,7 @@ int main(int argc, char *argv[])
         std::fprintf(rdest, "\n");
         std::fprintf(rdest, "\n");
         std::fprintf(rdest,
-                     "%% $Id$\n");
+                     "%% $Id $
         std::fprintf(rdest, "\n");
         std::fprintf(rdest,
                      "#if (or (memq 'psl lispsystem!*) (memq 'jlisp lispsystem!*))\n");
@@ -1828,7 +1828,7 @@ int main(int argc, char *argv[])
         std::fprintf(smldest, "\n");
         std::fprintf(smldest, "\n");
         std::fprintf(smldest,
-                     "$Id$\n");
+                     "$Id $
         std::fprintf(smldest, "\n*)\n\n");
         std::fprintf(smldest, "\n");
         std::fprintf(smldest, "val F_cmuntt     = 0;\n");

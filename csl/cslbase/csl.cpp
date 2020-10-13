@@ -47,7 +47,7 @@
 // "LaTeX" for more information.
 //
 
-// $Id$
+// $Id $
 
 
 //

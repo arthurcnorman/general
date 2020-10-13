@@ -31,7 +31,7 @@
  *************************************************************************/
 
 
-// $Id$
+// $Id $
 
 //
 // This is for use via the "new-embedded" structure and it provides a

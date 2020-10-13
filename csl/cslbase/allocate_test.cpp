@@ -33,7 +33,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 // The code in allocate.cpp involves an experimental change in how storage
 // management is done in CSL. The code here is a TEMPORARY framework of

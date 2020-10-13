@@ -33,7 +33,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 // This version uses wxPaintDC and wxFont and doe snot try to use
 // wxGraphicsContext. The consquence is that unlike my previous

@@ -33,7 +33,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 #include "headers.h"
 
@@ -1650,10 +1650,8 @@ LispObject Lrename_file(LispObject env, LispObject from,
 // This function is a call-back from the file-scanning routine.
 //
 
-static void make_dir_list(const char *name, int, long int)
-{   LispObject w;
-    if (scan_leafstart >= static_cast<int>(std::strlen(name))) return;
-    w = make_string(name+scan_leafstart);
+static void make_dir_list(string name, string leafname, int, long int)
+{   LispObject w = make_string(leafname.c_str());
     w = cons(w, stack[0]);
     stack[0] = w;
 }

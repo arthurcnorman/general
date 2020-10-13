@@ -31,7 +31,7 @@
  *************************************************************************/
 
 
-// $Id$
+// $Id $
 
 //
 // This is code that starts up Reduce and exercises it using a

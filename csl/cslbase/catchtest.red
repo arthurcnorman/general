@@ -1,7 +1,7 @@
 %
 % catch/throw are expected to throuw even through an errorset...
 %
-% $Id: catchtest.red 3703 2016-05-27 08:08:54Z arthurcnorman $
+% $Id $
 
 lisp;
 on comp,echo;

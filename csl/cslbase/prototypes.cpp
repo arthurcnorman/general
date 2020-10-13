@@ -7,7 +7,7 @@
 #include <clang-c/Index.h>
 using namespace std;
 
-// $Id$
+// $Id $
 
 // The tutorial at http://shaharmike.com/cpp/libclang/ with title
 // "Using libclang to Parse C++ (aka libclang 101)".

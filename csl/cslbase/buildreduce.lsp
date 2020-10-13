@@ -26,7 +26,7 @@
 
 % Author: Anthony C. Hearn, Stanley L. Kameny and Arthur Norman
 
-% $Id: buildreduce.lsp 5165 2020-10-10 14:22:18Z arthurcnorman $
+% $Id $
 
 (verbos 3)
 

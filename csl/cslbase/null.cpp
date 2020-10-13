@@ -31,7 +31,7 @@
  *************************************************************************/
 
 
-// $Id$
+// $Id $
 
 //
 // There are some places where the autoconf/automake system wants to create

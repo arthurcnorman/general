@@ -38,7 +38,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id $
 
 //
 // See the file "fwindemo.c" for a smaller example of how to use fwin. This

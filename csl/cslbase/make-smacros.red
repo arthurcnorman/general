@@ -30,7 +30,7 @@
 %*************************************************************************/
 
 
-% $Id: make-smacros.red 3884 2017-02-05 19:17:16Z arthurcnorman $
+% $Id $
 
 % Run this file using bootstrapreduce to create a file smacros.red that
 % can perhaps be copied to packages/support.

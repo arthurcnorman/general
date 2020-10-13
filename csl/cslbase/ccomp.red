@@ -35,7 +35,7 @@
 %% DAMAGE.                                                                *
 %%
 
-% $Id: ccomp.red 5386 2020-08-19 20:54:40Z arthurcnorman $
+% $Id $
 
 symbolic;
 

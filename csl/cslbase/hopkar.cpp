@@ -37,7 +37,7 @@
 //
 //                                    A C Norman, October 2015.
 
-// $Id$
+// $Id $
 
 #include <cstdio>
 #include <cstdlib>

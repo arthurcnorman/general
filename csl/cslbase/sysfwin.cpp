@@ -36,7 +36,7 @@
  *************************************************************************/
 
 
-// $Id$
+// $Id $
 
 #ifdef __CYGWIN__
 // If I am under Cygwin and I will need to use some Windows calls it

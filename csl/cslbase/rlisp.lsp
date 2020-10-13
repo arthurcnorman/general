@@ -34,7 +34,7 @@
 
 
 
-% $Id: rlisp.lsp 4136 2017-08-02 12:56:14Z arthurcnorman $
+% $Id $
 
 ; Standard LISP equivalent of BOOT.RED.
 

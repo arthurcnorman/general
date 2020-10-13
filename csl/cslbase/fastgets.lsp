@@ -32,7 +32,7 @@
 
 
 
-% $Id: fastgets.lsp 3884 2017-02-05 19:17:16Z arthurcnorman $
+% $Id $
 
 (progn
    (symbol!-make!-fastget 'noncom 0)

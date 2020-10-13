@@ -29,7 +29,7 @@
 %* DAMAGE.                                                                *
 %*************************************************************************/
 
-% $Id: make-c-code.red 5165 2019-10-10 14:22:18Z arthurcnorman $
+% $Id $
 
 on echo, backtrace;
 off int;
