@@ -30,9 +30,25 @@ LIBS=$(XLIBS) -s USE_ZLIB
 JSOPTS= -s ERROR_ON_UNDEFINED_SYMBOLS=0 -g4 \
 	-s ALLOW_MEMORY_GROWTH=1 \
 	-s DISABLE_EXCEPTION_CATCHING=0 \
-	--pre-js mountfs.js \
-	-s NODERAWFS=1 \
-	--source-map-base http://localhost:8000/new-embedded/reduce-image/ 
+	--source-map-base http://localhost:8000/new-embedded/reduce-image/
+
+# --pre-js mountfs.js \
+
+NODEOPTS= -s NODERAWFS=1
+WEBOPTS= --preload-file reduce.img --pre-js args.js
+REDUCE_TARGET=reduce.js
+
+ifndef WEB
+ JSOPTS += $(NODEOPTS)
+else
+ ifeq (WEB,0)
+ 	JSOPTS += $(NODEOPTS)
+ else
+ 	JSOPTS += $(WEBOPTS)
+ 	REDUCE_TARGET=reduce.html
+ endif
+endif
+
 
 S=../../cslbase
 R=../../..
@@ -118,11 +134,11 @@ reduce.js:		allocate.oo arith01.oo arith02.oo arith03.oo arith04.oo arith05.oo \
 		u31.oo u32.oo u33.oo u34.oo u35.oo u36.oo u37.oo u38.oo u39.oo u40.oo \
 		u41.oo u42.oo u43.oo u44.oo u45.oo u46.oo u47.oo u48.oo u49.oo u50.oo \
 		u51.oo u52.oo u53.oo u54.oo u55.oo u56.oo u57.oo u58.oo u59.oo u60.oo \
-		$(LIBS) $(JSOPTS) -o reduce.js
+		$(LIBS) $(JSOPTS) -o $(REDUCE_TARGET)
 
 .PHONY:	reduce
 reduce:	reduce.js
-	echo Building reduce.js
+	echo Building $(REDUCE_TARGET)
 
 reduce.img:	reduce.js
 	-rm -f reduce.img

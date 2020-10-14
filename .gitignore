@@ -1,9 +1,12 @@
 .idea
 .vscode
 *.o
+*.oo
 *.map
 *.js.img
 csl/new-embedded/reduce-image/reduce.js
 csl/new-embedded/reduce-image/reduce.wasm
+csl/new-embedded/reduce-image/reduce.data
+csl/new-embedded/reduce-image/reduce.html
 csl/new-embedded/csl-times/*
 csl/new-embedded/jscsl-times/*
