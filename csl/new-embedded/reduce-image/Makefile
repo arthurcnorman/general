@@ -32,10 +32,12 @@ JSOPTS= -s ERROR_ON_UNDEFINED_SYMBOLS=0 -g4 \
 	-s DISABLE_EXCEPTION_CATCHING=0 \
 	--source-map-base http://localhost:8000/new-embedded/reduce-image/
 
+JS_SRC=../js
+
 # --pre-js mountfs.js \
 
 NODEOPTS= -s NODERAWFS=1
-WEBOPTS= --preload-file reduce.img --pre-js args.js
+WEBOPTS= --preload-file reduce.img --shell-file $(JS_SRC)/template.html
 REDUCE_TARGET=reduce.js
 
 ifndef WEB
