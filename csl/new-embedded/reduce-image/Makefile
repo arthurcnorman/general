@@ -37,7 +37,9 @@ JS_SRC=../js
 # --pre-js mountfs.js \
 
 NODEOPTS= -s NODERAWFS=1
-WEBOPTS= --preload-file reduce.img --shell-file $(JS_SRC)/template.html
+WEBOPTS= --preload-file reduce.img \
+	--js-library $(JS_SRC)/library_emterm.js \
+	--shell-file $(JS_SRC)/shell_emterm.html
 REDUCE_TARGET=reduce.js
 
 ifndef WEB

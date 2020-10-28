@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Terminal Application</title>
+    <link rel="stylesheet" href="/node_modules/xterm/css/xterm.css" />
+    <script src="/node_modules/xterm/lib/xterm.js"></script>
+    <script src="/node_modules/xterm-addon-fit/lib/xterm-addon-fit.js"></script>
+    <style>
+      html {
+        height: 100%;
+      }
+      body {
+        font-family: arial;
+        margin: 0;
+        padding: none;
+        height: 100%;
+      }
+
+      #fullscreen {
+        position: absolute;
+        top: 1mm;
+        right: 1mm;
+        z-index: 5;
+      }
+      
+      #output {
+        width: 100%;
+        height: 100%;
+        margin: 0 auto;
+        border: 0px;
+        padding: 0px;
+        overflow: hidden;
+      }
+
+      @-webkit-keyframes rotation {
+        from {-webkit-transform: rotate(0deg);}
+        to {-webkit-transform: rotate(360deg);}
+      }
+      @-moz-keyframes rotation {
+        from {-moz-transform: rotate(0deg);}
+        to {-moz-transform: rotate(360deg);}
+      }
+      @-o-keyframes rotation {
+        from {-o-transform: rotate(0deg);}
+        to {-o-transform: rotate(360deg);}
+      }
+      @keyframes rotation {
+        from {transform: rotate(0deg);}
+        to {transform: rotate(360deg);}
+      }
+
+    </style>
+  </head>
+  <body>
+    <a id="fullscreen" href='#' onclick="Module.requestFullscreen(true/*hide/lock mouse*/, true/*resize canvas*/)">
+      <svg id="fs" version="1.1" viewBox="0 0 8 8" height="8mm" width="8mm">
+        <defs>
+          <marker id="fg" overflow="visible" orient="auto">
+            <path transform="scale(.8) rotate(180) translate(12.5)" d="m0 0l5-5-17.5 5 17.5 5-5-5z" fill-rule="evenodd"/>
+          </marker>
+          <marker id="bg" overflow="visible" orient="auto">
+            <path transform="matrix(-.8 0 0 -.8 -10 0)" d="m0 0 5-5-17.5 5 17.5 5z" fill="#fff" fill-rule="evenodd"/>
+          </marker>
+        </defs>
+        <g transform="translate(0,-289)">
+          <g>
+            <path stroke-width="0.2" marker-end="url(#bg)" d="M1.5,290.5 0,289" />
+            <path stroke-width="0.1" marker-end="url(#fg)" d="M2,291 0.5,289.5" />
+          </g>
+          <g transform="matrix(1,0,0,-1,-3e-8,586)" >
+            <path stroke-width="0.2" marker-end="url(#bg)" d="M1.5,290.5 0,289" />
+            <path stroke-width="0.1" marker-end="url(#fg)" d="M2,291 0.5,289.5" />
+          </g>
+          <g transform="matrix(-1,0,0,1,7.9999999,3.5252395e-7)" >
+            <path stroke-width="0.2" marker-end="url(#bg)" d="M1.5,290.5 0,289" />
+            <path stroke-width="0.1" marker-end="url(#fg)" d="M2,291 0.5,289.5" />
+          </g>
+          <g transform="rotate(-180,3.9999999,293)">
+            <path stroke-width="0.2" marker-end="url(#bg)" d="M1.5,290.5 0,289" />
+            <path stroke-width="0.1" marker-end="url(#fg)" d="M2,291 0.5,289.5" />
+          </g>
+        </g>
+      </svg>
+    </a>
+    <div id="output"></div>
+    <script type='text/javascript'>
+      const term = new Terminal({convertEol: true, scrollback: 0});
+      const fitAddon = new FitAddon.FitAddon();
+      var inputBuf = [];
+      term.loadAddon(fitAddon);
+      term.open(document.getElementById('output'));
+      fitAddon.fit();
+      window.addEventListener('resize', ()=>fitAddon.fit());
+      term.onData(data=> inputBuf = inputBuf.concat(intArrayFromString(data)));
+      function write(text) {
+        if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+        // These replacements are necessary if you render to raw HTML
+        //text = text.replace(/&/g, "&amp;");
+        //text = text.replace(/</g, "&lt;");
+        //text = text.replace(/>/g, "&gt;");
+        //text = text.replace('\n', '<br>', 'g');
+        console.log(text);
+        term.write(text + "\x0d\x0a");
+      };
+
+      var Module = {
+        arguments: ['-i', 'reduce.img'],
+        tty: {
+          put_array: function(tty, val) {
+            term.write(val);
+          },
+          get_char: function(tty) {
+            if (!inputBuf.length) return undefined;
+            return inputBuf.shift();
+          },
+          poll_in: function(tty) {
+            return inputBuf.length > 0;
+          },
+          get_winsize: function(tty, winsize) {
+            winsize.ws_row = term.rows;
+            winsize.ws_col = term.cols;
+            winsize.ws_xpixel = term.element.clientWidth;
+            winsize.ws_ypixel = term.element.clientHeight;
+          }
+        },
+        preRun: [],
+        postRun: [],
+        print: (function() {
+          return write;
+        })(),
+        printErr: write,
+        canvas: (function() {
+          return document.getElementById('output');
+        })(),
+        setStatus: function(text) {
+          if (text === '') return;
+          write((new Date()).toISOString() + ': ' + text);
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+        }
+      };
+      Module.setStatus('Downloading...');
+      window.onerror = function() {
+        Module.setStatus('Exception thrown, see JavaScript console');
+        Module.setStatus = function(text) {
+          if (text) Module.printErr('[post-exception status] ' + text);
+        };
+      };
+    </script>
+    {{{ SCRIPT }}}
+  </body>
+</html>
