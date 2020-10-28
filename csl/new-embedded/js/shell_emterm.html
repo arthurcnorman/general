@@ -93,7 +93,10 @@
       term.open(document.getElementById('output'));
       fitAddon.fit();
       window.addEventListener('resize', ()=>fitAddon.fit());
-      term.onData(data=> inputBuf = inputBuf.concat(intArrayFromString(data)));
+      term.onData(data => {
+        inputBuf = inputBuf.concat(intArrayFromString(data));
+        term.write(data);
+      });
       function write(text) {
         if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
         // These replacements are necessary if you render to raw HTML

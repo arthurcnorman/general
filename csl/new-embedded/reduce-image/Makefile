@@ -15,7 +15,7 @@
 
 # NOTE that my going "make USERFLAGS="-O0 -g" it is possible to override this
 # optimization level and get a debugging build.
-OPT=-O2
+OPT=-O3
 
 CC=em++ -s DISABLE_EXCEPTION_CATCHING=0 -s STACK_OVERFLOW_CHECK=2 \
         -s EXIT_RUNTIME=1 -s TOTAL_STACK=5mb \
@@ -30,6 +30,8 @@ LIBS=$(XLIBS) -s USE_ZLIB
 JSOPTS= -s ERROR_ON_UNDEFINED_SYMBOLS=0 -g4 \
 	-s ALLOW_MEMORY_GROWTH=1 \
 	-s DISABLE_EXCEPTION_CATCHING=0 \
+	-s ASYNCIFY \
+	-s 'ASYNCIFY_IMPORTS=["get_char"]' \
 	--source-map-base http://localhost:8000/new-embedded/reduce-image/
 
 JS_SRC=../js
