@@ -136,6 +136,13 @@
 #include <unistd.h>
 #endif
 
+#ifdef WASM
+extern "C" {
+    extern int web_async_read(void);
+    extern int web_async_write(int);
+}
+#endif
+
 //
 // These flags are used to ensure that protected symbols don't get
 // overwritten by default, and that the system keeps quiet about it.
@@ -3286,6 +3293,11 @@ public:
     std::strcpy(ibuff, "(print '(a b c d))");
     execute_lisp_function("oem-supervisor", iget, iput);
     std::printf("Buffered output is <%s>\n", obuff);
+#elif WASM
+    std::cout << "Set up asynchronous IO...";
+    PROC_set_callbacks(&web_async_read, &web_async_write);
+    std::cout << "Call cslaction()...";
+    cslaction();
 #else
     set_keyboard_callbacks(async_interrupt);
     cslaction();

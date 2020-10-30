@@ -38,6 +38,12 @@
 
 #include "headers.h"
 
+#if WASM_DEBUG_ASYNC_READ
+extern "C" {
+    extern int web_async_info_write(int);
+}
+#endif
+
 #ifdef SOCKETS
 #include "sockhdr.h"
 #endif
@@ -4191,6 +4197,9 @@ LispObject Lreadch1(LispObject env, LispObject stream)
     if (!is_stream(stream)) stream = qvalue(terminal_io);
     if (!is_stream(stream)) stream = lisp_terminal_io;
     ch = getc_stream(stream);  // may now be large value
+#if WASM_DEBUG_ASYNC_READ
+    web_async_info_write(ch);
+#endif
     if (ch == EOF || ch == CTRL_D) w = eof_symbol;
     else
     {   if (ch <= 0xffff || sizeof(wchar_t)==4)

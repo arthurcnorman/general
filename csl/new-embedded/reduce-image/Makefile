@@ -15,7 +15,10 @@
 
 # NOTE that my going "make USERFLAGS="-O0 -g" it is possible to override this
 # optimization level and get a debugging build.
-OPT=-O3
+OPT=-O3 \
+	--profiling \
+	-s ASYNCIFY \
+    -s 'ASYNCIFY_IMPORTS=["web_async_read", "web_async_write"]'
 
 CC=em++ -s DISABLE_EXCEPTION_CATCHING=0 -s STACK_OVERFLOW_CHECK=2 \
         -s EXIT_RUNTIME=1 -s TOTAL_STACK=5mb \
@@ -31,8 +34,9 @@ JSOPTS= -s ERROR_ON_UNDEFINED_SYMBOLS=0 -g4 \
 	-s ALLOW_MEMORY_GROWTH=1 \
 	-s DISABLE_EXCEPTION_CATCHING=0 \
 	-s ASYNCIFY \
-	-s 'ASYNCIFY_IMPORTS=["get_char"]' \
-	--source-map-base http://localhost:8000/new-embedded/reduce-image/
+    -s 'ASYNCIFY_IMPORTS=["web_async_read", "web_async_write"]' \
+    -s ASYNCIFY_STACK_SIZE=1048576 \
+	--source-map-base http://localhost:8000/reduce-image/
 
 JS_SRC=../js
 
@@ -40,7 +44,7 @@ JS_SRC=../js
 
 NODEOPTS= -s NODERAWFS=1
 WEBOPTS= --preload-file reduce.img \
-	--js-library $(JS_SRC)/library_emterm.js \
+	--js-library $(JS_SRC)/io.js \
 	--shell-file $(JS_SRC)/shell_emterm.html
 REDUCE_TARGET=reduce.js
 
