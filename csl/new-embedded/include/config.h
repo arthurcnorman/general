@@ -17,6 +17,7 @@
 #define WASM 1
 
 #define WASM_DEBUG_ASYNC_READ 1
+#define WASM_ASYNC_IO 1
 
 
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.

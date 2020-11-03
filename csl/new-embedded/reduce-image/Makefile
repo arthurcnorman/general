@@ -16,9 +16,7 @@
 # NOTE that my going "make USERFLAGS="-O0 -g" it is possible to override this
 # optimization level and get a debugging build.
 OPT=-O3 \
-	--profiling \
-	-s ASYNCIFY \
-    -s 'ASYNCIFY_IMPORTS=["web_async_read", "web_async_write"]'
+	--profiling
 
 CC=em++ -s DISABLE_EXCEPTION_CATCHING=0 -s STACK_OVERFLOW_CHECK=2 \
         -s EXIT_RUNTIME=1 -s TOTAL_STACK=5mb \
@@ -33,14 +31,15 @@ LIBS=$(XLIBS) -s USE_ZLIB
 JSOPTS= -s ERROR_ON_UNDEFINED_SYMBOLS=0 -g4 \
 	-s ALLOW_MEMORY_GROWTH=1 \
 	-s DISABLE_EXCEPTION_CATCHING=0 \
-	-s ASYNCIFY \
-    -s 'ASYNCIFY_IMPORTS=["web_async_read", "web_async_write"]' \
-    -s ASYNCIFY_STACK_SIZE=1048576 \
 	--source-map-base http://localhost:8000/reduce-image/
 
 JS_SRC=../js
 
 # --pre-js mountfs.js \
+
+ASYNCIFY_OPTS= -s ASYNCIFY \
+	-s 'ASYNCIFY_IMPORTS=["web_async_read", "web_async_write"]' \
+    -s ASYNCIFY_STACK_SIZE=1048576
 
 NODEOPTS= -s NODERAWFS=1
 WEBOPTS= --preload-file reduce.img \
@@ -55,6 +54,9 @@ else
  	JSOPTS += $(NODEOPTS)
  else
  	JSOPTS += $(WEBOPTS)
+ 	JSOPTS += $(ASYNCIFY_OPTS)
+ 	OPT += -s ASYNCIFY \
+ 		-s 'ASYNCIFY_IMPORTS=["web_async_read", "web_async_write"]'
  	REDUCE_TARGET=reduce.html
  endif
 endif
@@ -79,7 +81,7 @@ bootstrapreduce.js:		allocate.o arith01.o arith02.o arith03.o arith04.o arith05.
 		arith11.o arith12.o arith13.o arith14.o bytes.o char.o \
 		csl.o cslmpi.o cslread.o eval1.o eval2.o eval3.o \
 		eval4.o fasl.o fns1.o fns2.o fns3.o fwin.o cslgc.o lisphash.o \
-		isprime.o preserve.o print.o restart.o sysfwin.o termed.o \
+		isprime.o preserve.o print.o restart.o sysfwin.o t	ermed.o \
 		inthash.o serialize.o stubs.o \
 		$(LIBS) $(JSOPTS) -o bootstrapreduce.js
 

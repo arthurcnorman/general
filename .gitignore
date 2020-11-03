@@ -12,3 +12,6 @@ csl/new-embedded/reduce-image/reduce.data
 csl/new-embedded/reduce-image/reduce.html
 csl/new-embedded/csl-times/*
 csl/new-embedded/jscsl-times/*
+bak.*
+bootstrapreduce.*
+*.log

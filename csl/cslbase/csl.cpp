@@ -136,7 +136,7 @@
 #include <unistd.h>
 #endif
 
-#ifdef WASM
+#if WASM_ASYNC_IO
 extern "C" {
     extern int web_async_read(void);
     extern int web_async_write(int);
@@ -3293,7 +3293,7 @@ public:
     std::strcpy(ibuff, "(print '(a b c d))");
     execute_lisp_function("oem-supervisor", iget, iput);
     std::printf("Buffered output is <%s>\n", obuff);
-#elif WASM
+#elif WASM_ASYNC_IO
     std::cout << "Set up asynchronous IO...";
     PROC_set_callbacks(&web_async_read, &web_async_write);
     std::cout << "Call cslaction()...";
