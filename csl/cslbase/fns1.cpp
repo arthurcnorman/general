@@ -33,7 +33,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: fns1.cpp 5493 2020-11-13 17:53:39Z arthurcnorman $
 
 
 #include "headers.h"
@@ -877,14 +877,14 @@ LispObject Llist_3rev(LispObject env, LispObject a, LispObject b,
 
 LispObject Llist_3star(LispObject, LispObject a, LispObject b,
                        LispObject c, LispObject a4up)
-{   if (cdr(a4up) != nil) aerror("too many arrguments for list3*");
+{   if (cdr(a4up) != nil) return aerror("too many arrguments for list3*");
     LispObject d = car(a4up);
     return onevalue(list3star(a,b,c,d));
 }
 
 LispObject Llist_4(LispObject env, LispObject a, LispObject b,
                    LispObject c, LispObject a4up)
-{   if (cdr(a4up) != nil) aerror("too many arguments for list4");
+{   if (cdr(a4up) != nil) return aerror("too many arguments for list4");
     LispObject d = car(a4up);
     return onevalue(list4(a,b,c,d));
 }
@@ -1206,7 +1206,8 @@ LispObject Lunwind(LispObject env)
                   UNWIND_UNWIND;
     exit_count = 0;
     exit_tag = nil;
-    throw LispError();
+    exceptionFlag = LispError;
+    return nil;
 }
 
 //
@@ -1216,12 +1217,17 @@ LispObject Lunwind(LispObject env)
 // the system will unwind in the usual manner.
 //
 
-[[noreturn]] LispObject error_N(LispObject args)
+LispObject error_N(LispObject args)
 {   LispObject w;
+    if (exceptionPending()) return nil;
     errors_now++;
     if (errors_limit >= 0 && errors_now > errors_limit)
         resource_exceeded();
+    if (exceptionPending()) return nil;
 #ifdef COMMON
+:#pragma message ("fns1.cpp line about 1228 in COMMON case seems mangled")
+//@@@ This variant seems to be malformed, and has been since it was
+// first introduced!
     LispObject a1 = car(args);
     args = cdr(args);
 // I will use FORMAT to handle error messages provided the first arg
@@ -1233,8 +1239,8 @@ LispObject Lunwind(LispObject env)
     err_printf("\n");
     pop(r);
 }
-qvalue(emsg_star) = cons(a1, r);     // "Error message" in CL world
-exit_value = fixnum_of_int(0);       // "Error number"  in CL world
+    qvalue(emsg_star) = cons(a1, r);     // "Error message" in CL world
+    exit_value = fixnum_of_int(0);       // "Error number"  in CL world
 #else
     if (miscflags & HEADLINE_FLAG)
     {   real_push(args, cdr(args));
@@ -1257,47 +1263,50 @@ exit_value = fixnum_of_int(0);       // "Error number"  in CL world
     setvalue(emsg_star, msg);         // "Error message" in SL world
     exit_value = car(args);         // "Error number"  in SL world
 #endif
-if ((w = qvalue(break_function)) != nil &&
-    symbolp(w) &&
-    qfn1(w) != undefined_1)
-{   (*qfn1(w))(qenv(w), qvalue(emsg_star));
-}
-exit_reason = (miscflags & ARGS_FLAG) ? UNWIND_ERROR :
-              (miscflags & FNAME_FLAG) ? UNWIND_FNAME :
-              UNWIND_UNWIND;
-exit_count = 0;
-exit_tag = nil;
-throw LispError();
+    if ((w = qvalue(break_function)) != nil &&
+        symbolp(w) &&
+        qfn1(w) != undefined_1)
+    {   (*qfn1(w))(qenv(w), qvalue(emsg_star));
+    }
+    exit_reason = (miscflags & ARGS_FLAG) ? UNWIND_ERROR :
+                  (miscflags & FNAME_FLAG) ? UNWIND_FNAME :
+                  UNWIND_UNWIND;
+    exit_count = 0;
+    exit_tag = nil;
+    exceptionFlag = LispError;
+    return nil;
 }
 
-[[noreturn]] LispObject Lerror_1(LispObject env, LispObject a1)
+LispObject Lerror_1(LispObject env, LispObject a1)
 {   error_N(ncons(a1));
+    return nil;
 }
 
-[[noreturn]] LispObject Lerror_2(LispObject env, LispObject a1,
+LispObject Lerror_2(LispObject env, LispObject a1,
                            LispObject a2)
 {   error_N(list2(a1, a2));
+    return nil;
 }
 
-[[noreturn]] LispObject Lerror_3(LispObject env, LispObject a1,
+LispObject Lerror_3(LispObject env, LispObject a1,
                            LispObject a2, LispObject a3)
 {   error_N(list3(a1, a2, a3));
+    return nil;
 }
 
-[[noreturn]] LispObject Lerror_4up(LispObject env, LispObject a1,
+LispObject Lerror_4up(LispObject env, LispObject a1,
                              LispObject a2,
                              LispObject a3, LispObject a4up)
 {   error_N(list3star(a1, a2, a3, a4up));
+    return nil;
 }
 
-[[noreturn]] LispObject Lerror_0(LispObject env)
+LispObject Lerror_0(LispObject env)
 {
-//
 // Silently provoked error - unwind to surrounding errorset level. Note that
 // this will NEVER enter a user-provided break loop...
 // Also note that (enable-errorset) can set a lower limit to noise levels
 // that can result in the error here NOT being silent!
-//
     errors_now++;
     if (errors_limit >= 0 && errors_now > errors_limit)
         resource_exceeded();
@@ -1314,32 +1323,39 @@ throw LispError();
                   UNWIND_UNWIND;
     exit_value = exit_tag = nil;
     exit_count = 0;
-    throw LispError();
+    exceptionFlag = LispError;
+    return nil;
 }
 
 LispObject Lmake_special(LispObject, LispObject a)
-{   if (!symbolp(a)) aerror1("make-special", a);
+{   if (!symbolp(a)) return aerror1("make-special", a);
+    if (exceptionPending()) return nil;
     if ((qheader(a) & SYM_GLOBAL_VAR) != 0)
-        aerror1(
+        return aerror1(
             "Variable is global or keyword so can not become fluid", a);
+    if (exceptionPending()) return nil;
     setheader(a, qheader(a) | SYM_SPECIAL_VAR);
     return onevalue(a);
 }
 
 LispObject Lmake_global(LispObject, LispObject a)
-{   if (!symbolp(a)) aerror("make-global");
+{   if (!symbolp(a)) return aerror("make-global");
+    if (exceptionPending()) return nil;
     if ((qheader(a) & SYM_SPECIAL_VAR) != 0)
-        aerror1(
+        return aerror1(
             "Variable is fluid or keyword so can not become global", a);
+    if (exceptionPending()) return nil;
     setheader(a, qheader(a) | SYM_GLOBAL_VAR);
     return onevalue(a);
 }
 
 LispObject Lmake_keyword(LispObject, LispObject a)
-{   if (!symbolp(a)) aerror("make-keyword");
+{   if (!symbolp(a)) return aerror("make-keyword");
+    if (exceptionPending()) return nil;
     if ((qheader(a) & (SYM_GLOBAL_VAR | SYM_SPECIAL_VAR)) != 0)
-        aerror1(
+        return aerror1(
             "Variable is fluid or global so can not become keyword", a);
+    if (exceptionPending()) return nil;
     setheader(a, qheader(a) | (SYM_SPECIAL_VAR | SYM_GLOBAL_VAR));
     setvalue(a, a);   // value is itself.
     return onevalue(a);
@@ -1418,14 +1434,18 @@ LispObject Lsymbol_value(LispObject, LispObject a)
 }
 
 LispObject Lset(LispObject env, LispObject a, LispObject b)
-{   if (!symbolp(a) || a == nil || a == lisp_true) aerror("set");
+{   if (!symbolp(a) || a == nil || a == lisp_true)
+    {   return aerror("set");
+    }
     setvalue(a, b);
     return onevalue(b);
 }
 
 LispObject Lmakeunbound(LispObject env, LispObject a)
 {   if (!symbolp(a) || a == nil ||
-        a == lisp_true) aerror("makeunbound");
+        a == lisp_true)
+    {   return aerror("makeunbound");
+    }
     setvalue(a, unset_var);
     return onevalue(a);
 }
@@ -1471,7 +1491,6 @@ LispObject Lsymbol_function(LispObject env, LispObject a)
             b = cdr(b);
         }
         push(a);
-//
 // To carry a code-pointer I manufacture a sort of gensym, flagging
 // it in its header as a "code pointer object" and sticking the required
 // definition in with it.  I need to link this to the originating
@@ -1485,19 +1504,20 @@ LispObject Lsymbol_function(LispObject env, LispObject a)
 // mode the thing will print as (say) #:apply which is visibly different
 // from the name 'apply of the base function, while in Standard Lisp a name
 // like apply775 is needed to make the distinction (easily) visible.
-//
         get_pname(a);  // to do with unprinted gensyms.
+        if (exceptionPending()) { pop(a); return nil; }
 #ifdef COMMON
         b = Lgensym2(nil, a);
 #else
         b = Lgensym0(nil, a, "#code");
 #endif
         pop(a);
-        qfn0(b) = (no_args *)qfn0(a);
-        qfn1(b) = (one_arg *)qfn1(a);
-        qfn2(b) = (two_args *)qfn2(a);
-        qfn3(b) = (three_args *)qfn3(a);
-        qfn4up(b) = (fourup_args *)qfn4up(a);
+        if (exceptionPending()) return nil;
+        qfn0(b) = qfn0(a);
+        qfn1(b) = qfn1(a);
+        qfn2(b) = qfn2(a);
+        qfn3(b) = qfn3(a);
+        qfn4up(b) = qfn4up(a);
         setenv(b, qenv(a));
 #ifdef COMMON
 // in Common Lisp mode gensyms that are "unprinted" are not special
@@ -1517,6 +1537,7 @@ LispObject Lsymbol_function(LispObject env, LispObject a)
             w = get(c, work_symbol, nil);
             w = cons(b, w);
             real_pop(c);
+            if (exceptionPending()) { real_pop(b, a); return nil; }
             putprop(c, work_symbol, w);
             real_pop(b, a);
         }
@@ -1548,6 +1569,7 @@ LispObject get_basic_vector_init(size_t n, LispObject k)
     push(k);
     p = get_basic_vector(TAG_VECTOR, TYPE_SIMPLE_VEC, n);
     pop(k);
+    if (exceptionPending()) return nil;
     n = n/CELL - 1;
     for (size_t i=0; i<n; i++)
         basic_elt(p, i) = k;
@@ -1639,6 +1661,7 @@ LispObject get_vector(int tag, int type, size_t n)
         size_t last_size = (n - CELL) % VECTOR_CHUNK_BYTES;
         if (last_size == 0) last_size = VECTOR_CHUNK_BYTES;
         v = gvector(TAG_VECTOR, TYPE_INDEXVEC, CELL*(chunks+1));
+        if (exceptionPending()) return nil;
 // Note that this index vector will be around while the various sub
 // vectors are allocated, so I need to make it GC safe...
         for (i=0; i<chunks; i++)
@@ -1649,6 +1672,7 @@ LispObject get_vector(int tag, int type, size_t n)
             push(v);
             v1 = gvector(tag, type, k+CELL);
             pop(v);
+            if (exceptionPending()) return nil;
 // The vector here will be active as later chunks are allocated, so it needs
 // to be GC safe.
             if (!vector_holds_binary(v1))
@@ -1689,6 +1713,7 @@ LispObject get_vector_init(size_t n, LispObject val)
     push(val);
     p = get_vector(TAG_VECTOR, TYPE_SIMPLE_VEC, n);
     pop(val);
+    if (exceptionPending()) return nil;
     n = n/CELL - 1;
     while (n != 0)
     {   n--;
@@ -1697,18 +1722,20 @@ LispObject get_vector_init(size_t n, LispObject val)
     return p;
 }
 
-[[noreturn]] LispObject Lstop1(LispObject env, LispObject code)
-{   if (!is_fixnum(code)) aerror("stop");
+LispObject Lstop1(LispObject env, LispObject code)
+{   if (!is_fixnum(code)) return aerror("stop");
     if (Lposn(nil) != fixnum_of_int(0)) Lterpri(nil);
     exit_value = code;
     exit_tag = fixnum_of_int(0);    // Flag to say "stop"
     exit_reason = UNWIND_RESTART;
     exit_count = 1;
-    throw LispRestart();
+    exceptionFlag = LispRestart;
+    return nil;
 }
 
-[[noreturn]] LispObject Lstop0(LispObject env)
+LispObject Lstop0(LispObject env)
 {   Lstop1(env, fixnum_of_int(0));
+    return nil;
 }
 
 uint64_t base_time;
@@ -1763,16 +1790,14 @@ LispObject Ldecoded_time(LispObject env)
     *p++ = fixnum_of_int(w == 0 ? 6 : w-1);
     *p++ = tbuf->tm_isdst > 0 ? lisp_true : nil;
     *p++ = fixnum_of_int(0);  // Time zone info not available?
-//
 // Until and unless I implement multiple values in Standard Lisp mode this
 // function will count as a bit silly in that most of its results will
 // be just lost!
-//
     return nvalues(r, 9);
 }
 
 //
-// (date)             "14-May-13"
+// (date)             "14-May-2013"
 // (date!-and!-time)  "Tue May 14 09:52:45 2013"
 //
 // Then (date t) and (date!-and!-time t) flip formats (well actually any
@@ -1784,9 +1809,9 @@ LispObject Ldate(LispObject env)
     std::time_t t = std::time(nullptr);
     char today[32];
     char today1[32];
-    std::strcpy(today, std::ctime(
-                    &t));  // e.g. "Sun Sep 16 01:03:52 1973\n"
-    //       012345678901234567890123
+    std::strcpy(today, std::ctime(&t));
+// e.g. "Sun Sep 16 01:03:52 1973\n"
+//       012345678901234567890123
     today[24] = 0;             // loses final '\n'
     today1[0] = today[8]==' ' ? '0' : today[8];
     today1[1] = today[9];
@@ -1795,9 +1820,11 @@ LispObject Ldate(LispObject env)
     today1[4] = today[5];
     today1[5] = today[6];
     today1[6] = '-';
-    today1[7] = today[22];
-    today1[8] = today[23];
-    today1[9] = 0;             // Now as in 03-Apr-09
+    today1[7] = today[20];
+    today1[8] = today[21];
+    today1[9] = today[22];
+    today1[10] = today[23];
+    today1[11] = 0;             // Now as in 03-Apr-2009
     w = make_string(today1);
     return onevalue(w);
 }
@@ -1806,8 +1833,8 @@ LispObject Ldate1(LispObject env, LispObject a1)
 {   LispObject w;
     std::time_t t = std::time(nullptr);
     char today[32];
-    std::strcpy(today, std::ctime(
-                    &t));  // e.g. "Sun Sep 16 01:03:52 1973\n"
+    std::strcpy(today, std::ctime(&t));
+// e.g. "Sun Sep 16 01:03:52 1973\n"
     today[24] = 0;             // loses final '\n'
     w = make_string(today);
     return onevalue(w);
@@ -1817,8 +1844,8 @@ LispObject Ldate_and_time(LispObject env)
 {   LispObject w;
     std::time_t t = std::time(nullptr);
     char today[32];
-    std::strcpy(today, std::ctime(
-                    &t));  // e.g. "Sun Sep 16 01:03:52 1973\n"
+    std::strcpy(today, std::ctime(&t));
+// e.g. "Sun Sep 16 01:03:52 1973\n"
     today[24] = 0;             // loses final '\n'
     w = make_string(today);
     return onevalue(w);
@@ -1881,6 +1908,7 @@ LispObject Ltimeofday(LispObject env)
 #endif
 #endif
     w = make_lisp_unsigned64(n);
+    if (exceptionPending()) return nil;
     return onevalue(cons(w, fixnum_of_int(un)));
 }
 
@@ -1933,7 +1961,7 @@ static LispObject Ldatelessp(LispObject env, LispObject a,
     int wa, wb;
     if (!is_vector(a) || !is_vector(b) ||
         vechdr(a) != STR24HDR ||
-        vechdr(b) != STR24HDR) aerror2("datelessp", a, b);
+        vechdr(b) != STR24HDR) return aerror2("datelessp", a, b);
     aa = reinterpret_cast<char *>(a) + (CELL - TAG_VECTOR);
     bb = reinterpret_cast<char *>(b) + (CELL - TAG_VECTOR);
 //
@@ -2132,7 +2160,7 @@ LispObject Lfind_foreign_function(LispObject env, LispObject name,
     void *a;
 #endif
     if (Lencapsulatedp(nil, lib) == nil)
-        aerror("find-foreign-function");
+        return aerror("find-foreign-function");
 #ifdef WIN32
     a = (HMODULE)extract_pointer(lib);
 #else
@@ -2174,20 +2202,21 @@ typedef void void_function();
 LispObject Lcallf_1(LispObject env, LispObject entry)
 {   void *f;
     if (Lencapsulatedp(nil, entry) == nil)
-        aerror("call-foreign-function");
+        return aerror("call-foreign-function");
     f = extract_pointer(entry);
     ffi_cif cif;
     if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, 0, &ffi_type_void,
                      nullptr) != FFI_OK)
-        aerror("callf for a function with no arguments");
+        return aerror("callf for a function with no arguments");
 // The strange looking double cast here is because some versions of C++ took
 // the view that conversion between function pointers and object pointers
 // should be labelled as illegal. On a Harvard architecture machine you can
-// see that as making a lof of sense. So I convert from the object pointer
+// see that as making a lot of sense. So I convert from the object pointer
 // "void *" to the function pointer "void_function *" using intptr_t as
 // an intermediary. This is obviously undefined behaviour! But "The Spirit
 // of C" would give a clear indication of expectations!
-    ffi_call(&cif, (void_function *)(uintptr_t)f, nullptr, nullptr);
+    ffi_call(&cif, reinterpret_cast<void_function *>(
+                       reinterpret_cast<uintptr_t>(f)), nullptr, nullptr);
     return onevalue(nil);
 }
 
@@ -2278,7 +2307,7 @@ int name_matches(LispObject a, const char *s)
 //    32 or 64-bit can depend on the nature of the host system.
 //
 
-static void dumparg(int i, LispObject type, LispObject value)
+static bool dumparg(int i, LispObject type, LispObject value)
 {   size_t len = 0;
     const char *w = get_string_data(type, "call-foreign-function", len);
     if ((len==5 && std::strncmp(w, "int64", 5)==0) ||
@@ -2289,6 +2318,7 @@ static void dumparg(int i, LispObject type, LispObject value)
     {   vargs[i] = &i64args[i];
         targs[i] = &ffi_type_sint64;
         i64args[i] = sixty_four_bits(value);
+        return false;
     }
     else if ((type == nil && (is_fixnum(value) || is_bignum(value))) ||
              (len==5 && std::strncmp(w, "int32", 5)==0) ||
@@ -2299,12 +2329,14 @@ static void dumparg(int i, LispObject type, LispObject value)
     {   vargs[i] = &i32args[i];
         targs[i] = &ffi_type_sint32;
         i32args[i] = thirty_two_bits(value);
+        return false;
     }
     else if ((type == nil && is_float(value)) ||
              (len==6 && std::strncmp(w, "double", 6)==0))
     {   vargs[i] = &dblargs[i];
         targs[i] = &ffi_type_double;
         dblargs[i] = float_of_number(value);
+        return false;
     }
     else if ((type == nil && is_string(value)) ||
              (len==6 && std::strncmp(w, "string", 6)==0))
@@ -2314,15 +2346,19 @@ static void dumparg(int i, LispObject type, LispObject value)
         strargs[i][len] = 0;
         vargs[i] = &strargs[i][0];
         targs[i] = &ffi_type_pointer;
+        return false;
     }
-    else aerror2("call-foreign-function", type, value);
+    else
+    {   aerror2("call-foreign-function", type, value);
+        return true;
+    }
 }
 
 LispObject callf_n(LispObject fun, LispObject args)
 {   if (Lencapsulatedp(nil, fun) == nil)
-        aerror1("call-foreign-function", fun);
-// Note double cast to allow some pre C++-11 compilers to cope.
-    void_function *f = (void_function *)(uintptr_t)extract_pointer(fun);
+        return aerror1("call-foreign-function", fun);
+    void_function *f = reinterpret_cast<void_function *>(
+                           reinterpret_cast<uintptr_t>(extract_pointer(fun)));
     LispObject currenttype = nil;
     unsigned int nargs = 0;
     while (args != nil)
@@ -2330,26 +2366,26 @@ LispObject callf_n(LispObject fun, LispObject args)
         args = cdr(args);
 // Perhaps the next argument is (type . value)...
         if (is_cons(a))
-        {   if (nargs >= MAX_ARGCOUNT) aerror("call-foreign-function");
-            dumparg(nargs++, car(a), cdr(a));
+        {   if (nargs >= MAX_ARGCOUNT) return aerror("call-foreign-function");
+            if (dumparg(nargs++, car(a), cdr(a))) return nil;
             currenttype = nil;
         }
 // Perhaps the next argument is just a type name. I should never have two
 // type names in a row.
         else if (is_symbol(a))
-        {   if (currenttype != nil) aerror1("call-foreign-function", a);
+        {   if (currenttype != nil) return aerror1("call-foreign-function", a);
             currenttype = a;
         }
 // The next argument is a value, which will either use the type specified
 // by the previous argument, or a default type based on what its own type is.
         else if (is_fixnum(a) || is_numbers(a) ||
                  is_bfloat(a) || stringp(a))
-        {   if (nargs >= MAX_ARGCOUNT) aerror("call-foreign-function");
-            dumparg(nargs++, currenttype, a);
+        {   if (nargs >= MAX_ARGCOUNT) return aerror("call-foreign-function");
+            if (dumparg(nargs++, currenttype, a)) return nil;
             currenttype = nil;
         }
 // Other cases are invalid.
-        else aerror1("call-foreign-function", a);
+        else return aerror1("call-foreign-function", a);
     }
 // The last item in the argument list may have been a type-name, in which
 // case it indicates a return type. If that was not provided then the
@@ -2360,7 +2396,7 @@ LispObject callf_n(LispObject fun, LispObject args)
     if (currenttype == nil || name_matches(currenttype, "void"))
     {   if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, nargs, &ffi_type_void,
                          targs) != FFI_OK)
-            aerror("call-foreign-function");
+            return aerror("call-foreign-function");
         ffi_call(&cif, f, nullptr, vargs);
         return onevalue(nil);
     }
@@ -2371,7 +2407,7 @@ LispObject callf_n(LispObject fun, LispObject args)
         (sizeof(intptr_t)==4 && name_matches(currenttype, "intptr")))
     {   if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, nargs, &ffi_type_sint32,
                          targs) != FFI_OK)
-            aerror("call-foreign-function");
+            return aerror("call-foreign-function");
         ffi_call(&cif, f, &i32res, vargs);
         return onevalue(make_lisp_integer32(i32res));
     }
@@ -2382,25 +2418,25 @@ LispObject callf_n(LispObject fun, LispObject args)
         (sizeof(intptr_t)==8 && name_matches(currenttype, "intptr")))
     {   if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, nargs, &ffi_type_sint64,
                          targs) != FFI_OK)
-            aerror("call-foreign-function");
+            return aerror("call-foreign-function");
         ffi_call(&cif, f, &i64res, vargs);
         return onevalue(make_lisp_integer64(i64res));
     }
     if (name_matches(currenttype, "double"))
     {   if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, nargs, &ffi_type_double,
                          targs) != FFI_OK)
-            aerror("call-foreign-function");
+            return aerror("call-foreign-function");
         ffi_call(&cif, f, &dblres, vargs);
         return onevalue(make_boxfloat(dblres, TYPE_DOUBLE_FLOAT));
     }
     if (name_matches(currenttype, "string"))
     {   if (ffi_prep_cif(&cif, FFI_DEFAULT_ABI, nargs, &ffi_type_pointer,
                          targs) != FFI_OK)
-            aerror("call-foreign-function");
+            return aerror("call-foreign-function");
         ffi_call(&cif, f, &strres, vargs);
         return onevalue(make_string(reinterpret_cast<const char *>(strres)));
     }
-    else aerror1("call-foreign-function", currenttype);
+    else return aerror1("call-foreign-function", currenttype);
 }
 
 LispObject Lcallf_4up(LispObject env, LispObject a1, LispObject a2,
@@ -2424,7 +2460,7 @@ LispObject Lcallf_2(LispObject env, LispObject entry, LispObject a1)
 
 static LispObject Lget_callback(LispObject env, LispObject a)
 {   void *r = nullptr;
-    if (!is_fixnum(a)) aerror("get_callback needs an integer arg");
+    if (!is_fixnum(a)) return aerror("get_callback needs an integer arg");
     switch (int_of_fixnum(a))
     {   case  0:  r = reinterpret_cast<void *>(execute_lisp_function);
             break;
@@ -2564,11 +2600,8 @@ setup_type const funcs1_setup[] =
     {"timeofday",               Ltimeofday, G1W0, G2W0, G3W0, G4W0},
     {"enable-errorset",         G0W2, G1W2, Lenable_errorset, G3W2, G4W2},
     {"enable-backtrace",        G0W1, Lenable_backtrace, G2W1, G3W1, G4W1},
-// The casts here are because error, stop and a few related functions
-// have the [[noreturn]] attribute which would otherwise upset the type checker
-// in C++.
-    {"error",                   (no_args *)Lerror_0, (one_arg *)Lerror_1, (two_args *)Lerror_2, (three_args *)Lerror_3, (fourup_args *)Lerror_4up},
-    {"error1",                  (no_args *)Lerror_0, G1W0, G2W0, G3W0, G4W0},
+    {"error",                   Lerror_0, Lerror_1, Lerror_2, Lerror_3, Lerror_4up},
+    {"error1",                  Lerror_0, G1W0, G2W0, G3W0, G4W0},
 #ifdef NAG
     {"unwind",                  Lunwind, G1W0, G2W0, G3W0, G4W0},
 #endif
@@ -2608,7 +2641,7 @@ setup_type const funcs1_setup[] =
     {"set",                     G0W2, G1W2, Lset, G3W2, G4W2},
     {"makeunbound",             G0W1, Lmakeunbound, G2W1, G3W1, G4W1},
     {"special-form-p",          G0W1, Lspecial_form_p, G2W1, G3W1, G4W1},
-    {"stop",                    (no_args *)Lstop0, (one_arg *)Lstop1, G2Wother, G3Wother, G4Wother},
+    {"stop",                    Lstop0, Lstop1, G2Wother, G3Wother, G4Wother},
     {"symbol-function",         G0W1, Lsymbol_function, G2W1, G3W1, G4W1},
     {"symbol-value",            G0W1, Lsymbol_value, G2W1, G3W1, G4W1},
     {"time",                    Ltime, G1W0, G2W0, G3W0, G4W0},

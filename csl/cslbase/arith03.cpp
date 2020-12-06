@@ -37,7 +37,7 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: arith03.cpp 5499 2020-11-15 21:54:10Z arthurcnorman $
 
 #include "headers.h"
 
@@ -73,9 +73,8 @@ uint32_t Idivide(uint32_t *qp, uint32_t a, uint32_t b, uint32_t c)
 static LispObject quotis(LispObject a, LispObject b)
 {   mv_2 = fixnum_of_int(0);
     double d = value_of_immediate_float(b);
-// Here and at least at present I explicitly fail if I try to divide by 0.0s0
-// while I could wish to return an infinity.
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
+// The next line can return an infinity or a NaN. These will be turned into
+// error reports if necessarby pack_immediate_float.
     d = static_cast<double>(int_of_fixnum(a))/d;
     return pack_immediate_float(b, b);
 }
@@ -194,14 +193,12 @@ static LispObject quotic(LispObject a, LispObject b)
 static LispObject quotif(LispObject a, LispObject b)
 {   double d = float_of_number(b);
     mv_2 = fixnum_of_int(0);
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
     d = static_cast<double>(int_of_fixnum(a)) / d;
     return make_boxfloat(d, type_of_header(flthdr(b)));
 }
 
 static LispObject quotsi(LispObject a, LispObject b)
-{   if (b == fixnum_of_int(0)) aerror2("bad arg for quotient", a, b);
-    mv_2 = fixnum_of_int(0);
+{   mv_2 = fixnum_of_int(0);
     double d = value_of_immediate_float(a)/static_cast<double>
                (int_of_fixnum(b));
     return pack_immediate_float(d, a);
@@ -217,7 +214,6 @@ static LispObject quotsi(LispObject a, LispObject b)
 
 static LispObject quotsb(LispObject a, LispObject b)
 {   double d = float_of_number(b);
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
     mv_2 = fixnum_of_int(0);
     d = value_of_immediate_float(a) / d;
     return pack_immediate_float(d, a);
@@ -225,7 +221,6 @@ static LispObject quotsb(LispObject a, LispObject b)
 
 static LispObject quotsr(LispObject a, LispObject b)
 {   double d = float_of_number(b);
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
     mv_2 = fixnum_of_int(0);
     d = value_of_immediate_float(a) / d;
     return pack_immediate_float(d, a);
@@ -236,7 +231,6 @@ static LispObject quotsr(LispObject a, LispObject b)
 
 static LispObject quotsf(LispObject a, LispObject b)
 {   double d = float_of_number(b);
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
     mv_2 = fixnum_of_int(0);
     d = value_of_immediate_float(a) / d;
     return make_boxfloat(d, type_of_header(flthdr(b)));
@@ -472,8 +466,9 @@ static LispObject quotbi(LispObject a, LispObject b)
     mv_2 = fixnum_of_int(0);
     if (b == fixnum_of_int(1)) return a;
     else if (b == fixnum_of_int(-1)) return negateb(a);
+// Fixnum division by zero is an error.
     else if (b == fixnum_of_int(0))
-        aerror2("bad arg for quotient", a, b);
+        return aerror2("bad arg for quotient", a, b);
 // Beware: quotbn can only take a 31-bit second argument...
     intptr_t n = int_of_fixnum(b);
 // Check if b fits within 31-bits of signed integer...
@@ -523,7 +518,7 @@ static LispObject quotrembi(LispObject a, LispObject b)
     if (b == fixnum_of_int(1)) return a;
     else if (b == fixnum_of_int(-1)) return negateb(a);
     else if (b == fixnum_of_int(0))
-        aerror2("bad arg for quotient", a, b);
+        return aerror2("bad arg for quotient", a, b);
 // Beware: quotbn can only take a 31-bit second argument...
     intptr_t n = int_of_fixnum(b);
 // Check if b fits within 31-bits of signed integer...
@@ -567,7 +562,6 @@ static LispObject quotrembi(LispObject a, LispObject b)
 
 static LispObject quotbs(LispObject a, LispObject b)
 {   double d = value_of_immediate_float(b);
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
     mv_2 = fixnum_of_int(0);
     d = float_of_number(a) / d;
     return pack_immediate_float(d, a);
@@ -1015,7 +1009,6 @@ LispObject quotbb(LispObject a, LispObject b, int need)
 
 static LispObject quotbf(LispObject a, LispObject b)
 {   double d = float_of_number(b);
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
     mv_2 = fixnum_of_int(0);
     d = float_of_number(a) / d;
     return make_boxfloat(d, type_of_header(flthdr(b)));
@@ -1026,7 +1019,7 @@ static LispObject quotri(LispObject a, LispObject b)
     mv_2 = fixnum_of_int(0);
     if (b == fixnum_of_int(1)) return a;
     else if (b == fixnum_of_int(0))
-        aerror2("bad arg for quotient", a, b);
+        return aerror2("bad arg for quotient", a, b);
     real_push(a, b, nil);
 #define g   stack[0]
 #define b   stack[-1]
@@ -1047,12 +1040,10 @@ static LispObject quotri(LispObject a, LispObject b)
 
 static LispObject quotrs(LispObject a, LispObject b)
 {   double d = value_of_immediate_float(b);
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
     mv_2 = fixnum_of_int(0);
     d = float_of_number(a) / d;
     return pack_immediate_float(d, a);
 }
-
 
 static LispObject quotrr(LispObject a, LispObject b)
 {   LispObject w;
@@ -1093,7 +1084,6 @@ static LispObject quotrb(LispObject a, LispObject b)
 
 static LispObject quotrf(LispObject a, LispObject b)
 {   double d = float_of_number(b);
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
     mv_2 = fixnum_of_int(0);
     d = float_of_number(a) / d;
     return make_boxfloat(d, type_of_header(flthdr(b)));
@@ -1102,7 +1092,6 @@ static LispObject quotrf(LispObject a, LispObject b)
 static LispObject quotci(LispObject a, LispObject b)
 {   LispObject r = real_part(a), i = imag_part(a);
     mv_2 = fixnum_of_int(0);
-    if (b == fixnum_of_int(0)) aerror2("bad arg for quotient", a, b);
     push(b, r);
     i = quot2(i, b);
     pop(r, b);
@@ -1125,7 +1114,6 @@ static LispObject quotci(LispObject a, LispObject b)
 static LispObject quotfi(LispObject a, LispObject b)
 {   double d;
     mv_2 = fixnum_of_int(0);
-    if (b == fixnum_of_int(0)) aerror2("bad arg for quotient", a, b);
     d = float_of_number(a) / static_cast<double>(int_of_fixnum(b));
     return make_boxfloat(d, type_of_header(flthdr(a)));
 }
@@ -1133,7 +1121,6 @@ static LispObject quotfi(LispObject a, LispObject b)
 static LispObject quotfs(LispObject a, LispObject b)
 {   double d = float_of_number(b);
     mv_2 = fixnum_of_int(0);
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
     d = float_of_number(a) / d;
     return make_boxfloat(d, type_of_header(flthdr(a)));
 }
@@ -1141,7 +1128,6 @@ static LispObject quotfs(LispObject a, LispObject b)
 static LispObject quotfb(LispObject a, LispObject b)
 {   double d = float_of_number(b);
     mv_2 = fixnum_of_int(0);
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
     d = float_of_number(a) / d;
     return make_boxfloat(d, type_of_header(flthdr(a)));
 }
@@ -1149,7 +1135,6 @@ static LispObject quotfb(LispObject a, LispObject b)
 static LispObject quotfr(LispObject a, LispObject b)
 {   double d = float_of_number(b);
     mv_2 = fixnum_of_int(0);
-    if (d == 0.0) aerror2("bad arg for quotient", a, b);
     d = float_of_number(a) / d;
     return make_boxfloat(d, type_of_header(flthdr(a)));
 }
@@ -1176,10 +1161,8 @@ static LispObject quotff(LispObject a, LispObject b)
         if (ha == TYPE_DOUBLE_FLOAT || hb == TYPE_DOUBLE_FLOAT)
             hc = TYPE_DOUBLE_FLOAT;
         else hc = TYPE_SINGLE_FLOAT;
-    double d;
-    if ((d = float_of_number(b)) == 0.0)
-        aerror2("bad arg for quotient", a, b);
-    else return make_boxfloat(float_of_number(a) / d, hc);
+    double d = float_of_number(b);
+    return make_boxfloat(float_of_number(a) / d, hc);
 }
 
 LispObject quot2(LispObject a, LispObject b)
@@ -1201,7 +1184,7 @@ LispObject quot2a(LispObject a, LispObject b)
 // This is where fixnum / fixnum arithmetic happens - the case I most want to
 // make efficient.
                     if (b == fixnum_of_int(0))
-                        aerror2("bad arg for quotient", a, b);
+                        return aerror2("bad arg for quotient", a, b);
                     else
                     {   intptr_t r, aa, bb;
                         aa = int_of_fixnum(a);
@@ -1237,14 +1220,14 @@ LispObject quot2a(LispObject a, LispObject b)
                         case TYPE_COMPLEX_NUM:
                             return quotic(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
                 }
                 case TAG_BOXFLOAT:
                 case TAG_BOXFLOAT+TAG_XBIT:
                     return quotif(a, b);
                 default:
-                    aerror1("bad arg for quotient",  b);
+                    return aerror1("bad arg for quotient",  b);
             }
         case XTAG_SFLOAT:
             switch (static_cast<int>(b) & XTAG_BITS)
@@ -1266,14 +1249,14 @@ LispObject quot2a(LispObject a, LispObject b)
                         case TYPE_COMPLEX_NUM:
                             return quotsc(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
                 }
                 case TAG_BOXFLOAT:
                 case TAG_BOXFLOAT+TAG_XBIT:
                     return quotsf(a, b);
                 default:
-                    aerror1("bad arg for quotient",  b);
+                    return aerror1("bad arg for quotient",  b);
             }
         case TAG_NUMBERS:
         case TAG_NUMBERS+TAG_XBIT:
@@ -1296,14 +1279,14 @@ LispObject quot2a(LispObject a, LispObject b)
                                 case TYPE_COMPLEX_NUM:
                                     return quotbc(a, b);
                                 default:
-                                    aerror1("bad arg for quotient",  b);
+                                    return aerror1("bad arg for quotient",  b);
                             }
                         }
                         case TAG_BOXFLOAT:
                         case TAG_BOXFLOAT+TAG_XBIT:
                             return quotbf(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
                 case TYPE_RATNUM:
                     switch (static_cast<int>(b) & XTAG_BITS)
@@ -1322,14 +1305,14 @@ LispObject quot2a(LispObject a, LispObject b)
                                 case TYPE_COMPLEX_NUM:
                                     return quotrc(a, b);
                                 default:
-                                    aerror1("bad arg for quotient",  b);
+                                    return aerror1("bad arg for quotient",  b);
                             }
                         }
                         case TAG_BOXFLOAT:
                         case TAG_BOXFLOAT+TAG_XBIT:
                             return quotrf(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
                 case TYPE_COMPLEX_NUM:
                     switch (static_cast<int>(b) & XTAG_BITS)
@@ -1348,16 +1331,16 @@ LispObject quot2a(LispObject a, LispObject b)
                                 case TYPE_COMPLEX_NUM:
                                     return quotcc(a, b);
                                 default:
-                                    aerror1("bad arg for quotient",  b);
+                                    return aerror1("bad arg for quotient",  b);
                             }
                         }
                         case TAG_BOXFLOAT:
                         case TAG_BOXFLOAT+TAG_XBIT:
                             return quotcf(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
-                default:    aerror1("bad arg for quotient",  a);
+                default:    return aerror1("bad arg for quotient",  a);
             }
         }
         case TAG_BOXFLOAT:
@@ -1378,17 +1361,17 @@ LispObject quot2a(LispObject a, LispObject b)
                         case TYPE_COMPLEX_NUM:
                             return quotfc(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
                 }
                 case TAG_BOXFLOAT:
                 case TAG_BOXFLOAT+TAG_XBIT:
                     return quotff(a, b);
                 default:
-                    aerror1("bad arg for quotient",  b);
+                    return aerror1("bad arg for quotient",  b);
             }
         default:
-            aerror1("bad arg for quotient",  a);
+            return aerror1("bad arg for quotient",  a);
     }
 }
 
@@ -1413,7 +1396,7 @@ LispObject quotrem2a(LispObject a, LispObject b)
 // make efficient.
 //
                     if (b == fixnum_of_int(0))
-                        aerror2("bad arg for divide", a, b);
+                        return aerror2("bad arg for divide", a, b);
                     else
                     {   intptr_t r, aa, bb;
                         aa = int_of_fixnum(a);
@@ -1448,14 +1431,14 @@ LispObject quotrem2a(LispObject a, LispObject b)
                         case TYPE_COMPLEX_NUM:
                             return quotic(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
                 }
                 case TAG_BOXFLOAT:
                 case TAG_BOXFLOAT+TAG_XBIT:
                     return quotif(a, b);
                 default:
-                    aerror1("bad arg for quotient",  b);
+                    return aerror1("bad arg for quotient",  b);
             }
         case XTAG_SFLOAT:
             switch (static_cast<int>(b) & XTAG_BITS)
@@ -1477,14 +1460,14 @@ LispObject quotrem2a(LispObject a, LispObject b)
                         case TYPE_COMPLEX_NUM:
                             return quotsc(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
                 }
                 case TAG_BOXFLOAT:
                 case TAG_BOXFLOAT+TAG_XBIT:
                     return quotsf(a, b);
                 default:
-                    aerror1("bad arg for quotient",  b);
+                    return aerror1("bad arg for quotient",  b);
             }
         case TAG_NUMBERS:
         case TAG_NUMBERS+TAG_XBIT:
@@ -1509,14 +1492,14 @@ LispObject quotrem2a(LispObject a, LispObject b)
                                 case TYPE_COMPLEX_NUM:
                                     return quotbc(a, b);
                                 default:
-                                    aerror1("bad arg for quotient",  b);
+                                    return aerror1("bad arg for quotient",  b);
                             }
                         }
                         case TAG_BOXFLOAT:
                         case TAG_BOXFLOAT+TAG_XBIT:
                             return quotbf(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
                 case TYPE_RATNUM:
                     switch (static_cast<int>(b) & XTAG_BITS)
@@ -1535,14 +1518,14 @@ LispObject quotrem2a(LispObject a, LispObject b)
                                 case TYPE_COMPLEX_NUM:
                                     return quotrc(a, b);
                                 default:
-                                    aerror1("bad arg for quotient",  b);
+                                    return aerror1("bad arg for quotient",  b);
                             }
                         }
                         case TAG_BOXFLOAT:
                         case TAG_BOXFLOAT+TAG_XBIT:
                             return quotrf(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
                 case TYPE_COMPLEX_NUM:
                     switch (static_cast<int>(b) & XTAG_BITS)
@@ -1561,16 +1544,16 @@ LispObject quotrem2a(LispObject a, LispObject b)
                                 case TYPE_COMPLEX_NUM:
                                     return quotcc(a, b);
                                 default:
-                                    aerror1("bad arg for quotient",  b);
+                                    return aerror1("bad arg for quotient",  b);
                             }
                         }
                         case TAG_BOXFLOAT:
                         case TAG_BOXFLOAT+TAG_XBIT:
                             return quotcf(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
-                default:    aerror1("bad arg for quotient",  a);
+                default:    return aerror1("bad arg for quotient",  a);
             }
         }
         case TAG_BOXFLOAT:
@@ -1591,17 +1574,17 @@ LispObject quotrem2a(LispObject a, LispObject b)
                         case TYPE_COMPLEX_NUM:
                             return quotfc(a, b);
                         default:
-                            aerror1("bad arg for quotient",  b);
+                            return aerror1("bad arg for quotient",  b);
                     }
                 }
                 case TAG_BOXFLOAT:
                 case TAG_BOXFLOAT+TAG_XBIT:
                     return quotff(a, b);
                 default:
-                    aerror1("bad arg for quotient",  b);
+                    return aerror1("bad arg for quotient",  b);
             }
         default:
-            aerror1("bad arg for quotient",  a);
+            return aerror1("bad arg for quotient",  a);
     }
 }
 
@@ -1638,7 +1621,7 @@ LispObject CLquot2a(LispObject a, LispObject b)
 // make efficient.
 //
                     if (b == fixnum_of_int(0))
-                        aerror2("bad arg for /", a, b);
+                        return aerror2("bad arg for /", a, b);
                     else
                     {   intptr_t r, aa, bb, w;
                         aa = int_of_fixnum(a);
@@ -1682,14 +1665,14 @@ LispObject CLquot2a(LispObject a, LispObject b)
                         case TYPE_COMPLEX_NUM:
                             return quotic(a, b);
                         default:
-                            aerror1("bad arg for /",  b);
+                            return aerror1("bad arg for /",  b);
                     }
                 }
                 case TAG_BOXFLOAT:
                 case TAG_BOXFLOAT+TAG_XBIT:
                     return quotif(a, b);
                 default:
-                    aerror1("bad arg for /",  b);
+                    return aerror1("bad arg for /",  b);
             }
         case XTAG_SFLOAT:
             switch (static_cast<int>(b) & XTAG_BITS)
@@ -1711,14 +1694,14 @@ LispObject CLquot2a(LispObject a, LispObject b)
                         case TYPE_COMPLEX_NUM:
                             return quotsc(a, b);
                         default:
-                            aerror1("bad arg for /",  b);
+                            return aerror1("bad arg for /",  b);
                     }
                 }
                 case TAG_BOXFLOAT:
                 case TAG_BOXFLOAT+TAG_XBIT:
                     return quotsf(a, b);
                 default:
-                    aerror1("bad arg for /",  b);
+                    return aerror1("bad arg for /",  b);
             }
         case TAG_NUMBERS:
         case TAG_NUMBERS+TAG_XBIT:
@@ -1741,14 +1724,14 @@ LispObject CLquot2a(LispObject a, LispObject b)
                                 case TYPE_COMPLEX_NUM:
                                     return quotbc(a, b);
                                 default:
-                                    aerror1("bad arg for /",  b);
+                                    return aerror1("bad arg for /",  b);
                             }
                         }
                         case TAG_BOXFLOAT:
                         case TAG_BOXFLOAT+TAG_XBIT:
                             return quotbf(a, b);
                         default:
-                            aerror1("bad arg for /",  b);
+                            return aerror1("bad arg for /",  b);
                     }
                 case TYPE_RATNUM:
                     switch (static_cast<int>(b) & XTAG_BITS)
@@ -1767,14 +1750,14 @@ LispObject CLquot2a(LispObject a, LispObject b)
                                 case TYPE_COMPLEX_NUM:
                                     return quotrc(a, b);
                                 default:
-                                    aerror1("bad arg for /",  b);
+                                    return aerror1("bad arg for /",  b);
                             }
                         }
                         case TAG_BOXFLOAT:
                         case TAG_BOXFLOAT+TAG_XBIT:
                             return quotrf(a, b);
                         default:
-                            aerror1("bad arg for /",  b);
+                            return aerror1("bad arg for /",  b);
                     }
                 case TYPE_COMPLEX_NUM:
                     switch (static_cast<int>(b) & XTAG_BITS)
@@ -1793,16 +1776,16 @@ LispObject CLquot2a(LispObject a, LispObject b)
                                 case TYPE_COMPLEX_NUM:
                                     return quotcc(a, b);
                                 default:
-                                    aerror1("bad arg for /",  b);
+                                    return aerror1("bad arg for /",  b);
                             }
                         }
                         case TAG_BOXFLOAT:
                         case TAG_BOXFLOAT+TAG_XBIT:
                             return quotcf(a, b);
                         default:
-                            aerror1("bad arg for /",  b);
+                            return aerror1("bad arg for /",  b);
                     }
-                default:    aerror1("bad arg for /",  a);
+                default:    return aerror1("bad arg for /",  a);
             }
         }
         case TAG_BOXFLOAT:
@@ -1823,17 +1806,17 @@ LispObject CLquot2a(LispObject a, LispObject b)
                         case TYPE_COMPLEX_NUM:
                             return quotfc(a, b);
                         default:
-                            aerror1("bad arg for /",  b);
+                            return aerror1("bad arg for /",  b);
                     }
                 }
                 case TAG_BOXFLOAT:
                 case TAG_BOXFLOAT+TAG_XBIT:
                     return quotff(a, b);
                 default:
-                    aerror1("bad arg for /",  b);
+                    return aerror1("bad arg for /",  b);
             }
         default:
-            aerror1("bad arg for /",  a);
+            return aerror1("bad arg for /",  a);
     }
 }
 

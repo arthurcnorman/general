@@ -1,7 +1,7 @@
-// This file was contributed to CSL by NAG Ltd.     Copyright (C) 2016-2017
+// This file was contributed to CSL by NAG Ltd.     Copyright (C) 2016-2020
 
 /**************************************************************************
- * Copyright (C) 2017, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -29,7 +29,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: ompsetup.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $
 
 #include "headers.h"
 

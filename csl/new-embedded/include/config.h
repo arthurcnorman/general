@@ -10,16 +10,6 @@
 /* True to tell sources that this build is part of CSL */
 #define CSL 1
 
-/* KaratsubaThreads doesn't seem to play nice with wasm */
-#define AVOID_THREADS 1
-
-/* wasm */
-#define WASM 1
-
-#define WASM_DEBUG_ASYNC_READ 1
-#define WASM_ASYNC_IO 1
-
-
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
    */
 #define HAVE_DIRENT_H 1
@@ -27,15 +17,16 @@
 /* Correct Rounding maths library should be used */
 // #define HAVE_CRLIBM 1
 
-#if defined __linux__ || defined __APPLE__ || defined __CYGWIN32__ || \
-    defined __CYGWIN__ || defined __unix__
+#if defined __linux__ || defined __APPLE__ || \
+    defined __CYGWIN32__|| defined __CYGWIN__ || \
+    defined __unix__
 #define HAVE_UNISTD_H 1
 #define HAVE_UTIME_H
 #define HAVE_UTIME
 #endif
 
 /* True if we will use the FWIN terminal code */
-#define HAVE_FWIN 0
+#define HAVE_FWIN 1
 
 /* Define to 1 if the system has the type `int16_t'. */
 #define HAVE_INT16_T 1
@@ -104,5 +95,8 @@
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "CSL"
 
-#define WITHOUT_FFI 1
+/* Some extra restrictions put in here to simplify and cut down the
+   embedded build */
 
+#define WITHOUT_FFI 1
+#define AVOID_THREADS 1

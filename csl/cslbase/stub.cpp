@@ -46,7 +46,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: stub.cpp 5331 2020-04-25 13:47:28Z arthurcnorman $
 
 
 // This should be compiled with one of the following symbols predefined:

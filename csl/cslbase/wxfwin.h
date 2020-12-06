@@ -1,4 +1,4 @@
-// "wxfwin.h"                           Copyright (C) 2003-2019, A C Norman
+// "wxfwin.h"                           Copyright (C) 2003-2020, A C Norman
 //
 // This defines the public interface supported by the "wxfwin" window
 // interface. Note that this should be functionally very similar to
@@ -7,7 +7,7 @@
 
 
 /**************************************************************************
- * Copyright (C) 2019, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -49,7 +49,7 @@
 // I called "cwin".
 //
 
-// $Id: wxfwin.h 5331 2020-04-25 13:47:28Z arthurcnorman $
+// $Id: wxfwin.h 5432 2020-10-15 20:40:59Z arthurcnorman $
 
 #ifndef header_wxfwin_h
 #define header_wxfwin_h 1

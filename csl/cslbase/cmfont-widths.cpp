@@ -7,7 +7,7 @@
 //
 
 
-// $Id $
+// $Id: cmfont-widths.cpp 5331 2020-04-25 13:47:28Z arthurcnorman $
 
 
 #include <stdint.h>

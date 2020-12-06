@@ -35,10 +35,24 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id: newallocate.h 5419 2020-10-05 21:04:02Z arthurcnorman $
+// $Id: newallocate.h 5493 2020-11-13 17:53:39Z arthurcnorman $
 
 #ifndef header_newallocate_h
 #define header_newallocate_h 1
+
+// In the fullness of time I will want to experiment with use of multiple
+// GC threads so that the copying of live data from an old space to the new
+// is done with some concurrency. There is a real possibility that the extra
+// synchronization that would require would in fact slow things down rather
+// than speed them up, but until I have implemented, tested and measured that
+// is a worry not a certainty!
+// To start with I will simplify my life by using just one thread to perform
+// GC work. I will still allow for the possibility of multiple worker threads
+// generating garbage, but when memory gets full all but one of those will
+// be stalled while the remaining one tidies everything up. I will guard this
+// policy with ONLY_USE_ONE_GC_THREAD
+
+#define ONLY_USE_ONE_GC_THREAD 1
 
 #include "log.h"
 #include <csetjmp>
@@ -217,6 +231,13 @@ public:
 // end of the next free block (using pinChain - and if that is nullptr the
 // relevant limit is the end of the page.
     atomic<Chunk *>pinChain;
+// During GC it is sometimes necessary for the GC to scan material
+// within the chunk that it itself is allocating copied stull within. It
+// may in fact do this in several stages, each processing material until
+// everything currently in that chunk is tidy. But then it may find another
+// Chunk to scan and that can add a bit more. This pointer has to be
+// initialized in every Chunk that is a candidate for scanning.
+    atomic<uintptr_t> selfScanPoint;
 // The rest of the chunk is the region within which data is kept.
 // Its size will be such that the entire Chunk has length a specified by
 // its first word.
@@ -262,23 +283,29 @@ extern atomic<Chunk *> chunkStack;
 // This returns TRUE if the chunk stack was empty before this new chunk
 // was pushed.
 
-inline bool pushChunk(Chunk *c)
-{   Chunk *old = chunkStack.load();
-    do
-    {   c->chunkStack.store(old);
-    } while (!chunkStack.compare_exchange_weak(old, c));
-    return (old == nullptr);
-}
+// Well the code for these is actually in newcslgc.cpp and there are extra
+// bits of code to deal with synchronization at a higher level!
 
-inline Chunk *popChunk()
-{   Chunk *old = chunkStack.load();
-    Chunk *c;
-    do
-    {   if (old == nullptr) return nullptr;
-        c = old->chunkStack.load();
-    } while (!chunkStack.compare_exchange_weak(old, c));
-    return old;
-}
+// inline bool pushChunk(Chunk *c)
+// {   Chunk *old = chunkStack.load();
+//     do
+//     {   c->chunkStack.store(old);
+//     } while (!chunkStack.compare_exchange_weak(old, c));
+//     return (old == nullptr);
+// }
+
+// inline Chunk *popChunk()
+// {   Chunk *old = chunkStack.load();
+//     Chunk *c;
+//     do
+//     {   if (old == nullptr) return nullptr;
+//         c = old->chunkStack.load();
+//     } while (!chunkStack.compare_exchange_weak(old, c));
+//     return old;
+//}
+
+extern void pushChunk(Chunk * c);
+extern Chunk *popChunk();
 
 // I am going to require Pages to be aligned at nice neat boundaries
 // because then if I have an arbitrary address within one I will be able to
@@ -1565,7 +1592,9 @@ inline void garbageCollectOnBehalfOfAll()
     releaseOtherThreads();
 }
 
+#ifndef ONLY_USE_ONE_GC_THREAD
 extern void gcHelper();
+#endif // ONLY_USE_ONE_GC_THREAD
 
 inline void waitWhileAnotherThreadGarbageCollects()
 {
@@ -1595,6 +1624,7 @@ inline void waitWhileAnotherThreadGarbageCollects()
         if ((n & 0xff) == ((n>>8) & 0xff) - 2) inform = true;
     }
     if (inform) cv_for_gc_busy.notify_one();
+#ifndef ONLY_USE_ONE_GC_THREAD
 // This is where the thread is paused and so is available to be used as
 // a helper for the GC. Hmmm I will need to arrange that the fringe and
 // limit pointers associated with this thread get set to GC new space after
@@ -1620,7 +1650,7 @@ inline void waitWhileAnotherThreadGarbageCollects()
 //     cases I suspect that the actual blocking call to the keyboard or
 //     mouse handlet will need to be in a separate thread so then the
 //     main one can wait for both that and for any GC request.
-// There is a bit of a nuisance in that it ois only possible to wait on
+// There is a bit of a nuisance in that it is only possible to wait on
 // one condition variable at a time. So I think that all of these may end up
 // signalling and waiting on the condition variable(s) used to moderate entry
 // to the GC, and so every lisp-level syncronization event is liable to
@@ -1629,6 +1659,7 @@ inline void waitWhileAnotherThreadGarbageCollects()
 // frequent... But still "Ugh!".
     gcHelper();
 // The gcHelper() function must terminate once it has completed its task.
+#endif // ONLY_USER_ONE_GC_THREAD
 //
 // Once the master thread has been notified as above it can go forward and
 // in due course notify gc_complete. Before it does that it must ensure that

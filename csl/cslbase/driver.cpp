@@ -1,8 +1,8 @@
-//  driver.cpp                                  Copyright (C) 2017 Codemist
+//  driver.cpp                                  Copyright (C) 2020 Codemist
 
 
 /**************************************************************************
- * Copyright (C) 2017, Codemist                          A C Norman       *
+ * Copyright (C) 2020, Codemist                          A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -31,7 +31,7 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: driver.cpp 5519 2020-11-25 13:56:33Z arthurcnorman $
 
 //
 // This is code that starts up Reduce and exercises it using a
@@ -212,8 +212,7 @@ static int submain(int argc, char *argv[])
     rc = cslfinish(iput);
     std::printf("\nBuffered output is <%s>\n\n", obuff);
 
-    my_exit(rc);   // does a throw
-    return 0;
+    return rc;
 }
 
 
@@ -228,8 +227,8 @@ int main(int argc, char *argv[])
     {   START_SETJMP_BLOCK;
         res = submain(argc, argv);
     }
-    catch (int r)
-    {   res = r;
+    catch (std::runtime_error &e)
+    {   res = EXIT_FAILURE;
     }
     std::printf("Return code = %d\n", res);
     return res;

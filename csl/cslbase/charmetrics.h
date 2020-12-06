@@ -1,8 +1,8 @@
-// charmetrics.h                                Copyright (C) 2019 Codemist
+// charmetrics.h                                Copyright (C) 2020 Codemist
 
 
 /**************************************************************************
- * Copyright (C) 2019, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -30,7 +30,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id: charmetrics.h 5331 2020-04-25 13:47:28Z arthurcnorman $
+// $Id: charmetrics.h 5432 2020-10-15 20:40:59Z arthurcnorman $
 
 
 #ifndef __STDC_CONSTANT_MACROS

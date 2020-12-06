@@ -33,7 +33,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: eval4.cpp 5386 2020-08-19 20:54:40Z arthurcnorman $
 
 
 #include "headers.h"
@@ -110,12 +110,16 @@ LispObject bytecoded_1(LispObject def, LispObject a)
 {   SAVE_CODEVEC;
     real_push(def, a);
     LispObject r;
-    try
     {   START_TRY_BLOCK;
         r = bytestream_interpret(CELL-TAG_VECTOR, def, stack-1);
     }
-    catch (LispError &e)
-    {   int _reason = exit_reason;
+    switch (exceptionFlag)
+    {   case LispError:
+        case LispSignal:
+        case LispResource:
+        {   int _reason = exit_reason;
+            int save = exceptionFlag;
+            exceptionFlag = LispNormal;
 // START_TRY_BLOCK arranges to preserve the stack pointer and restore it so
 // that when I get here it is just as it was at the start of "try".... But
 // there is a delicacy! The argument(s) are pushed onto the stack on a
@@ -131,13 +135,15 @@ LispObject bytecoded_1(LispObject def, LispObject a)
 // called on. Well in some cases the variables concerned may have been
 // updated or overwritten, but let's still do something that will work in
 // enough cases to be valuable.
-        if (SHOW_ARGS)
-        {   err_printf("Arg1: ");
-            loop_print_error(stack[0]);
-            err_printf("\n");
+            if (SHOW_ARGS)
+            {   err_printf("Arg1: ");
+                loop_print_error(stack[0]);
+                err_printf("\n");
+            }
+            exit_reason = _reason;
+            exceptionFlag = save;
+            return nil;
         }
-        exit_reason = _reason;
-        throw;
     }
 // Note that a destructor set up by SAVE_CODEVEC gets activated here and
 // that restores the stack pointer and also values of codevec and litvec.
@@ -148,20 +154,26 @@ LispObject bytecoded_2(LispObject def, LispObject a, LispObject b)
 {   SAVE_CODEVEC;
     real_push(def, a, b);
     LispObject r;
-    try
     {   START_TRY_BLOCK;
         r = bytestream_interpret(CELL-TAG_VECTOR, def, stack-2);
     }
-    catch (LispError &e)
-    {   int _reason = exit_reason;
-        if (SHOW_ARGS)
-        {   err_printf("Arg 1: ");
-            loop_print_error(stack[-1]); err_printf("\n");
-            err_printf("Arg 2: ");
-            loop_print_error(stack[0]); err_printf("\n");
+    switch (exceptionFlag)
+    {   case LispError:
+        case LispSignal:
+        case LispResource:
+        {   int _reason = exit_reason;
+            int save = exceptionFlag;
+            exceptionFlag = LispNormal;
+            if (SHOW_ARGS)
+            {   err_printf("Arg 1: ");
+                loop_print_error(stack[-1]); err_printf("\n");
+                err_printf("Arg 2: ");
+                loop_print_error(stack[0]); err_printf("\n");
+            }
+            exit_reason = _reason;
+            exceptionFlag = save;
+            return nil;
         }
-        exit_reason = _reason;
-        throw;
     }
     return r;
 }
@@ -171,22 +183,28 @@ LispObject bytecoded_3(LispObject def, LispObject a, LispObject b,
 {   SAVE_CODEVEC;
     real_push(def, a, b, c);
     LispObject r;
-    try
     {   START_TRY_BLOCK;
         r = bytestream_interpret(CELL-TAG_VECTOR, def, stack-3);
     }
-    catch (LispError &e)
-    {   int _reason = exit_reason;
-        if (SHOW_ARGS)
-        {   err_printf("Arg1: ");
-            loop_print_error(stack[-2]); err_printf("\n");
-            err_printf("Arg2: ");
-            loop_print_error(stack[-1]); err_printf("\n");
-            err_printf("Arg3: ");
-            loop_print_error(stack[0]); err_printf("\n");
+    switch (exceptionFlag)
+    {   case LispError:
+        case LispSignal:
+        case LispResource:
+        {   int _reason = exit_reason;
+            int save = exceptionFlag;
+            exceptionFlag = LispNormal;
+            if (SHOW_ARGS)
+            {   err_printf("Arg1: ");
+                loop_print_error(stack[-2]); err_printf("\n");
+                err_printf("Arg2: ");
+                loop_print_error(stack[-1]); err_printf("\n");
+                err_printf("Arg3: ");
+                loop_print_error(stack[0]); err_printf("\n");
+            }
+            exit_reason = _reason;
+            exceptionFlag = save;
+            return nil;
         }
-        exit_reason = _reason;
-        throw;
     }
     return r;
 }
@@ -207,6 +225,7 @@ LispObject bytecoded_4up(LispObject def, LispObject a1, LispObject a2,
     LispObject r = car(qenv(def));   // the vector of bytecodes
     if (nargs != (reinterpret_cast<unsigned char *>(data_of_bps(r)))[0])
         error(2, err_wrong_no_args, def, fixnum_of_int(nargs));
+    if (exceptionPending()) return nil;
 // I now know that there will be the right number of arguments.
     real_push(def);
     real_push(a1, a2, a3);
@@ -214,20 +233,26 @@ LispObject bytecoded_4up(LispObject def, LispObject a1, LispObject a2,
     {   real_push(car(a4up));
         a4up = cdr(a4up);
     }
-    try
     {   START_TRY_BLOCK;
         r = bytestream_interpret(CELL-TAG_VECTOR+1, def, stack-nargs);
     }
-    catch (LispError &e)
-    {   int _reason = exit_reason;
-        if (SHOW_ARGS)
-        {   for (int i=1; i<=nargs; i++)
-            {   err_printf("Arg%d: ", i);
-                loop_print_error(stack[i-nargs]); err_printf("\n");
+    switch (exceptionFlag)
+    {   case LispError:
+        case LispSignal:
+        case LispResource:
+        {   int _reason = exit_reason;
+            int save = exceptionFlag;
+            exceptionFlag = LispNormal;
+            if (SHOW_ARGS)
+            {   for (int i=1; i<=nargs; i++)
+                {   err_printf("Arg%d: ", i);
+                    loop_print_error(stack[i-nargs]); err_printf("\n");
+                }
             }
+            exit_reason = _reason;
+            exceptionFlag = save;
+            return nil;
         }
-        exit_reason = _reason;
-        throw;
     }
     return r;
 }
@@ -271,6 +296,7 @@ static LispObject byteopt(LispObject def, LispObject a1,
     if (nargs < wantargs || (!restp && nargs > wantargs+wantopts))
         error(2, err_wrong_no_args, def,
               fixnum_of_int((int32_t)nargs));
+    if (exceptionPending()) return nil;
 // Now to make life easier for myself I will collect ALL the arguments as
 // a list. I will keep that in a4up, which in some sense now becomes "a1up".
     switch (nargs)
@@ -287,6 +313,7 @@ static LispObject byteopt(LispObject def, LispObject a1,
             a4up = list3star(a1, a2, a3, a4up);
             break;
     }
+    if (exceptionPending()) return nil;
 // I know there are enough arguments for the ones that are mandatory. I will
 // now pad the list of arguments so that there is something for every
 // &OPTIONAL one too. In the easy case I will just default to NIL and the
@@ -302,6 +329,7 @@ static LispObject byteopt(LispObject def, LispObject a1,
 // take special action to save the value.
             a4up = cons(defaultval, a4up);
             pop(def);
+            if (exceptionPending()) return nil;
             nargs++;
         }
         if (restp)
@@ -311,6 +339,7 @@ static LispObject byteopt(LispObject def, LispObject a1,
 // a NIL on the end.
             a1 = ncons(nil);
             pop(a4up, def);
+            if (exceptionPending()) return nil;
             a4up = nreverse2(a4up, a1);
             nargs++; // allow for the &REST arg.
         }
@@ -328,11 +357,13 @@ static LispObject byteopt(LispObject def, LispObject a1,
         {   push(def, cdr(a4up));
             ra = cons(car(a4up), ra);
             pop(a4up, def);
+            if (exceptionPending()) return nil;
         }
 // Here I have (eg) a4up = (a3 a2 a1) and ra = (a4 a5 ...).
         push(def, a4up);
         a4up = ncons(ra);
         pop(ra, def);
+        if (exceptionPending()) return nil;
 // Make a final extra argument out of the list, and then reverse the rest
 // of the arguments back, to get (eg again) (a1 a2 a3 (a4 a5 ...)).
         a4up = nreverse2(a4up, ra);
@@ -344,21 +375,27 @@ static LispObject byteopt(LispObject def, LispObject a1,
     {   push(car(a4up));
         a4up = cdr(a4up);
     }
-    try
     {   START_TRY_BLOCK;
         r = bytestream_interpret(CELL-TAG_VECTOR+2, def, stack-nargs);
     }
-    catch (LispError &e)
-    {   int _reason = exit_reason;
-        if (SHOW_ARGS)
-        {   for (i=1; i<=nargs; i++)
-            {   err_printf("Arg%d: ", i);
-                loop_print_error(stack[i-nargs]);
-                err_printf("\n");
+    switch (exceptionFlag)
+    {   case LispError:
+        case LispSignal:
+        case LispResource:
+        {   int _reason = exit_reason;
+            int save = exceptionFlag;
+            exceptionFlag = LispNormal;
+            if (SHOW_ARGS)
+            {   for (i=1; i<=nargs; i++)
+                {   err_printf("Arg%d: ", i);
+                    loop_print_error(stack[i-nargs]);
+                    err_printf("\n");
+                }
             }
+            exit_reason = _reason;
+            exceptionFlag = save;
+            return nil;
         }
-        exit_reason = _reason;
-        throw;
     }
     return r;
 }
@@ -492,6 +529,7 @@ LispObject Lmv_list(LispObject env, LispObject a)
 // so what I have here is in fact unsupportable!
 //
 {   LispObject r;
+    LispObject *stacksave = stack;
     int i, x = exit_count;
     if (x > 0) real_push(a);
     for (i=2; i<=x; i++) real_push((&work_0)[i]);
@@ -500,6 +538,10 @@ LispObject Lmv_list(LispObject env, LispObject a)
     {   LispObject w;
         real_pop(w);
         r = cons(w, r);
+        if (exceptionPending())
+        {   stack = stacksave;
+            return nil;
+        }
     }
     return onevalue(r);
 }

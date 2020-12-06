@@ -34,15 +34,9 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: cslread.cpp 5428 2020-10-12 17:06:37Z arthurcnorman $
 
 #include "headers.h"
-
-#if WASM_DEBUG_ASYNC_READ
-extern "C" {
-    extern int web_async_info_write(int);
-}
-#endif
 
 #ifdef SOCKETS
 #include "sockhdr.h"
@@ -236,7 +230,7 @@ LispObject Lgetenv(LispObject env, LispObject a)
             h = vechdr(a);
         }
         else if (!is_vector(a) || !is_string_header(h = vechdr(a)))
-        aerror1("getenv", a);
+        return aerror1("getenv", a);
         size_t len = length_of_byteheader(h) - CELL;
                      std::memcpy(parmname, reinterpret_cast<char *>(a) + (CELL-TAG_VECTOR),
                                  (size_t)len);
@@ -262,9 +256,9 @@ LispObject Lsystem(LispObject env, LispObject a)
         h = vechdr(a);
     }
     else if (!is_vector(a) || !is_string_header(h = vechdr(a)))
-        aerror1("system", a);
+        return aerror1("system", a);
     size_t len = length_of_byteheader(h) - CELL;
-    if (len+1 > sizeof(parmname)) aerror1("argument too long", a);
+    if (len+1 > sizeof(parmname)) return aerror1("argument too long", a);
     std::memcpy(parmname, reinterpret_cast<char *>(a) + (CELL-TAG_VECTOR),
                 (size_t)len);
     parmname[len] = 0;
@@ -301,7 +295,7 @@ static LispObject Lsilent_system(LispObject env, LispObject a)
         h = vechdr(a);
     }
     else if (!is_vector(a) || !is_string_header(h = vechdr(a)))
-        aerror1("system", a);
+        return aerror1("system", a);
     ensure_screen();
     size_t len = length_of_byteheader(h) - CELL;
     std::memcpy(cmd, reinterpret_cast<char *>(a) + (CELL-TAG_VECTOR),
@@ -1327,9 +1321,9 @@ static LispObject Lmake_symbol(LispObject env, LispObject str)
 // for the benefit of some of my system code I support symbols too.
 //
     if (symbolp(str)) str = get_pname(str);
-    else if (!is_vector(str)) aerror1("make-symbol", str);
+    else if (!is_vector(str)) return aerror1("make-symbol", str);
     else if (complex_stringp(str)) str = simplify_string(str);
-    else if (!is_string_header(vechdr(str))) aerror1("make-symbol", str);
+    else if (!is_string_header(vechdr(str))) return aerror1("make-symbol", str);
     push(str);
     LispObject s = get_symbol(false);
     pop(str);
@@ -1401,7 +1395,7 @@ LispObject Lgensym0(LispObject env, LispObject a, const char *suffix)
 #endif
     if (is_vector(a) &&is_string_header(vechdr(a))) genbase = a;
     else if (symbolp(a)) genbase = qpname(a);  // copy gensym base
-    else aerror1("gensym0", a);
+    else return aerror1("gensym0", a);
     STACK_SANITY;
     real_push(genbase);
     stackcheck();
@@ -1448,7 +1442,7 @@ LispObject Lgensym1(LispObject env, LispObject a)
 #endif
     if (is_vector(a) &&is_string_header(vechdr(a))) genbase = a;
     else if (symbolp(a)) genbase = qpname(a);  // copy gensym base
-    else aerror1("gensym1", a);
+    else return aerror1("gensym1", a);
     STACK_SANITY;
     real_push(genbase);
     stackcheck();
@@ -1497,7 +1491,7 @@ LispObject Lgensym2(LispObject env, LispObject a)
 #endif
     if (is_vector(a) &&is_string_header(vechdr(a))) genbase = a;
     else if (symbolp(a)) genbase = qpname(a);
-    else aerror1("gensym2", a);
+    else return aerror1("gensym2", a);
     STACK_SANITY;
     real_push(genbase);
     stackcheck();
@@ -1718,7 +1712,7 @@ LispObject Lintern(LispObject env, LispObject str)
         pop(p);
     }
     if (!is_vector(str) || !is_string_header(h = vechdr(str)))
-        aerror1("intern (not a string)", str);
+        return aerror1("intern (not a string)", str);
     return iintern(str, length_of_byteheader(h) - CELL, p, 1);
 }
 
@@ -1746,7 +1740,7 @@ static LispObject Lfind_symbol(LispObject env, LispObject str,
         pop(p);
     }
     if (!is_vector(str) || !is_string_header(h = vechdr(str)))
-    {   aerror1("find-symbol (not a string)", str);
+    {   return aerror1("find-symbol (not a string)", str);
     }
     return iintern(str, length_of_byteheader(h) - CELL, p, 3);
 }
@@ -1864,7 +1858,7 @@ LispObject Lunintern_2(LispObject env, LispObject sym, LispObject pp)
     packshade_(package) = ndelete(sym, packshade_(package));
 #endif
     if ((qheader(sym) & SYM_C_DEF) != 0)
-        aerror1("remob on function with kernel definition", sym);
+        return aerror1("remob on function with kernel definition", sym);
     if (remob(sym, packint_(package)))
     {   LispObject n = packnint_(package);
         LispObject v = packint_(package);
@@ -1939,7 +1933,8 @@ static void wait_for_char()
                          (miscflags & FNAME_FLAG) ? UNWIND_FNAME :
                          UNWIND_UNWIND;
                      exit_value = exit_tag = nil;
-                     exit_count = 0);
+                     exit_count = 0,
+                     return);
         tty_pointer = tty_buffer;
         return;
     }
@@ -2029,13 +2024,14 @@ static int raw_char_from_terminal()
 // I am liable to have set up a pending stack event - given that
 // I am about to respond here by doing a "throw" I will cancel it.
         event_flag.store(0);
-        throw LispError();
+        exceptionFlag = LispError;
+        return EOF;
     }
     if (qvalue(echo_symbol) != nil || force_echo)
     {   LispObject stream = qvalue(standard_output);
         if (!is_stream(stream)) stream = qvalue(terminal_io);
         if (!is_stream(stream)) stream = lisp_terminal_io;
-        ignore_error(putc_stream(c, stream));
+        simple_ignore_error(putc_stream(c, stream));
     }
     else if (spool_file != nullptr &&
              non_terminal_input == nullptr) PUTC(c, spool_file);
@@ -2066,10 +2062,10 @@ LispObject Lrds(LispObject env, LispObject a)
 {   LispObject old = qvalue(standard_input);
     if (a == nil) a = qvalue(terminal_io);
     if (a == old) return onevalue(old);
-    else if (!is_stream(a)) aerror1("rds", a);
+    else if (!is_stream(a)) return aerror1("rds", a);
     else if ((character_stream_reader *)stream_read_fn(
                  a) == char_from_illegal)
-        aerror("rds"); // closed stream or output stream
+        return aerror("rds"); // closed stream or output stream
     setvalue(standard_input, a);
     return onevalue(old);
 }
@@ -2109,7 +2105,10 @@ LispObject Lrseek_2(LispObject env, LispObject stream, LispObject a)
     if (!is_stream(stream)) stream = qvalue(terminal_io);
     if (!is_stream(stream)) stream = lisp_terminal_io;
     if (is_fixnum(a)) n = (size_t)int_of_fixnum(a);
-    else aerror("rseek");
+    else
+    {   return aerror("rseek");
+        return nil;
+    }
     other_read_action(READ_FLUSH, stream);
     if (other_read_action(n | 0x80000000,
                           stream) != 0) return onevalue(nil);
@@ -2346,7 +2345,7 @@ static LispObject read_hash(LispObject stream)
                 if (fixnum_of_int(w) == car(k)) return cdr(k);
                 p = cdr(p);
             }
-            aerror1("Label not found with #n# syntax", fixnum_of_int(w));
+            return aerror1("Label not found with #n# syntax", fixnum_of_int(w));
         case '=':
             curchar = NOT_CHAR;
             push(stream);
@@ -2990,7 +2989,7 @@ static LispObject read_s(LispObject stream)
 
 int char_from_synonym(LispObject stream)
 {   stream = qvalue(stream_read_data(stream));
-    if (!is_stream(stream)) aerror1("bad synonym stream", stream);
+    if (!is_stream(stream)) return aerror1("bad synonym stream", stream);
     return getc_stream(stream);
 }
 
@@ -3025,7 +3024,7 @@ int char_from_concatenated(LispObject stream)
 int char_from_echo(LispObject stream)
 {   int c;
     LispObject stream1 = qvalue(stream_read_data(stream));
-    if (!is_stream(stream1)) aerror1("bad synonym stream", stream1);
+    if (!is_stream(stream1)) return aerror1("bad synonym stream", stream1);
     c = getc_stream(stream1);
     char_to_synonym(c, stream);
     return c;
@@ -3045,7 +3044,7 @@ static int raw_char_from_file(LispObject stream)
     {   LispObject stream1 = qvalue(standard_output);
         if (!is_stream(stream1)) stream1 = qvalue(terminal_io);
         if (!is_stream(stream1)) stream1 = lisp_terminal_io;
-        ignore_error(putc_stream(ch, stream1));
+        simple_ignore_error(putc_stream(ch, stream1));
     }
     return ch;
 }
@@ -3076,7 +3075,7 @@ int char_from_file(LispObject stream)
 
 int32_t read_action_illegal(int32_t op, LispObject f)
 {   if (op != READ_CLOSE && op != READ_IS_CONSOLE)
-        aerror1("Illegal operation on stream",
+        return aerror1("Illegal operation on stream",
                 cons_no_gc(fixnum_of_int(op), stream_type(f)));
     return 0;
 }
@@ -3149,7 +3148,7 @@ int32_t read_action_synonym(int32_t c, LispObject f)
 {   int32_t r;
     LispObject f1;
     f1 = qvalue(stream_read_data(f));
-    if (!is_stream(f1)) aerror1("bad synonym stream", f1);
+    if (!is_stream(f1)) return aerror1("bad synonym stream", f1);
     r = other_read_action(c, f1);
     if (c == READ_CLOSE)
     {   set_stream_read_fn(f, char_from_illegal);
@@ -3419,7 +3418,7 @@ LispObject read_from_vector(char *v)
     curchar = NOT_CHAR;
     r = read_s(lisp_work_stream);
     curchar = savecur;
-    if (read_failure) aerror("read-from-vector");
+    if (read_failure) return aerror("read-from-vector");
     return onevalue(r);
 }
 
@@ -3434,7 +3433,7 @@ LispObject Lcompress(LispObject env, LispObject stream)
     env = read_s(lisp_work_stream);
     stream_read_data(lisp_work_stream) = nil;
     curchar = savecur;
-    if (read_failure) aerror("compress");
+    if (read_failure) return aerror("compress");
     return onevalue(env);
 }
 
@@ -3477,7 +3476,7 @@ LispObject Lstring2list(LispObject env, LispObject a)
             h = vechdr(a);
         }
         else if (!is_vector(a) || !is_string_header(h = vechdr(a)))
-        aerror1("string2list", a);
+        return aerror1("string2list", a);
         len = length_of_byteheader(h) - CELL;
               r = nil;
               for (i=0; i<len; i++)
@@ -3498,12 +3497,12 @@ void read_eval_print(int noisy)
 #endif
         miscflags |= (HEADLINE_FLAG | FNAME_FLAG | ARGS_FLAG);
         errorset_msg = nullptr;
-        try
         {   START_SETJMP_BLOCK;
             u = Lread(nil);
         }
-        catch (LispSignal &e)
-        {   u = nil;
+        if (exceptionFlag == LispSignal)
+        {   exceptionFlag = LispNormal;
+            u = nil;
             if (errorset_msg != nullptr)
             {   err_printf("\n%s detected\n", errorset_msg);
                 errorset_msg = nullptr;
@@ -3513,29 +3512,28 @@ void read_eval_print(int noisy)
             err_printf("\n... read failed\n");
             errors_now++;
             if (errors_limit >= 0 && errors_now > errors_limit)
-                resource_exceeded();
+            {   resource_exceeded();
+                return;
+            }
             else continue;
         }
-        catch (LispResource &e)
-        {   throw;
-        }
-        catch (LispRestart &e)
-        {   throw;
-        }
-        catch (LispException &e)
-        {
-//
+        else if (exceptionFlag == LispResource ||
+                 exceptionFlag == LispRestart) return;
+        else if (exceptionFlag != LispNormal)
+        {   int save = exceptionFlag;
+            exceptionFlag = LispNormal;
 // Maybe (stop) or (preserve) was called from a read-macro?  Otherwise
 // errors reading are ignored and the system tries to read the next
 // expression for evaluation.  Note that this behaviour means that
 // perhaps unreasonably or unexpectedly, THROW will not be propagated
 // back past a read_eval_print loop.
-//
             err_printf("\n... read failed\n");
-            if (stop_on_error) throw;
+            if (stop_on_error)
+            {   exceptionFlag = save;
+                return;
+            }
             continue;
         }
-//
 // This will stop at end of file. That could EITHER be a real proper
 // end of file, or the user having #\eof in the input file.  These are NOT
 // equivalent, in that #\eof is read once and then further stuff from the
@@ -3543,10 +3541,8 @@ void read_eval_print(int noisy)
 // some cases) ends the stream once and for all. well actually I do not
 // want to close the stream for ever in case somebody did (rdf nil), so
 // I tend to reset a bit of EOF info...
-//
         if (u == eof_symbol)
         {
-//
 // If you had gone (rdf nil) and read from the terminal - and then used ctrl-D
 // to signal an "and of file" I want that to end merely the (rdf) section
 // of input and not everything. The offending end of file information would
@@ -3554,7 +3550,6 @@ void read_eval_print(int noisy)
 // clears a terminal EOF here regardless of whether (rdf) read from terminal
 // or anything else - terminal_pushed should only get set to EOF when it
 // reads from the terminal! Ditto terminal_eof_seen.
-//
             if (terminal_pushed == EOF) terminal_pushed = NOT_CHAR;
             terminal_eof_seen = 0;
             return;
@@ -3566,29 +3561,25 @@ void read_eval_print(int noisy)
 
         miscflags |= (HEADLINE_FLAG | FNAME_FLAG | ARGS_FLAG);
         errorset_msg = nullptr;
-        try
-        {   START_SETJMP_BLOCK;
-            try
-            {   START_SETJMP_BLOCK;
+#pragma message ("cslread.cpp line 3561 START_SETJMP_BLOCK with nesting")
+        {   //@@@@START_SETJMP_BLOCK1;
+            {   //@@@@START_SETJMP_BLOCK;
                 exit_count = 1; // Because I care how many results are returned
                 u = eval(u, nil);
             }
-            catch (LispResource &e)
-            {   throw;
-            }
-            catch (LispRestart &e)
-            {   throw;
-            }
-            catch (LispException &e)
+        endOfTryBlock:
+            if (exceptionFlag == LispResource ||
+                exceptionFlag == LispRestart) goto endOfTryBlock1;
+            else if (exceptionFlag != LispNormal)
             {   err_printf("\n... continuing after error\n");
                 if (spool_file != nullptr) std::fflush(spool_file);
-                if (stop_on_error) throw;
+                if (stop_on_error) goto endOfTryBlock1;
                 continue;
             }
             if (noisy)
             {
 #ifndef COMMON
-                ignore_error(print(u));
+                simple_ignore_error(print(u));
                 stdout_printf("\n");
 #else
                 nvals = exit_count;
@@ -3602,7 +3593,7 @@ void read_eval_print(int noisy)
 //
                 if (nvals > 0)
                 {   push(mv_2);
-                    ignore_error(print(u));
+                    simple_ignore_error(print(u));
                     pop(u);
                 }
                 mv_2 = u;
@@ -3619,7 +3610,8 @@ void read_eval_print(int noisy)
 #endif
             }
         }
-        catch (LispSignal &e)
+    endOfTryBlock1:
+        if ( exceptionFlag == LispSignal)
         {   if (errorset_msg != nullptr)
             {   err_printf("\n%s detected\n", errorset_msg);
                 errorset_msg = nullptr;
@@ -3629,7 +3621,7 @@ void read_eval_print(int noisy)
             err_printf("\n... continuing after error\n");
             if (spool_file != nullptr) std::fflush(spool_file);
             errors_now++;
-            if (stop_on_error) throw;
+            if (stop_on_error) return;
             if (errors_limit >= 0 && errors_now > errors_limit)
             {   resource_exceeded();
                 return;
@@ -3683,7 +3675,7 @@ LispObject Lrdf4(LispObject env, LispObject file, LispObject noisyp,
             h = vechdr(file);
         }
         else if (!is_vector(file) || !is_string_header(h = vechdr(file)))
-            aerror1("load", file);
+            return aerror1("load", file);
         len = length_of_byteheader(h) - CELL;
         filestring = reinterpret_cast<char *>(file) + CELL-TAG_VECTOR;
         for (i=0; i<6; i++)
@@ -3754,12 +3746,16 @@ LispObject Lrdf4(LispObject env, LispObject file, LispObject noisyp,
 #endif
         }
     }
-    try
     {   START_SETJMP_BLOCK;
         read_eval_print(noisy);
     }
-    catch (LispException &e)
+endOfTryBlock:
+    if (exceptionFlag == LispError ||
+        exceptionFlag == LispSignal ||
+        exceptionFlag == LispResource)
     {   int _reason = exit_reason;
+        int save = exceptionFlag;
+        exceptionFlag = LispNormal;
         if (exit_reason == UNWIND_ERROR ||
             exit_reason == UNWIND_FNAME ||
             exit_reason == UNWIND_RESOURCE)
@@ -3771,15 +3767,19 @@ LispObject Lrdf4(LispObject env, LispObject file, LispObject noisyp,
 #endif
             prin_to_trace(stack[0]);
             trace_printf(" (bad)\n");
-            if (stop_on_error) throw;
+            if (stop_on_error)
+            {   exceptionFlag = save;
+                return nil;
+            }
         }
         if (stack[0] != nil)
-        {   ignore_error(Lclose(nil, stack[-1]));
+        {   simple_ignore_error(Lclose(nil, stack[-1]));
             Lrds(nil, stack[-2]);
         }
         real_popv(3);
         exit_reason = _reason;
-        throw;
+        exceptionFlag = save;
+        return nil;
     }
     if (verbose)
     {
@@ -3792,7 +3792,7 @@ LispObject Lrdf4(LispObject env, LispObject file, LispObject noisyp,
     prin_to_trace(stack[0]);
     trace_printf("\n");
     if (stack[0] != nil)
-    {   ignore_error(Lclose(nil, stack[-1]));
+    {   simple_ignore_error(Lclose(nil, stack[-1]));
         Lrds(nil, stack[-2]);
     }
     real_popv(3);
@@ -3822,7 +3822,7 @@ LispObject Lrdf3(LispObject env, LispObject file, LispObject noisy,
 
 LispObject Lrdfn(LispObject env, LispObject file, LispObject noisy,
                  LispObject verbose, LispObject nofile)
-{   if (cdr(nofile) != nil) aerror("too many args for rdf/load");
+{   if (cdr(nofile) != nil) return aerror("too many args for rdf/load");
     nofile = car(nofile);
     return Lrdf4(env, file, noisy, verbose, nofile);
 }
@@ -3858,7 +3858,7 @@ LispObject Lspool(LispObject env, LispObject file)
         h = vechdr(file);
     }
     if (!is_vector(file) || !is_string_header(h = vechdr(file)))
-        aerror1(spool_name, file);
+        return aerror1(spool_name, file);
     len = length_of_byteheader(h) - CELL;
     spool_file = open_file(filename,
                            reinterpret_cast<char *>(file) + (CELL-TAG_VECTOR),
@@ -3929,7 +3929,7 @@ static LispObject want_a_string(LispObject name)
     if (symbolp(name)) return get_pname(name);
     else if (is_vector(name) &&
              is_string_header(vechdr(name))) return name;
-    else aerror1("name or string needed", name);
+    else return aerror1("name or string needed", name);
 }
 
 static LispObject Lfind_package(LispObject env, LispObject name)
@@ -4050,26 +4050,26 @@ static LispObject Lmake_package(LispObject env, LispObject name,
     LispObject k2 = nil, v2 = nil;
     k2 = car(kv2);
     kv2 = cdr(kv2);
-    if (kv2 == nil) aerror("wrong number of arguments for make-package");
+    if (kv2 == nil) return aerror("wrong number of arguments for make-package");
     v2 = car(kv2);
     kv2 = cdr(kv2);
-    if (kv2 != nil) aerror("wrong number of arguments for make-package");
+    if (kv2 != nil) return aerror("wrong number of arguments for make-package");
 
     if (k1 == nicknames_symbol) nicknames = v1;
     if (k1 == nicknames_symbol) nicknames = v1, has_nicknames = true;
     else if (k1 == use_symbol) uses = v1, has_uses = true;
 // I will not permit other keys.
-    else aerror1("make-package", k1);
+    else return aerror1("make-package", k1);
 // I will moan if a keyword is repeated.
     if (k2 == nicknames_symbol)
-    {   if (hash_nicknames) aerror("make-package", k2);
+    {   if (hash_nicknames) return aerror("make-package", k2);
         else nicknames = v2, has_nicknames = true;
     }
     else if (k2 == use_symbol)
-    {   if (has_uses) aerror1("make-package", k2);
+    {   if (has_uses) return aerror1("make-package", k2);
         else uses = v2, has_uses = true;
     }
-    else aerror1("make-package", k2);
+    else return aerror1("make-package", k2);
     if (!has_use)
     {   push(name, nicknames);
         uses = make_string("LISP");
@@ -4136,7 +4136,7 @@ static LispObject Lmake_package_3(LispObject env, LispObject a,
 
 static LispObject Lmake_package_2(LispObject env, LispObject a,
                                   LispObject b)
-{   aerror("wrong number of arguments for make-package");
+{   return aerror("wrong number of arguments for make-package");
 }
 
 static LispObject Lmake_package_1(LispObject env, LispObject a)
@@ -4176,7 +4176,7 @@ LispObject Lreadbyte(LispObject env, LispObject stream)
     bool force = force_echo;
     force_echo = nil;
     if (!is_stream(stream))
-        aerror0("readb requires an appropriate stream");
+        return aerror0("readb requires an appropriate stream");
     setvalue(echo_symbol, nil);
     raw_input = 1;
     ch = getc_stream(stream);
@@ -4197,9 +4197,6 @@ LispObject Lreadch1(LispObject env, LispObject stream)
     if (!is_stream(stream)) stream = qvalue(terminal_io);
     if (!is_stream(stream)) stream = lisp_terminal_io;
     ch = getc_stream(stream);  // may now be large value
-#if WASM_DEBUG_ASYNC_READ
-    web_async_info_write(ch);
-#endif
     if (ch == EOF || ch == CTRL_D) w = eof_symbol;
     else
     {   if (ch <= 0xffff || sizeof(wchar_t)==4)

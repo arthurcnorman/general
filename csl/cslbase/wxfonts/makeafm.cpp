@@ -32,7 +32,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id: makeafm.cpp 3662 2016-05-11 20:07:09Z arthurcnorman $
 
 // This program scans the output from showttf.c and extracts from
 // it stuff that I will put in a file called *.afm. This will not be a full

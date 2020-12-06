@@ -2,7 +2,7 @@
 
 #ifdef ARITHLIB
 
-// $Id $
+// $Id: arith-logops.cpp 5387 2020-08-20 19:40:24Z arthurcnorman $
 
 
 /**************************************************************************
@@ -260,7 +260,7 @@ LispObject LeftShift::op(Fixnum a, uint64_t *b)
         else return fixnum_of_int(0);
     }
     else if (Zerop::op(a)) return fixnum_of_int(0);
-    else aerror1("left shift by value that is too large",
+    else return aerror1("left shift by value that is too large",
                      bignum_value(b));
 }
 // bignum << bignum
@@ -269,7 +269,7 @@ LispObject LeftShift::op(uint64_t *a, uint64_t *b)
     {   if (Minusp::op(a)) return fixnum_of_int(-1);
         else return fixnum_of_int(0);
     }
-    else aerror1("left shift by value that is too large",
+    else return aerror1("left shift by value that is too large",
                      bignum_value(b));
 
 }
@@ -312,7 +312,7 @@ LispObject RightShift::op(uint64_t *a, Fixnum b)
 LispObject RightShift::op(Fixnum a, uint64_t *b)
 {   if (Minusp::op(b))
     {   if (Zerop::op(a)) return fixnum_of_int(0);
-        else aerror1("right shift by value that is too negative",
+        else return aerror1("right shift by value that is too negative",
                          bignum_value(b));
     }
     else if (Minusp::op(a)) return fixnum_of_int(-1);
@@ -321,7 +321,7 @@ LispObject RightShift::op(Fixnum a, uint64_t *b)
 // bignum >> bignum
 LispObject RightShift::op(uint64_t *a, uint64_t *b)
 {   if (Minusp::op(b))
-        aerror1("right shift by value that is too negative", bignum_value(b));
+        return aerror1("right shift by value that is too negative", bignum_value(b));
     else if (Minusp::op(a)) return fixnum_of_int(-1);
     else return fixnum_of_int(0);
 }

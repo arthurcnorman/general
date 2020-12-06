@@ -3,7 +3,7 @@
 // Released under the modified BSD license - you can find the terms
 // of that easily enough!
 
-// $Id $
+// $Id: tltime.cpp 5331 2020-04-25 13:47:28Z arthurcnorman $
 
 // Cygwin and mingw32 both seem to use "emutls" to support the C++11
 // keyword "thread_local". This can have performance consequences.

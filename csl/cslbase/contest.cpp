@@ -36,7 +36,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: contest.cpp 5428 2020-10-12 17:06:37Z arthurcnorman $
 
 
 //#define  INCLUDE_ERROR_STRING_TABLE 1
@@ -163,8 +163,9 @@ double max_store_size = 1024*1024*1024;  // 1G.
 uintptr_t C_stacklimit;
 LispObject nil;
 
-[[noreturn]] LispObject aerror1(const char *s, LispObject a)
+LispObject aerror1(const char *s, LispObject a)
 {   my_abort();
+    return 0;
 }
 
 void trace_printf(const char *fmt, ...)

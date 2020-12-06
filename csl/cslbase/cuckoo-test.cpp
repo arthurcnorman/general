@@ -1,8 +1,8 @@
-// cuckoo-test.cpp                      Copyright (C) A C Norman, 2015-2017
+// cuckoo-test.cpp                      Copyright (C) A C Norman, 2015-2020
 
 
 /**************************************************************************
- * Copyright (C) 2017, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -30,7 +30,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: cuckoo-test.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $
 
 #include <cstdio>
 #include <cstdlib>

@@ -1,10 +1,10 @@
-// stdify.h                                     Copyright (C) 2019 Codemist
+// stdify.h                                     Copyright (C) 2020 Codemist
 
-// $Id $
+// $Id: stdify.cpp 5432 2020-10-15 20:40:59Z arthurcnorman $
 
 
 /**************************************************************************
- * Copyright (C) 2019, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *

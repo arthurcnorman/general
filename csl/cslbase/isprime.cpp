@@ -1,7 +1,7 @@
-// isprime.cpp                                Copyright (C) A C Norman 2019
+// isprime.cpp                                Copyright (C) A C Norman 2020
 
 /**************************************************************************
- * Copyright (C) 2019, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -29,7 +29,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: isprime.cpp 5432 2020-10-15 20:40:59Z arthurcnorman $
 
 // This is free-standing code.
 // It provides a function "bool isprime(uint64_t n)" that tests if n

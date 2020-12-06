@@ -16,7 +16,7 @@
 
 
 /**************************************************************************
- * Copyright (C) 2017, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -45,7 +45,7 @@
  *************************************************************************/
 
 
-/* $Id $
+/* $Id: fontdemo.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"

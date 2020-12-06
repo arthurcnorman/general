@@ -8,7 +8,7 @@
 
 % Released under BSD license.
 
-% $Id $
+% $Id: arithtest.lsp 5024 2019-06-05 15:32:25Z arthurcnorman $
 
 
 (setq !*echo t !*comp t)

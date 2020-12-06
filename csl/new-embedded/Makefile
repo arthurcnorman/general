@@ -30,12 +30,6 @@ reduce:
 		$(MAKE) CFLAGS=$(CFLAGS) reduce.img && \
 		cp reduce.img ..
 
-.PHONY: reduce-web
-reduce-web:
-	cd reduce-image && $(MAKE) CFLAGS=$(CFLAGS) reduce-web && \
-	cp reduce.img ..
-
-
 # Thse days I avoid needing these two libraries, but I will leave the recipes
 # for building them in place for the benefit of anybody who wants to
 # fuss with them.

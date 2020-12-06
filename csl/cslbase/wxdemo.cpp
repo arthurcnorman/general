@@ -32,7 +32,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: wxdemo.cpp 5382 2020-08-08 07:53:42Z arthurcnorman $
 
 // This code is a small demonstration of what wxWidgets can do - but MOSTLY
 // it is looking at the issues of placing characters precisely on the screen

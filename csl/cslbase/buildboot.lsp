@@ -11,7 +11,7 @@
 
 % Author: Anthony C. Hearn, Stanley L. Kameny and Arthur Norman
 
-% $Id $
+% $Id: buildboot.lsp 3905 2017-02-20 22:23:27Z arthurcnorman $
 
 (verbos 3)
 

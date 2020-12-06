@@ -36,7 +36,7 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: arith09.cpp 5519 2020-11-25 13:56:33Z arthurcnorman $
 
 #include "headers.h"
 
@@ -515,7 +515,7 @@ static size_t huge_gcd(uint32_t *a, size_t lena, uint32_t *b,
                                static_cast<long>(carrybx),
                                static_cast<long>(carryby), static_cast<long>(borrowa),
                                static_cast<long>(borrowb));
-                    my_exit(EXIT_FAILURE);
+                    my_exit();
                 }
 #endif // DEBUG
                 while (lena != 0 && a[lena] == 0) lena--;
@@ -539,7 +539,7 @@ LispObject gcd(LispObject a, LispObject b)
 // call to rembi()
                 else b = rembi(b, a);
             }
-            else aerror2("bad arg for gcd", a, b);
+            else return aerror2("bad arg for gcd", a, b);
         }
     }
     else if (is_numbers(a) && is_bignum(a))
@@ -691,9 +691,9 @@ LispObject gcd(LispObject a, LispObject b)
                 goto gcd_using_machine_arithmetic;
             }
         }
-        else aerror2("bad arg for gcd", a, b);
+        else return aerror2("bad arg for gcd", a, b);
     }
-    else aerror2("bad arg for gcd", a, b);
+    else return aerror2("bad arg for gcd", a, b);
 //
 // If I drop out of the above IF statement I have reduced a and b to
 // fixnums, which I can compute with directly using C native arithmetic.
@@ -795,7 +795,7 @@ LispObject lognot(LispObject a)
     {   a = plus2(a, fixnum_of_int(1));
         return negate(a);
     }
-    else aerror1("Bad arg for xxx",  a);
+    else return aerror1("Bad arg for xxx",  a);
 }
 
 LispObject ash(LispObject a, LispObject b)
@@ -805,7 +805,7 @@ LispObject ash(LispObject a, LispObject b)
 // values having an infinite number of leading '1' bits.
 //
 {   intptr_t bb;
-    if (!is_fixnum(b)) aerror2("bad arg for lshift", a, b);
+    if (!is_fixnum(b)) return aerror2("bad arg for lshift", a, b);
     bb = int_of_fixnum(b);
     if (bb == 0) return a;        // Shifting by zero has no effect
     if (is_fixnum(a))
@@ -869,7 +869,7 @@ LispObject ash(LispObject a, LispObject b)
         }
     }
     else if (!is_numbers(a) || !is_bignum(a))
-        aerror2("bad arg for lshift", a, b);
+        return aerror2("bad arg for lshift", a, b);
 //
 // Bignum case here
 //
@@ -1072,14 +1072,14 @@ LispObject logior2(LispObject a, LispObject b)
     {   if (is_fixnum(b)) return static_cast<LispObject>((intptr_t)a |
                                      (intptr_t)b);
         else if (is_numbers(b) && is_bignum(b)) return logiorib(a, b);
-        else aerror2("bad arg for logior", a, b);
+        else return aerror2("bad arg for logior", a, b);
     }
     else if (is_numbers(a) && is_bignum(a))
     {   if (is_fixnum(b)) return logiorib(b, a);
         else if (is_numbers(b) && is_bignum(b)) return logiorbb(a, b);
-        else aerror2("bad arg for logior", a, b);
+        else return aerror2("bad arg for logior", a, b);
     }
-    else aerror2("bad arg for logior", a, b);
+    else return aerror2("bad arg for logior", a, b);
 }
 
 static LispObject logxorbb(LispObject a, LispObject b)
@@ -1121,14 +1121,14 @@ LispObject logxor2(LispObject a, LispObject b)
             return static_cast<LispObject>(((uintptr_t)a ^ (uintptr_t)b) +
                                            TAG_FIXNUM);
         else if (is_numbers(b) && is_bignum(b)) return logxorib(a, b);
-        else aerror2("bad arg for logxor", a, b);
+        else return aerror2("bad arg for logxor", a, b);
     }
     else if (is_numbers(a) && is_bignum(a))
     {   if (is_fixnum(b)) return logxorib(b, a);
         else if (is_numbers(b) && is_bignum(b)) return logxorbb(a, b);
-        else aerror2("bad arg for logxor", a, b);
+        else return aerror2("bad arg for logxor", a, b);
     }
-    else aerror2("bad arg for logxor", a, b);
+    else return aerror2("bad arg for logxor", a, b);
 }
 
 LispObject logeqv2(LispObject a, LispObject b)
@@ -1138,7 +1138,7 @@ LispObject logeqv2(LispObject a, LispObject b)
                                            (intptr_t)fixnum_of_int(-1));
         else if (is_numbers(b) && is_bignum(b))
             return logxorbb(make_fake_bignum(~int_of_fixnum(a)), b);
-        else aerror2("bad arg for logeqv", a, b);
+        else return aerror2("bad arg for logeqv", a, b);
     }
     else if (is_numbers(a) && is_bignum(a))
     {   if (is_fixnum(b))
@@ -1149,9 +1149,9 @@ LispObject logeqv2(LispObject a, LispObject b)
             pop(a);
             return logxorbb(a, b);
         }
-        else aerror2("bad arg for logeqv", a, b);
+        else return aerror2("bad arg for logeqv", a, b);
     }
-    else aerror2("bad arg for logeqv", a, b);
+    else return aerror2("bad arg for logeqv", a, b);
 }
 
 static LispObject logandbb(LispObject a, LispObject b)
@@ -1204,14 +1204,14 @@ LispObject logand2(LispObject a, LispObject b)
     {   if (is_fixnum(b)) return static_cast<LispObject>((intptr_t)a &
                                      (intptr_t)b);
         else if (is_numbers(b) && is_bignum(b)) return logandib(a, b);
-        else aerror2("bad arg for logand", a, b);
+        else return aerror2("bad arg for logand", a, b);
     }
     else if (is_numbers(a) && is_bignum(a))
     {   if (is_fixnum(b)) return logandib(b, a);
         else if (is_numbers(b) && is_bignum(b)) return logandbb(a, b);
-        else aerror2("bad arg for logand", a, b);
+        else return aerror2("bad arg for logand", a, b);
     }
-    else aerror2("bad arg for logand", a, b);
+    else return aerror2("bad arg for logand", a, b);
 }
 
 // end of arith09.cpp

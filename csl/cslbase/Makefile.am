@@ -6,7 +6,7 @@
 
 # CSL and REDUCE build sequences
 
-# $Id: Makefile.am 5386 2020-08-19 20:54:40Z arthurcnorman $
+# $Id: Makefile.am 5516 2020-11-24 11:02:53Z arthurcnorman $
 
 # Set up ways to refer to files in the main Reduce source tree.
 
@@ -764,7 +764,10 @@ endif !fox
 # but that I avoid the cost of checking and recompiling for any alteration
 # that does not cause me to record it in the CHANGED file.
 
-$(FOXDEPS):	$(csl)/fox/CHANGED
+SHARED=$(cslbase)/fwin.h $(cslbase)/log.h $(cslbase)/termed.h \
+	$(cslbase)/fwin.cpp $(cslbase)/termed.cpp 
+
+$(FOXDEPS):	$(csl)/fox/CHANGED $(SHARED)
 	@printf "About to build FOX for %s\n" `pwd`
 	$(TRACE)@cd ../fox && $(MAKE) install
 

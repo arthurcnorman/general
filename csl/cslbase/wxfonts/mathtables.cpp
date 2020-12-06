@@ -29,7 +29,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
+// $Id: mathtables.cpp 3662 2016-05-11 20:07:09Z arthurcnorman $
 
 // This is an utterly specialised progrem for extracting bits of maths
 // tables from cslSTIXMath.tables

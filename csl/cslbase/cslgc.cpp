@@ -1,11 +1,11 @@
-// File cslgc.cpp                         Copyright (c) Codemist, 1990-2019
+// File cslgc.cpp                         Copyright (c) Codemist, 1990-2020
 
 //
 // Garbage collection.
 //
 
 /**************************************************************************
- * Copyright (C) 2019, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -33,7 +33,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: cslgc.cpp 5519 2020-11-25 13:56:33Z arthurcnorman $
 
 #include "headers.h"
 
@@ -138,7 +138,7 @@ static void copy(LispObject *p)
                         if (pages_count == 0)
                         {   term_printf("\n+++ Run out of memory\n");
                             ensure_screen();
-                            my_exit(EXIT_FAILURE);
+                            my_exit();
                         }
                         p = pages[--pages_count];
                         zero_out(p);
@@ -227,7 +227,7 @@ static void copy(LispObject *p)
                         if (pages_count == 0)
                         {   term_printf("\n+++ Run out of memory\n");
                             ensure_screen();
-                            my_exit(EXIT_FAILURE);
+                            my_exit();
                         }
                         p1 = pages[--pages_count];
                         zero_out(p1);
@@ -607,7 +607,7 @@ void reclaim(const char *why, int stg_class)
     {   std::fprintf(stderr,
                      "\n+++ Garbage collection attempt when not permitted\n");
         std::fflush(stderr);
-        my_exit(EXIT_FAILURE);    // totally drastic...
+        my_exit();    // totally drastic...
     }
 
     gc_number++;
@@ -673,7 +673,7 @@ void reclaim(const char *why, int stg_class)
     {   report_at_end();
         term_printf("\n+++ Run out of memory\n");
         ensure_screen();
-        my_exit(EXIT_FAILURE);
+        my_exit();
     }
 // If things crash really badly maybe I would rather have my output up
 // to date.
@@ -683,12 +683,14 @@ void reclaim(const char *why, int stg_class)
     {   reclaim_trap_count = gc_number - 1;
         trace_printf("\nReclaim trap count reached...\n");
         aerror("reclaim-trap-count");
+        return;
     }
     if (reclaim_stack_limit != 0 &&
         (uintptr_t)&t0 + reclaim_stack_limit < (uintptr_t)C_stackbase)
     {   reclaim_stack_limit = 0;
         trace_printf("\nReclaim stack limit reached...\n");
         aerror("reclaim-stack-limit");
+        return;
     }
 
     if (reclaim_trigger_target != 0)
@@ -725,7 +727,7 @@ void reclaim(const char *why, int stg_class)
     if (!reset_limit_registers())
     {   term_printf("\n+++ Run out of memory\n");
         ensure_screen();
-        my_exit(EXIT_FAILURE);    // totally drastic...
+        my_exit();    // totally drastic...
     }
     if (stop_after_gc) Lstop1(nil, fixnum_of_int(0));
     if ((space_limit >= 0 && space_now > space_limit) ||

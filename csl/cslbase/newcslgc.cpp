@@ -33,7 +33,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: newcslgc.cpp 5493 2020-11-13 17:53:39Z arthurcnorman $
 
 #include "headers.h"
 
@@ -438,7 +438,7 @@ bool withinMajorGarbageCollection = false;
 // and that multi-processor issues are addressed in the sense of memory
 // fences etc. This assumption is going to violate strict aliasing rules and
 // so a sufficiently clever compiler could spot what I was doing and mangle
-.. my code quite grievously!
+// my code quite grievously!
 
 void evacuate(atomic<LispObject> *p)
 {
@@ -484,8 +484,8 @@ void evacuate(atomic<LispObject> *p)
     *p = aa + (a&TAG_BITS);
 }
 
-void evacuate(atomicLispObject *p)
-{   evacuate(reinterpret_cast<atomic<LispObject> *>(p);
+void evacuate(LispObject *p)
+{   evacuate(reinterpret_cast<atomic<LispObject> *>(p));
 }
 
 size_t pinnedChunkCount = 0, pinnedPageCount = 0;
@@ -767,18 +767,153 @@ void evacuateOneChunk(Chunk *c)
 }
 
 void evacuateActiveChunk(Chunk *c)
-{
+{   cout << "evacuateActiveChunk\n";
     my_abort();
 }
 
 void evacuateFromCopiedData(bool major)
-{   cout << "evacuateFromCopiedData" << "\r" << endl;
+{
+#ifdef ONLY_USE_ONE_GC_THREAD
+    cout << "evacuateFromCopiedData" << "\r" << endl;
+// When I get here the list bases have all been evacuated. That will have
+// copied some material into the new space. This copied material may have
+// filled one or more Chunks that are now on the Chunk stack and can be
+// found using popChunk(). In addition there is likely to be a partially
+// filled Chunk that anything more that is to be copied will end up in.
+// In the general case part of the data within such a Chunk may have been
+// evacuated. 
+    do
+    {   Chunk *c;
+// While there is a full Chunk to scan I scan it. This part is simple and
+// straightforward.
+        while ((c = popChunk1()) != nullptr)
+            evacuateOneChunk(c);
+// When I get here there are no full Chunks to scan, but there can be
+// data within the one I have just been copying into. I scan within it.
+// While doing so I naturally allocate further copied data within it.
+// There are two important cases. In one I find that this copied data
+// manages to fill the Chunk (and the code will then allocate a follow-on
+// one, and normal processing would push this Chunk onto the stack. In such
+// a case I can terminate my scan when I reach the end of the Chunk so it
+// is completely processed. By then I may have created not just one but
+// several new Chunks of copied material. The evacuatePartOfMyOwnChunk()
+// function returns true and these will be popped and scanned in turn. It
+// must be arranged that when the Chuunk I had already scanned is fetched
+// that it is detected that it has already been processed.
+// The other possibility is that scanning material in the Chunk leads to
+// little or no further allocation. Then scanning must stop when the scan-
+// point catches up with the allocation fringe. In that case the function
+// returns false. But to be ready for the multi-thread case it should also
+// set markers showing how far scanning got. That is because some other
+// thread might push a full Chunk and that could allow the current thread
+// to resume copying from there, thereby filling this Chunk up further. At
+// some stage it will become necessary to continue the scan to process this
+// new data.
+    } while (evacuatePartOfMyOwnChunk());
+// In the single thread GC model when I get here all copied data has been
+// properly scanned, so the new heap is in a good state. All that should need
+// doing to finish off garbage collection will be to ensure that pointers to
+// fringes etc are up to date and that the various chains of free and busy
+// pages are in the right places.
+#else // ONLY_USE_ONE_GC_THREAD
+    cout << "Multi-thread evacuateFromCopiedData" << "\r" << endl;
+    my_abort()
+#endif // ONLY_USE_ONE_GC_THREAD
 }
 
 atomic<unsigned int> activeHelpers = 0;
 
 // before gcHelper() is called on in ANY thread the GC should have set
 // activeHelpers to the number of helper threads it is about to activate.
+
+
+std::mutex mutexForChunkStack;
+bool gcComplete;
+std::condition_variable cvForChunkStack;
+
+// The lock-free stack as implemented here could fail if the "ABA"
+// scanario arose - but that involved popping an item and later
+// pushing it back. If that will never happen there should not be
+// any trouble.
+
+inline void pushChunk(Chunk *c)
+{   c->selfScanPoint = c->datastart();
+    Chunk *old = chunkStack.load();
+    do
+    {   c->chunkStack.store(old);
+    } while (!chunkStack.compare_exchange_weak(old, c));
+    if (old == nullptr)
+    {
+// The critical regiion with no code within it looks really odd! But it
+// is necessary to avoid a race condition in popChunk.
+        {   std::lock_guard<std::mutex> lock(mutexForChunkStack);
+        }
+        cvForChunkStack.notify_all();
+    }
+}
+
+// This version is lock-free and it return nullptr if the stack is empty.
+
+inline Chunk *popChunk1()
+{   Chunk *old = chunkStack.load(), *c;
+    do
+    {   if (old == nullptr) return nullptr;
+        c = old->chunkStack.load();
+    } while (!chunkStack.compare_exchange_weak(old, c));
+    return old;
+}
+
+// Here is the version for use. If called when the stack is empty it
+// returns nullptr if gcComplete is set, or otherwise it waits.
+
+inline Chunk *popChunk()
+{
+// First try in a lock-free manner.
+    Chunk *c = popChunk1();
+// ... if that succeds then I can return with only low overhead.
+    if (c != nullptr) return c;
+// ** Point A **
+// Now my first lock-free try failed. Of course a pushChunk() may have
+// happened in the meanwhile - trying again is not a problem! But this time
+// I will lock the mutex first. That will allow any pushChunk that adds
+// to a non-empty stack to complete in a lock-free manner, but a pushChunk
+// on an empty stack will not be able to reach the notify_all step until the
+// mutex is released.
+    std::unique_lock<std::mutex> lock(mutexForChunkStack);
+    while ((c = popChunk1()) == nullptr && !gcComplete)
+    {
+// ** Point B **
+// Sometimes this pop will succeed, eg if pushChunk ran while this thread
+// was at Point A. In such a case the push operation may have performed a
+// notify_all but this thread will not be aware. That could have woken some
+// other thread up and there could have been a whole sequence of pushes and
+// pops around Point A!
+// When popChunk1 fails here it will do so with the mutex locked. That means
+// that any push that could install data will do so onto an empty stack and
+// when it does that it will attempt to lock the mutex and will hence stall.
+// It will first be able to make progress when the lock is released, which
+// will be within the wait call here.
+// Meanwhile other uses of push could have added more items to the
+// stack without problems and other threads may have popped things,
+// including the one set up by the stalled push thread.
+        cvForChunkStack.wait(lock);
+// When the condition variable unlocks the mutex (while it waits), the push
+// can continue. It will perform a notify_all. Because of the activity of
+// other threads the stack could be empty again! But that does not matter
+// too much - the code here will check the stack again in popChunk1.
+// The crucial issue here is the avoidance of a race condition that could
+// lead to pushChunk performing its notify_all while this thread was
+// as Point B. If that happened the wait could deadlock.
+//
+    }
+    return c;
+}
+
+bool evacuatePartOfMyOwnChunk()
+{   return false;
+}
+
+#ifndef ONLY_USE_ONE_GC_THREAD
 
 void gcHelper()
 {
@@ -801,8 +936,10 @@ void gcHelper()
 // may signal that this part of the GC is complete.
         if (activeHelpers.fetch_sub(1) == 1) return;
     } while (evacuatePartOfMyOwnChunk());
-     
 }
+
+#endif // ONLY_USE_ONE_GC_THREAD
+
 
 void endOfGarbageCollection(bool major)
 {   cout << "endOfGarbageCollection" << "\r" << endl;

@@ -1,9 +1,9 @@
-// pro.cpp                                 Copyright (C) 1989-2017 Codemist
+// pro.cpp                                 Copyright (C) 1989-2020 Codemist
 
 // Watcom C stack checking code. This only remains as a historical relic!
 
 /**************************************************************************
- * Copyright (C) 2017, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -31,7 +31,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: pro.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $
 
 #include "headers.h"
 

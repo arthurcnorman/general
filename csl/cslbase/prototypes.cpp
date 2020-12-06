@@ -1,4 +1,4 @@
-// prototypes.cpp                                   A C Norman, August 2017
+// prototypes.cpp                                          A C Norman, 2020
 
 #include <iostream>
 #include <cstdio>
@@ -7,7 +7,7 @@
 #include <clang-c/Index.h>
 using namespace std;
 
-// $Id $
+// $Id: prototypes.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $
 
 // The tutorial at http://shaharmike.com/cpp/libclang/ with title
 // "Using libclang to Parse C++ (aka libclang 101)".

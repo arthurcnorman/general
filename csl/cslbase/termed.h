@@ -1,8 +1,8 @@
-// termed.h                                Copyright (C) 2004-2019 Codemist
+// termed.h                                Copyright (C) 2004-2020 Codemist
 
 
 /**************************************************************************
- * Copyright (C) 2019, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -41,7 +41,7 @@
 //
 
 
-// $Id: termed.h 5331 2020-04-25 13:47:28Z arthurcnorman $
+// $Id: termed.h 5432 2020-10-15 20:40:59Z arthurcnorman $
 
 //
 // This supports modest line-editing and history for terminal-mode

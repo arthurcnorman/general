@@ -75,7 +75,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: newallocate.cpp 5510 2020-11-22 20:55:31Z arthurcnorman $
 
 /*!!! csl
 */
@@ -503,7 +503,7 @@ LispObject get_basic_vector(int tag, int type, size_t size)
     size_t allocSize = (size_t)doubleword_align_up(size);
 // Basic vectors must be smaller then the CSL page size.
     if (allocSize > (CSL_PAGE_SIZE - 32))
-        aerror1("request for basic vector too big",
+        return aerror1("request for basic vector too big",
                 fixnum_of_int(allocSize/CELL-1));
     LispObject r = get_n_bytes(allocSize);
     *(reinterpret_cast<Header *>(r)) = type + (size <<
@@ -628,7 +628,7 @@ LispObject borrow_n_bytes(size_t n)
 LispObject borrow_basic_vector(int tag, int type, size_t size)
 {   size_t allocSize = (size_t)doubleword_align_up(size);
     if (allocSize > (CSL_PAGE_SIZE - 32))
-        aerror1("request for basic vector too big",
+        return aerror1("request for basic vector too big",
                 fixnum_of_int(allocSize/CELL-1));
     LispObject r = borrow_n_bytes(allocSize);
     *(reinterpret_cast<Header *>(r)) = type + (size <<
@@ -777,12 +777,8 @@ bool allocateSegment(size_t n)
 // If I have C++17 I can rely on alignment constraints and just allocate
 // using new[]
 #ifdef __cpp_aligned_new
-    try
-    {   r = new Page[n/pageSize];
-    }
-    catch (std::bad_alloc &e)
-    {   return false;
-    }
+    r = (std::nothrow) new Page[n/pageSize];
+    if (r == nullptr) return false;
     rbase = static_cast<void *>(r);
 #else // !__cpp_aligned_new
 // On older platforms I need to allocate extra memory and then use std::align
@@ -790,12 +786,8 @@ bool allocateSegment(size_t n)
 // In this case I will need to preserve the base of the full block because
 // that will be what I will be able to free at the end.
     size_t N = n + pageSize - 1;
-    try
-    {   rbase = static_cast<void *>(new char[N]);
-    }
-    catch (std::bad_alloc &e)
-    {   return false;
-    }
+    rbase = static_cast<void *>(new (std::nothrow) char[N]);
+    if (rbase == nullptr) return false;
     void *work = rbase;
     work = std::align(pageSize, n, work, N);
     my_assert(work != nullptr);

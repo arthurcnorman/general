@@ -52,7 +52,7 @@
 // implemented here is not quite the one I will want in the real application
 // of this within my garbage collector!
 
-// $Id $
+// $Id: gcq2.cpp 5409 2020-09-27 15:56:21Z arthurcnorman $
 
 
 #include <iostream>

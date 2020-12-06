@@ -33,7 +33,7 @@
 % are in csl/cslbase/wxfonts.
 
 
-% $Id $
+% $Id: charmetrics.red 3748 2016-07-16 22:05:02Z arthurcnorman $
 
 #if (or (memq 'psl lispsystem!*) (memq 'jlisp lispsystem!*))
 

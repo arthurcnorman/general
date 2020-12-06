@@ -34,7 +34,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: allocate.cpp 5387 2020-08-20 19:40:24Z arthurcnorman $
 
 /*!!! csl
 */
@@ -655,7 +655,7 @@ LispObject get_basic_vector(int tag, int type, size_t size)
     size_t alloc_size = (size_t)doubleword_align_up(size);
 // Basic vectors must be smaller then the CSL page size.
     if (alloc_size > (CSL_PAGE_SIZE - 32))
-        aerror1("request for basic vector too big",
+        return aerror1("request for basic vector too big",
                 fixnum_of_int(alloc_size/CELL-1));
     for (;;)
     {   uintptr_t r = (vfringe += alloc_size) - alloc_size;

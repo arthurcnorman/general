@@ -36,7 +36,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: restart.cpp 5519 2020-11-25 13:56:33Z arthurcnorman $
 
 #include "headers.h"
 
@@ -168,7 +168,7 @@ char program_name[64] = {0};
 
 char **loadable_packages = nullptr, **switches = nullptr;
 
-bool trap_floating_overflow = true;
+bool trap_floating_overflow = false;
 
 int procstackp;
 
@@ -352,7 +352,7 @@ entry_point1 entries_tableio[] =
 
 static LispObject Lreclaim_trap(LispObject env, LispObject a)
 {   int64_t previous = reclaim_trap_count;
-    if (!is_fixnum(a)) aerror1("reclaim-trap", a);
+    if (!is_fixnum(a)) return aerror1("reclaim-trap", a);
     reclaim_trap_count = int_of_fixnum(a);
     term_printf("+++ Reclaim trap set at %d, previous = %d\n",
                 reclaim_trap_count, previous);
@@ -361,7 +361,7 @@ static LispObject Lreclaim_trap(LispObject env, LispObject a)
 
 static LispObject Lreclaim_stack_limit(LispObject env, LispObject a)
 {   intptr_t previous = reclaim_stack_limit;
-    if (!is_fixnum(a)) aerror1("reclaim-stack-limit", a);
+    if (!is_fixnum(a)) return aerror1("reclaim-stack-limit", a);
     reclaim_stack_limit = int_of_fixnum(a);
     term_printf("+++ Reclaim stack limit set at %d, previous = %d\n",
                 reclaim_stack_limit, previous);
@@ -436,7 +436,7 @@ static LispObject Lcheck_c_code(LispObject env, LispObject name,
         !is_string_header(vechdr(name)) ||
         !is_fixnum(lc1) ||
         !is_fixnum(lc2) ||
-        !is_fixnum(lc3)) aerror1("check-c-code", name);
+        !is_fixnum(lc3)) return aerror1("check-c-code", name);
     c1 = int_of_fixnum(lc1);
     c2 = int_of_fixnum(lc2);
     c3 = int_of_fixnum(lc3);
@@ -448,17 +448,17 @@ static LispObject Lcheck_c_code(LispObject env, LispObject name,
     {   if ((p = find_checksum(sname, len,
                                setup_tables[i])) != nullptr) break;
     }
-    if (p == nullptr) aerror1("check-c-code", name);
+    if (p == nullptr) return aerror1("check-c-code", name);
 
     if (std::sscanf(p, "%ld %ld %ld", &x1, &x2, &x3) != 3)
-        aerror1("check-c-code", name);
+        return aerror1("check-c-code", name);
     if (c1 == x1 && c2 == x2 && c3 == x3) return onevalue(nil);
     err_printf("\n+++++ C code and environment files not compatible\n");
     err_printf("please check, re-compile and try again\n");
     err_printf("versions from %.*s.c %lx %lx %lx\n", len, sname, x1, x2,
                x3);
     err_printf("version passed here %lx %lx %lx\n", c1, c2, c3);
-    aerror1("check-c-code", name);
+    return aerror1("check-c-code", name);
 }
 
 setup_type const restart_setup[] =
@@ -589,11 +589,13 @@ static void cold_setup()
 // the conservative GC is active.
 //
 #ifdef CONSERVATIVE
+    std::printf("\n: Conservative code - run a simple test of the GC\n\n");
     simple_print(nil);
     std::printf("\r\n");
     Lgc0(nil);
     simple_print(nil);
-    Lterpri(nil);
+    std::printf("\r\n");
+    std::printf("Now abort()...\n");
     my_abort();
 #endif // CONSERVATIVE
     setvalue(nil, get_basic_vector_init(sizeof(Package), nil));
@@ -1244,7 +1246,6 @@ void set_up_variables(int restart_flag)
          */
 
         w = cons(make_keyword(OPSYS), nil);
-        int ii;
 #if defined WIN64 || defined __WIN64__ || defined WIN32
 //
 // In the WIN64 case I will ALSO tell the user than I am "win32". This is
@@ -1746,20 +1747,26 @@ void set_up_variables(int restart_flag)
     }
     for (auto ss : stringsToEvaluate)
     {   const char *s = ss.c_str();
-        try
         {   LispObject v = make_string(s);
+            if (exceptionFlag != LispNormal) goto endOfTryBlock;
             v = Lexplodec(nil, v);
+            if (exceptionFlag != LispNormal) goto endOfTryBlock;
             v = Lcompress(nil, v);
+            if (exceptionFlag != LispNormal) goto endOfTryBlock;
             push(v);
             Lprin(nil, v);
             pop(v);
+            if (exceptionFlag != LispNormal) goto endOfTryBlock;
             v = Leval(nil, v);
+            if (exceptionFlag != LispNormal) goto endOfTryBlock;
             term_printf(" => ");
             Lprint(nil, v);
         }
-        catch (LispException &e)
+    endOfTryBlock:
+// A failure in an expression set to be evaluated here is fatal.
+        if (exceptionFlag != LispNormal)
         {   ensure_screen();
-            my_exit(0);
+            my_exit();
         }
     }
 //
@@ -1982,7 +1989,7 @@ void setup(int restart_flag, double store_size)
         if (IopenRoot(filename, 0, 0))
         {   term_printf("\n+++ Image file \"%s\" can not be read\n",
                         filename);
-            my_exit(EXIT_FAILURE);
+            my_exit();
         }
 // The initial record at the start of an image file is not compressed...
         Iread(junkbuf, 112);
@@ -2004,7 +2011,7 @@ void setup(int restart_flag, double store_size)
                     "    Unable to use this image file, so stopping\n");
                 term_printf(
                     "    File is: %s\n", filename);
-                my_exit(EXIT_FAILURE);
+                my_exit();
             }
         }
 //

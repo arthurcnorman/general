@@ -35,7 +35,7 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: termdemo.cpp 5387 2020-08-20 19:40:24Z arthurcnorman $
 
 //
 // To the extent that (a) it is convenient and (b) that I have completed

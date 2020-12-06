@@ -33,7 +33,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: eval1.cpp 5519 2020-11-25 13:56:33Z arthurcnorman $
 
 #include "headers.h"
 
@@ -78,7 +78,7 @@ LispObject eval(LispObject u, LispObject env)
 {   STACK_SANITY;
     assert (env == nil || consp(env));
 #ifdef CHECK_STACK
-    if (check_stack("@" __FILE__,__LINE__)) aerror("deep stack in eval");
+    if (check_stack("@" __FILE__,__LINE__)) return aerror("deep stack in eval");
 #endif
 restart:
     int t = static_cast<int>(u) & TAG_BITS;
@@ -110,8 +110,9 @@ restart:
                     {   v = qvalue(u);
 // I will trigger the "unset variable" message if a variable is declared
 // locally global but did not have a global value set.
-                        if (v == unset_var) error(1, err_unset_var, u);
+                        if (v == unset_var) return error(1, err_unset_var, u);
                     }
+// I do this return promtly after any previous call to error().
                     return onevalue(v);
                 }
                 env = cdr(env);
@@ -123,8 +124,8 @@ restart:
 // it to be globally fluid here. There is a balance that has to be struck
 // between error detection and convenience for the informal user!
             {   LispObject v = qvalue(u);
-                if (v == unset_var) error(1, err_unset_var, u);
-                else return onevalue(v);
+                if (v == unset_var) return error(1, err_unset_var, u);
+                return onevalue(v);
             }
         }
     }
@@ -145,6 +146,7 @@ restart:
 // be checked is if fn is lexically bound.
         LispObject fn, args;
         stackcheck(u, env);
+        if (exceptionPending()) return nil;
         fn = car(u);
         args = cdr(u);
 // Local function bindings must be looked for first. Well Standard Lisp
@@ -184,7 +186,8 @@ restart:
                             if (SHOW_FNAME)
                             {   err_printf("\nMacroexpanding: ");
                                 loop_print_error(u);
-                            });
+                            },
+                            return nil);
                         pop(env, u);
                         u = p;
                         goto restart;
@@ -222,7 +225,8 @@ restart:
                     if (SHOW_FNAME)
                     {   err_printf("\nMacroexpanding: ");
                         loop_print_error(u);
-                    });
+                    },
+                    return nil);
                 pop(env, u);
                 return eval(fn, env);
             }
@@ -245,7 +249,8 @@ restart:
                 if (SHOW_ARGS)
                 {   err_printf("\nEvaluating: ");
                     loop_print_error(car(args));
-                });
+                },
+                return nil);
             pop(env, args, fn);
             args = cdr(args);
             if (args == nil) return (*qfn1(fn))(fn, a1);
@@ -257,7 +262,8 @@ restart:
                 if (SHOW_ARGS)
                 {   err_printf("\nEvaluating: ");
                     loop_print_error(car(args));
-                });
+                },
+                return nil);
             pop(a1, env, args, fn);
             args = cdr(args);
             if (args == nil) return (*qfn2(fn))(fn, a1, a2);
@@ -269,7 +275,8 @@ restart:
                 if (SHOW_ARGS)
                 {   err_printf("\nEvaluating: ");
                     loop_print_error(car(args));
-                });
+                },
+                return nil);
             pop(a2, a1, env, args, fn);
             args = cdr(args);
             if (args == nil) return (*qfn3(fn))(fn, a1, a2, a3);
@@ -291,7 +298,8 @@ restart:
                     if (SHOW_ARGS)
                     {   err_printf("\nEvaluating: ");
                         loop_print_error(car(args));
-                    });
+                    },
+                    return nil);
                 pop(eargs);
                 eargs = cons(w, eargs);
                 pop(env, args, fn);
@@ -352,8 +360,11 @@ static LispObject keywordify(LispObject v)
 // name, and than tag it as a "keyword".
     if (basic_celt(name, 0) != ':')
     {   v = Lexplode(nil, v);
+        if (exceptionPending()) return nil;
         v = list2star(fixnum_of_int('!'), fixnum_of_int(':'), v);
+        if (exceptionPending()) return nil;
         v = Lcompress(nil, v);
+        if (exceptionPending()) return nil;
     }
     Lmake_keyword(nil, v);
     return v;
@@ -394,15 +405,17 @@ static LispObject key_lookup(LispObject keyname, LispObject args)
 #define stack_used  15
 // Wow - that looks like a lot of state to be kept on the stack!
 
-// This function is not free-standing - it can intteract with its caller
-// via some of the stack-addresses names show above. Ugh.
+// This function is not free-standing - it can interact with its caller
+// via some of the stack-address names show above. Ugh.
 
 inline void instate_binding(LispObject var, LispObject val,
                             LispObject local_decs1)
 {   Header h;
 // Complain if the varianble that somebody is attempting to bind seems bad.
     if (!is_symbol(var) || (qheader(var) & SYM_GLOBAL_VAR)!=0)
-        error(1, err_bad_bvl, var);
+    {   error(1, err_bad_bvl, var);
+        return;
+    }
     h = qheader(var);
 // Special variables have their old value saved in the association list
 // specenv, and then get updated.
@@ -414,6 +427,7 @@ inline void instate_binding(LispObject var, LispObject val,
         specenv = acons_no_gc(var, qvalue(var), specenv);
         setvalue(var, val);
         cons_gc_test(nil);
+        if (exceptionPending()) return;
     }
     else
     {
@@ -424,14 +438,17 @@ inline void instate_binding(LispObject var, LispObject val,
         {   if (car(w) == var)
             {   setcar(w, fixnum_of_int(0)); // decl is used up
                 env = acons(var, work_symbol, env);
+                if (exceptionPending()) return;
                 specenv = acons_no_gc(var, qvalue(var), specenv);
                 setvalue(var, val);
                 cons_gc_test(nil);
+                if (exceptionPending()) return;
                 return;
             }
         }
 // Finally simple lexical bindings use deep binding.
         env = acons(var, val, env);
+        if (exceptionPending()) return;
     }
 }
 
@@ -524,7 +541,7 @@ LispObject apply_lambda(LispObject def, LispObject args,
     }
 // Next parse the BVL
     LispObject *stacksave = stack;
-    try
+// Start of a "try block". Exit it with a jump to endOfTryBlock
     {   START_SETJMP_BLOCK;
         for (p = bvl; consp(p); p=cdr(p))
         {   v = car(p);
@@ -549,17 +566,29 @@ LispObject apply_lambda(LispObject def, LispObject args,
                     }
                     if (v == key_key)
                     {   restarg = arglist;
-                        if (check_keyargs_even(restarg)) error(1, err_bad_keyargs, restarg);
+                        if (check_keyargs_even(restarg))
+                        {   error(1, err_bad_keyargs, restarg);
+                            goto endOfTryBlock;
+                        }
                         opt_rest_state = STATE_KEY;
                         continue;
                     }
                     if (v == aux_key)
-                    {   if (args_left != 0) error(0, err_excess_args);
+                    {   if (args_left != 0)
+                        {   error(0, err_excess_args);
+                            goto endOfTryBlock;
+                        }
                         opt_rest_state = STATE_AUX;
                         continue;
                     }
-                    if (v == allow_other_keys) error(1, err_bad_bvl, v);
-                    if (args_left == 0) error(0, err_insufficient_args);
+                    if (v == allow_other_keys)
+                    {   error(1, err_bad_bvl, v);
+                        goto endOfTryBlock;
+                    }
+                    if (args_left == 0)
+                    {   error(0, err_insufficient_args);
+                        goto endOfTryBlock;
+                    }
                     arg = next_arg(); // the simple case!
                     args_left--;
                     v1 = nil;       // no suppliedp mess here, I'm glad to say
@@ -571,7 +600,10 @@ LispObject apply_lambda(LispObject def, LispObject args,
                         || v == key_key
                         || v == allow_other_keys
                         || v == aux_key
-                       ) error(1, err_bad_bvl, v);
+                       )
+                    {   error(1, err_bad_bvl, v);
+                        goto endOfTryBlock;
+                    }
 // Here v may be a simple variable, or a list (var init suppliedp)
                     opt_rest_state = STATE_OPT1;
                 process_optional_parameter:
@@ -592,6 +624,7 @@ LispObject apply_lambda(LispObject def, LispObject args,
                         if (val1 == nil)        // use the init form
                         {   arg = car(w);
                             arg = eval(arg, env);
+                            if (exceptionPending()) goto endOfTryBlock;
                         }
                         w = cdr(w);
                         if (consp(w)) v1 = car(w); // suppliedp name
@@ -606,17 +639,26 @@ LispObject apply_lambda(LispObject def, LispObject args,
                     }
                     if (v == key_key)
                     {   restarg = arglist;
-                        if (check_keyargs_even(restarg)) error(1, err_bad_keyargs, restarg);
+                        if (check_keyargs_even(restarg))
+                        {   error(1, err_bad_keyargs, restarg);
+                            goto endOfTryBlock;
+                        }
                         opt_rest_state = STATE_KEY;
                         continue;
                     }
                     if (v == aux_key)
-                    {   if (args_left != 0) error(0, err_excess_args);
+                    {   if (args_left != 0)
+                        {   error(0, err_excess_args);
+                            goto endOfTryBlock;
+                        }
                         opt_rest_state = STATE_AUX;
                         continue;
                     }
                     if (v == opt_key ||
-                        v == allow_other_keys) error(1, err_bad_bvl, v);
+                        v == allow_other_keys)
+                    {   error(1, err_bad_bvl, v);
+                        goto endOfTryBlock;
+                    }
                     goto process_optional_parameter;
 
                 case STATE_REST:
@@ -632,8 +674,10 @@ LispObject apply_lambda(LispObject def, LispObject args,
 
                 case STATE_REST1:
                     if (v == key_key)
-                    {   if (check_keyargs_even(restarg)) error(1, err_bad_keyargs,
-                                                                   restarg);
+                    {   if (check_keyargs_even(restarg))
+                        {   error(1, err_bad_keyargs, restarg);
+                            goto endOfTryBlock;
+                        }
                         opt_rest_state = STATE_KEY;
                         continue;
                     }
@@ -642,6 +686,7 @@ LispObject apply_lambda(LispObject def, LispObject args,
                         continue;
                     }
                     error(1, err_bad_bvl, rest_key);
+                    goto endOfTryBlock;
 
                 case STATE_KEY:
                     if (v == allow_other_keys)
@@ -650,41 +695,57 @@ LispObject apply_lambda(LispObject def, LispObject args,
                     }
                     if (v == aux_key)
                     {   if (check_no_unwanted_keys(restarg, ok_keys))
-                            error(1, err_bad_keyargs, restarg);
+                        {   error(1, err_bad_keyargs, restarg);
+                            goto endOfTryBlock;
+                        }
                         opt_rest_state = STATE_AUX;
                         continue;
                     }
                     if (v == opt_key || v == rest_key || v == key_key)
-                        error(1, err_bad_bvl, v);
+                    {   error(1, err_bad_bvl, v);
+                        goto endOfTryBlock;
+                    }
                 process_keyword_parameter:
 // v needs to expand to ((:kv v) init svar) in effect here.
                     {   LispObject keyname = nil;
                         w = nil;
                         if (!consp(v))
                         {   if (!is_symbol(v) || v==nil || v==lisp_true)
-                                error(1, err_bad_bvl, v);
+                            {   error(1, err_bad_bvl, v);
+                                goto endOfTryBlock;
+                            }
                             keyname = keywordify(v);
+                            if (exceptionPending()) goto endOfTryBlock;
                         }
                         else
                         {   w = cdr(v);
                             v = car(v);
                             if (!consp(v))
                             {   if (!is_symbol(v) || v==nil || v==lisp_true)
-                                    error(1, err_bad_bvl, v);
+                                {   error(1, err_bad_bvl, v);
+                                    goto endOfTryBlock;
+                                }
                                 keyname = keywordify(v);
+                                if (exceptionPending()) goto endOfTryBlock;
                             }
                             else
                             {   keyname = car(v);
                                 if (!is_symbol(keyname) || v==nil || v ==lisp_true)
-                                    error(1, err_bad_bvl, v);
+                                {   error(1, err_bad_bvl, v);
+                                    goto endOfTryBlock;
+                                }
                                 keyname = keywordify(keyname);
                                 v = cdr(v);
                                 if (consp(v)) v = car(v);
-                                else error(1, err_bad_bvl, v);
+                                else
+                                {   error(1, err_bad_bvl, v);
+                                    goto endOfTryBlock;
+                                }
                             }
                         }
                         ok_keys = cons(keyname, ok_keys);
                         arg = key_lookup(car(ok_keys), restarg);
+                        if (exceptionPending()) goto endOfTryBlock;
                         if (arg == nil) val1 = nil;
                         else
                         {   arg = car(arg);
@@ -695,6 +756,7 @@ LispObject apply_lambda(LispObject def, LispObject args,
                         if (val1 == nil)        // use the init form
                         {   arg = car(w);
                             arg = eval(arg, env);
+                            if (exceptionPending()) goto endOfTryBlock;
                         }
                         w = cdr(w);
                         if (consp(w)) v1 = car(w); // suppliedp name
@@ -707,19 +769,26 @@ LispObject apply_lambda(LispObject def, LispObject args,
                         continue;
                     }
                     if (v == opt_key || v == rest_key || v == key_key ||
-                        v == allow_other_keys) error(1, err_bad_bvl, v);
+                        v == allow_other_keys)
+                    {   error(1, err_bad_bvl, v);
+                        goto endOfTryBlock;
+                    }
                     goto process_keyword_parameter;
 
                 case STATE_AUX:
                     if (v == opt_key || v == rest_key ||
                         v == key_key || v == allow_other_keys ||
-                        v == aux_key) error(1, err_bad_bvl, v);
+                        v == aux_key)
+                    {   error(1, err_bad_bvl, v);
+                        goto endOfTryBlock;
+                    }
                     if (consp(v))
                     {   w = cdr(v);
                         v = car(v);
                         if (consp(w))
                         {   arg = car(w);
                             arg = eval(arg, env);
+                            if (exceptionPending()) goto endOfTryBlock;
                         }
                     }
                     else arg = nil;
@@ -727,7 +796,11 @@ LispObject apply_lambda(LispObject def, LispObject args,
                     break;
             }
             instate_binding(v, arg, local_decs);
-            if (v1 != nil) instate_binding(v1, val1, local_decs);
+            if (exceptionPending()) goto endOfTryBlock;
+            if (v1 != nil)
+            {   instate_binding(v1, val1, local_decs);
+                if (exceptionPending()) goto endOfTryBlock;
+            }
         }   // End of for loop that scans BVL
 
 // As well as local special declarations that have applied to bindings here
@@ -737,22 +810,29 @@ LispObject apply_lambda(LispObject def, LispObject args,
             local_decs=cdr(local_decs);
             if (!is_symbol(q)) continue;
             env = acons(q, work_symbol, env);
+            if (exceptionPending()) goto endOfTryBlock;
         }
 
         switch (opt_rest_state)
         {   case STATE_NULL:
             case STATE_OPT1:        // Ensure there had not been too many args
-                if (args_left != 0) error(0, err_excess_args);
+                if (args_left != 0)
+                {   error(0, err_excess_args);
+                    goto endOfTryBlock;
+                }
                 break;
 
             case STATE_OPT:         // error if bvl finishes here
             case STATE_REST:
                 error(1, err_bad_bvl,
                       opt_rest_state == STATE_OPT ? opt_key : rest_key);
+                goto endOfTryBlock;
 
             case STATE_KEY:         // ensure only valid keys were given
                 if (check_no_unwanted_keys(restarg, ok_keys))
-                    error(1, err_bad_keyargs, restarg);
+                {   error(1, err_bad_keyargs, restarg);
+                    goto endOfTryBlock;
+                }
                 break;
 
             default:
@@ -766,6 +846,7 @@ LispObject apply_lambda(LispObject def, LispObject args,
 // process the body of the lambda-expression.
         {   exit_count = 1;
             def = progn_fn(body, env);
+            if (exceptionPending()) goto endOfTryBlock;
             while (specenv != nil)
             {   LispObject bv = car(specenv);
                 setvalue(car(bv), cdr(bv));
@@ -773,7 +854,8 @@ LispObject apply_lambda(LispObject def, LispObject args,
             }
         }
     }
-    catch (LispException &e)
+endOfTryBlock:
+    if (exceptionPending())
     {   stack = stacksave;
 // On any exception raised above I will need to restore any fluid bindings
 // that have been made.
@@ -782,7 +864,7 @@ LispObject apply_lambda(LispObject def, LispObject args,
             setvalue(car(bv), cdr(bv));
             specenv = cdr(specenv);
         }
-        throw;
+        return nil;
     }
     real_popv(stack_used);
 // note that exit_count has not been disturbed since I called progn_fn,
@@ -819,14 +901,19 @@ LispObject Levlis(LispObject env, LispObject a)
     save_current_function saver(eval_symbol);
     LispObject r;
     stackcheck(a);
+    if (exceptionPending()) return nil;
     r = nil;
     while (consp(a))
-    {   push(a, r);
-        LispObject a1 = car(a);
-        a1 = eval(a1, nil);
-        pop(r);
-        r = cons(a1, r);
-        pop(a);
+    {   {   Push save(a);
+            LispObject a1;
+            {   Push save(r);
+                a1 = car(a);
+                a1 = eval(a1, nil);
+                if (exceptionPending()) return nil;
+            }
+            r = cons(a1, r);
+            if (exceptionPending()) return nil;
+        }
         a = cdr(a);
     }
     return onevalue(nreverse(r));
@@ -849,11 +936,13 @@ LispObject Lapply_4up(LispObject env, LispObject fn, LispObject a1,
 //   (APPLY fn a1 a2 (a3 a4 a5up))
 // where a5up will be a list (a5 a6 ...).
     a3up = Lreverse(nil, a3up);
+    if (exceptionPending()) return nil;
     a3up = nreverse2(cdr(a3up), car(a3up));
 // I have just flattened out the final argument.
-    push(fn);
-    a1 = list2star(a1, a2, a3up);
-    pop(fn);
+    {   Push save(fn);
+        a1 = list2star(a1, a2, a3up);
+    }
+    if (exceptionPending()) return nil;
     return apply(fn, a1, nil, apply_symbol);
 }
 
@@ -877,9 +966,10 @@ LispObject Lapply_2(LispObject env, LispObject fn, LispObject a1)
 LispObject Lapply_3(LispObject env, LispObject fn, LispObject a1,
                     LispObject a2)
 {   save_current_function saver(apply_symbol);
-    push(fn);
-    a1 = cons(a1, a2);
-    pop(fn);
+    {   Push save(fn);
+        a1 = cons(a1, a2);
+    }
+    if (exceptionPending()) return nil;
     return apply(fn, a1, nil, apply_symbol);
 }
 
@@ -905,9 +995,10 @@ LispObject Lapply2(LispObject env, LispObject fn,
                    LispObject a1, LispObject a2)
 {   if (is_symbol(fn) && (qheader(fn) & SYM_TRACED) == 0)
         return (*qfn2(fn))(fn, a1, a2);
-    push(env, fn);
-    a1 = list2(a1, a2);
-    pop(fn, env);
+    {   Push save(env, fn);
+        a1 = list2(a1, a2);
+    }
+    if (exceptionPending()) return nil;
     return Lapply_2(env, fn, a1);
 }
 
@@ -918,9 +1009,10 @@ LispObject Lapply3(LispObject env, LispObject fn,
         return (*qfn3(fn))(fn, a1, a2, a3);
     }
     LispObject a3 = arg4("apply3", a3up);
-    push(env, fn);
-    a1 = list3(a1, a2, a3);
-    pop(fn, env);
+    {   Push save(env, fn);
+        a1 = list3(a1, a2, a3);
+    }
+    if (exceptionPending()) return nil;
     return Lapply_2(env, fn, a1);
 }
 
@@ -937,9 +1029,10 @@ LispObject Lfuncall_1(LispObject env, LispObject fn)
 LispObject Lfuncall_2(LispObject env, LispObject fn, LispObject a1)
 {   if (is_symbol(fn) && (qheader(fn) & SYM_TRACED) == 0)
         return (*qfn1(fn))(fn, a1);
-    push(env, fn);
-    a1 = ncons(a1);
-    pop(fn, env);
+    {   Push save(env, fn);
+        a1 = ncons(a1);
+    }
+    if (exceptionPending()) return nil;
     return Lapply_2(env, fn, a1);
 }
 
@@ -947,9 +1040,10 @@ LispObject Lfuncall_3(LispObject env, LispObject fn,
                       LispObject a1, LispObject a2)
 {   if (is_symbol(fn) && (qheader(fn) & SYM_TRACED) == 0)
         return (*qfn2(fn))(fn, a1, a2);
-    push(env, fn);
-    a1 = list2(a1, a2);
-    pop(fn, env);
+    {   Push save(env, fn);
+        a1 = list2(a1, a2);
+    }
+    if (exceptionPending()) return nil;
     return Lapply_2(env, fn, a1);
 }
 
@@ -959,9 +1053,10 @@ LispObject Lfuncall_4up(LispObject env, LispObject fn,
     {   if (cdr(a3up) == nil) return (*qfn3(fn))(fn, a1, a2, car(a3up));
         else return (*qfn4up(fn))(fn, a1, a2, car(a3up), cdr(a3up));
     }
-    push(env, fn);
-    a1 = list2star(a1, a2, a3up);
-    pop(fn, env);
+    {   Push save(env, fn);
+        a1 = list2star(a1, a2, a3up);
+    }
+    if (exceptionPending()) return nil;
     return Lapply_2(env, fn, a1);
 }
 
@@ -1028,23 +1123,28 @@ LispObject mv_call_fn(LispObject args, LispObject env)
     save_current_function saver(mv_call_symbol);
     if (!consp(args)) return nil;       // (multiple-value-call) => nil
     stackcheck(args, env);
-    push(args, env);
-    LispObject fn = car(args);
-    fn = eval(fn, env);
-    pop(env, args);
+    LispObject fn;
+    {   Push save(args, env);
+        fn = car(args);
+        fn = eval(fn, env);
+    }
+    if (exceptionPending()) return nil;
     args = cdr(args);
     push(fn);
     LispObject xargs = nil;             // for list of eventual args
     while (consp(args))
     {   LispObject r1;
-        real_push(args, env, xargs);
-        r1 = car(args);
-        exit_count = 1;
-        r1  = eval(r1, env);
-        if (exit_count != 0) stack[0] = cons(r1, stack[0]);
-        for (unsigned int i=2; i<=exit_count; i++)
-            stack[0] = cons((&work_0)[i], stack[0]);
-        real_pop(xargs, env, args);
+        {   RealPush save(args, env, xargs);
+            r1 = car(args);
+            exit_count = 1;
+            r1  = eval(r1, env);
+            if (exceptionPending()) return nil;
+            if (exit_count != 0) stack[0] = cons(r1, stack[0]);
+            for (unsigned int i=2; i<=exit_count; i++)
+            {   stack[0] = cons((&work_0)[i], stack[0]);
+                if (exceptionPending()) return nil;
+            }
+        }
         args = cdr(args);
     }
     return apply(fn, xargs, env, mv_call_symbol);
@@ -1054,6 +1154,7 @@ LispObject interpreted_0(LispObject def)
 {   STACK_SANITY;
     save_current_function saver(def);
     stackcheck(def);
+    if (exceptionPending()) return nil;
     return apply_lambda(qenv(def), nil, nil, def);
 }
 
@@ -1061,9 +1162,11 @@ LispObject interpreted_1(LispObject def, LispObject a1)
 {   STACK_SANITY;
     save_current_function saver(def);
     stackcheck(def, a1);
-    push(def);
-    a1 = ncons(a1);
-    pop(def);
+    if (exceptionPending()) return nil;
+    {   Push save(def);
+        a1 = ncons(a1);
+    }
+    if (exceptionPending()) return nil;
     return apply_lambda(qenv(def), a1, nil, def);
 }
 
@@ -1071,9 +1174,11 @@ LispObject interpreted_2(LispObject def, LispObject a1, LispObject a2)
 {   STACK_SANITY;
     save_current_function saver(def);
     stackcheck(def, a1, a2);
-    push(def);
-    a1 = list2(a1, a2);
-    pop(def);
+    if (exceptionPending()) return nil;
+    {   Push save(def);
+        a1 = list2(a1, a2);
+    }
+    if (exceptionPending()) return nil;
     return apply_lambda(qenv(def), a1, nil, def);
 }
 
@@ -1082,9 +1187,11 @@ LispObject interpreted_3(LispObject def, LispObject a1, LispObject a2,
 {   STACK_SANITY;
     save_current_function saver(def);
     stackcheck(def, a1, a2, a3);
-    push(def);
-    a1 = list3(a1, a2, a3);
-    pop(def);
+    if (exceptionPending()) return nil;
+    {   Push save(def);
+        a1 = list3(a1, a2, a3);
+    }
+    if (exceptionPending()) return nil;
     return apply_lambda(qenv(def), a1, nil, def);
 }
 
@@ -1093,10 +1200,12 @@ LispObject interpreted_4up(LispObject def, LispObject a1,
                            LispObject a3, LispObject a4up)
 {   STACK_SANITY;
     save_current_function saver(def);
-    push(def);
     stackcheck(a1, a2, a3, a4up);
-    a1 = list3star(a1, a2, a3, a4up);
-    pop(def);
+    if (exceptionPending()) return nil;
+    {   Push save(def);
+        a1 = list3star(a1, a2, a3, a4up);
+    }
+    if (exceptionPending()) return nil;
     return apply_lambda(qenv(def), a1, nil, def);
 }
 
@@ -1104,6 +1213,7 @@ LispObject funarged_0(LispObject def)
 {   STACK_SANITY;
     save_current_function saver(def);
     stackcheck(def);
+    if (exceptionPending()) return nil;
     def = qenv(def);
     return apply_lambda(cdr(def), nil, car(def), cdr(def));
 }
@@ -1112,10 +1222,12 @@ LispObject funarged_1(LispObject def, LispObject a1)
 {   STACK_SANITY;
     save_current_function saver(def);
     stackcheck(def, a1);
+    if (exceptionPending()) return nil;
     def = qenv(def);
-    push(def);
-    a1 = ncons(a1);
-    pop(def);
+    {   Push save(def);
+        a1 = ncons(a1);
+    }
+    if (exceptionPending()) return nil;
     return apply_lambda(cdr(def), a1, car(def), cdr(def));
 }
 
@@ -1123,10 +1235,12 @@ LispObject funarged_2(LispObject def, LispObject a1, LispObject a2)
 {   STACK_SANITY;
     save_current_function saver(def);
     stackcheck(def, a1, a2);
+    if (exceptionPending()) return nil;
     def = qenv(def);
-    push(def);
-    a1 = list2(a1, a2);
-    pop(def);
+    {   Push save(def);
+        a1 = list2(a1, a2);
+    }
+    if (exceptionPending()) return nil;
     return apply_lambda(cdr(def), a1, car(def), cdr(def));
 }
 
@@ -1135,10 +1249,12 @@ LispObject funarged_3(LispObject def, LispObject a1, LispObject a2,
 {   STACK_SANITY;
     save_current_function saver(def);
     stackcheck(def, a1, a2, a3);
+    if (exceptionPending()) return nil;
     def = qenv(def);
-    push(def);
-    a1 = list3(a1, a2, a3);
-    pop(def);
+    {   Push save(def);
+        a1 = list3(a1, a2, a3);
+    }
+    if (exceptionPending()) return nil;
     return apply_lambda(cdr(def), a1, car(def), cdr(def));
 }
 
@@ -1147,10 +1263,12 @@ LispObject funarged_4up(LispObject def, LispObject a1, LispObject a2,
 {   STACK_SANITY;
     save_current_function saver(def);
     def = qenv(def);
-    push(def);
     stackcheck(a1, a2, a3, a4up);
-    a1 = list3star(a1, a2, a3, a4up);
-    pop(def);
+    if (exceptionPending()) return nil;
+    {   Push save(def);
+        a1 = list3star(a1, a2, a3, a4up);
+    }
+    if (exceptionPending()) return nil;
     return apply_lambda(cdr(def), a1, car(def), cdr(def));
 }
 
@@ -1160,6 +1278,7 @@ static LispObject macroexpand_1(LispObject form, LispObject env)
     LispObject done;
     LispObject f;
     stackcheck(form, env);
+    if (exceptionPending()) return nil;
     done = nil;
     if (consp(form))
     {   f = car(form);
@@ -1173,23 +1292,25 @@ static LispObject macroexpand_1(LispObject form, LispObject env)
                     {   mv_2 = nil;
                         return nvalues(form, 2);
                     }
-                    real_push(form, done);
-                    real_push(env);
-                    w = cons(lambda, w);
-                    w = list3(w, stack[-1], nil);
-                    real_pop(env);
-                    on_backtrace(
-                        p = apply(qvalue(macroexpand_hook),
-                                  w,
-                                  env,
-                                  macroexpand_hook),
-                        // Now the error handler
-                        real_pop(done, form);
-                        if (SHOW_FNAME)
-                        {   err_printf("\nMacroexpanding: ");
-                            loop_print_error(form);
-                        });
-                    real_pop(done, form);
+                    {   RealPush save(form, done);
+                        {   RealPush save(env);
+                            w = cons(lambda, w);
+                            if (exceptionPending()) return nil;
+                            w = list3(w, stack[-1], nil);
+                        }
+                        if (exceptionPending()) return nil;
+                        on_backtrace(
+                            p = apply(qvalue(macroexpand_hook),
+                                      w,
+                                      env,
+                                      macroexpand_hook),
+                            // Now the error handler
+                            if (SHOW_FNAME)
+                            {   err_printf("\nMacroexpanding: ");
+                                loop_print_error(stack[-1]);
+                            },
+                            return nil);
+                    }
                     mv_2 = lisp_true;
                     return nvalues(p, 2);
                 }
@@ -1199,17 +1320,20 @@ static LispObject macroexpand_1(LispObject form, LispObject env)
         if (symbolp(f) && (qheader(f) & SYM_MACRO) != 0)
         {   done = qvalue(macroexpand_hook);
             if (done == unset_var)
-                error(1, err_macroex_hook, macroexpand_hook);
-            push(form, env, done);
-            f = cons(lambda, qenv(f));
-            pop(done, env, form);
-            push(done, env);
-            f = list3(f, form, env);
-            pop(env, done);
+                return error(1, err_macroex_hook, macroexpand_hook);
+            {   Push save(form, env, done);
+                f = cons(lambda, qenv(f));
+            }
+            if (exceptionPending()) return nil;
+            {   Push save(done, env);
+                f = list3(f, form, env);
+            }
+            if (exceptionPending()) return nil;
             form = apply(done,
                          f,
                          env,
                          macroexpand_hook);
+            if (exceptionPending()) return nil;
             done = lisp_true;
         }
     }
@@ -1222,11 +1346,13 @@ LispObject macroexpand(LispObject form, LispObject env)
     STACK_SANITY;
     LispObject done;
     stackcheck(form, env);
+    if (exceptionPending()) return nil;
     done = nil;
     for (;;)
-    {   push(env, done);
-        form = macroexpand_1(form, env);
-        pop(done, env);
+    {   {   Push save(env, done);
+            form = macroexpand_1(form, env);
+        }
+        if (exceptionPending()) return nil;
         if (mv_2 == nil) break;
         done = lisp_true;
     }
@@ -1260,58 +1386,66 @@ LispObject Lmacroexpand_1_2(LispObject, LispObject a, LispObject b)
 LispObject autoload_0(LispObject fname)
 {   STACK_SANITY;
     fname = qenv(fname);
-    push(fname);
-    set_fns(car(fname), undefined_0, undefined_1, undefined_2,
-            undefined_3, undefined_4up);
-    setenv(car(fname), car(fname));
-    LispObject fname1 = cdr(fname);
-    while (consp(fname1))
-    {   push(fname1);
-        Lload_module(nil, car(fname1));
-        pop(fname1);
-        fname1 = cdr(fname1);
+    {   Push save(fname);
+        set_fns(car(fname), undefined_0, undefined_1, undefined_2,
+                undefined_3, undefined_4up);
+        setenv(car(fname), car(fname));
+        LispObject fname1 = cdr(fname);
+        while (consp(fname1))
+        {   {   Push save(fname1);
+                Lload_module(nil, car(fname1));
+            }
+            if (exceptionPending()) return nil;
+            fname1 = cdr(fname1);
+        }
     }
-    pop(fname);
     return apply(car(fname), nil, nil, autoload_symbol);
 }
 
 LispObject autoload_1(LispObject fname, LispObject a1)
 {   STACK_SANITY;
     fname = qenv(fname);
-    push(fname, a1);
-    set_fns(car(fname), undefined_0, undefined_1, undefined_2,
-            undefined_3, undefined_4up);
-    setenv(car(fname), car(fname));
-    LispObject fname1 = cdr(fname);
-    while (consp(fname1))
-    {   push(fname1);
-        Lload_module(nil, car(fname1));
-        pop(fname1);
-        fname1 = cdr(fname1);
+    {   Push save(fname);
+        {   Push save( a1);
+            set_fns(car(fname), undefined_0, undefined_1, undefined_2,
+                    undefined_3, undefined_4up);
+            setenv(car(fname), car(fname));
+            LispObject fname1 = cdr(fname);
+            while (consp(fname1))
+            {   {   Push save(fname1);
+                    Lload_module(nil, car(fname1));
+                    if (exceptionPending()) return nil;
+                }
+                fname1 = cdr(fname1);
+            }
+        }
+        a1 = ncons(a1);
+        if (exceptionPending()) return nil;
     }
-    pop(a1);
-    a1 = ncons(a1);
-    pop(fname);
     return apply(car(fname), a1, nil, autoload_symbol);
 }
 
 LispObject autoload_2(LispObject fname, LispObject a1, LispObject a2)
 {   STACK_SANITY;
     fname = qenv(fname);
-    push(fname, a1, a2);
-    set_fns(car(fname),  undefined_0, undefined_1, undefined_2,
-            undefined_3, undefined_4up);
-    setenv(car(fname), car(fname));
-    LispObject fname1 = cdr(fname);
-    while (consp(fname1))
-    {   push(fname1);
-        Lload_module(nil, car(fname1));
-        pop(fname1);
-        fname1 = cdr(fname1);
+    {   Push save(fname);
+        {   Push save(a1, a2);
+            set_fns(car(fname),  undefined_0, undefined_1, undefined_2,
+                    undefined_3, undefined_4up);
+            setenv(car(fname), car(fname));
+            LispObject fname1 = cdr(fname);
+            while (consp(fname1))
+            {   {   Push save(fname1);
+                    Lload_module(nil, car(fname1));
+                }
+                if (exceptionPending()) return nil;
+                fname1 = cdr(fname1);
+            }
+        }
+        a1 = list2(a1, a2);
+        if (exceptionPending()) return nil;
     }
-    pop(a2, a1);
-    a1 = list2(a1, a2);
-    pop(fname);
+    if (exceptionPending()) return nil;
     return apply(car(fname), a1, nil, autoload_symbol);
 }
 
@@ -1319,20 +1453,23 @@ LispObject autoload_3(LispObject fname, LispObject a1, LispObject a2,
                       LispObject a3)
 {   STACK_SANITY;
     fname = qenv(fname);
-    push(fname, a1, a2, a3);
-    set_fns(car(fname),  undefined_0, undefined_1, undefined_2,
-            undefined_3, undefined_4up);
-    setenv(car(fname), car(fname));
-    LispObject fname1 = cdr(fname);
-    while (consp(fname1))
-    {   push(fname1);
-        Lload_module(nil, car(fname1));
-        pop(fname1);
-        fname1 = cdr(fname1);
+    {   Push save(fname);
+        {   Push save(a1, a2, a3);
+            set_fns(car(fname),  undefined_0, undefined_1, undefined_2,
+                    undefined_3, undefined_4up);
+            setenv(car(fname), car(fname));
+            LispObject fname1 = cdr(fname);
+            while (consp(fname1))
+            {   {   Push save(fname1);
+                    Lload_module(nil, car(fname1));
+                    if (exceptionPending()) return nil;
+                }
+                fname1 = cdr(fname1);
+            }
+        }
+        a1 = list3(a1, a2, a3);
+        if (exceptionPending()) return nil;
     }
-    pop(a3, a2, a1);
-    a1 = list3(a1, a2, a3);
-    pop(fname);
     return apply(car(fname), a1, nil, autoload_symbol);
 }
 
@@ -1341,25 +1478,26 @@ LispObject autoload_4up(LispObject fname, LispObject a1,
                         LispObject a3, LispObject a4up)
 {   STACK_SANITY;
     fname = qenv(fname);
-    push(fname, a1, a2, a3, a4up);
-    set_fns(car(fname),  undefined_0, undefined_1, undefined_2,
-            undefined_3, undefined_4up);
-    setenv(car(fname), car(fname));
-    LispObject fname1 = cdr(fname);
-    while (consp(fname1))
-    {   push(fname1);
-        Lload_module(nil, car(fname1));
-        pop(fname1);
-        fname1 = cdr(fname1);
+    {   Push save(fname);
+        {   Push save(a1, a2, a3, a4up);
+            set_fns(car(fname),  undefined_0, undefined_1, undefined_2,
+                    undefined_3, undefined_4up);
+            setenv(car(fname), car(fname));
+            LispObject fname1 = cdr(fname);
+            while (consp(fname1))
+            {   {   Push save(fname1);
+                    Lload_module(nil, car(fname1));
+                }
+                fname1 = cdr(fname1);
+            }
+        }
+        a1 = list3star(a1, a2, a3, a4up);
     }
-    pop(a4up, a3, a2, a1);
-    a1 = list3star(a1, a2, a3, a4up);
-    pop(fname);
     return apply(car(fname), a1, nil, autoload_symbol);
 }
 
 LispObject undefined_0(LispObject fname)
-{   error(1, err_undefined_function_0, fname);
+{   return error(1, err_undefined_function_0, fname);
 }
 
 LispObject undefined_1(LispObject fname, LispObject)
@@ -1368,21 +1506,21 @@ LispObject undefined_1(LispObject fname, LispObject)
 // the function call after error has patched things up.  Again
 // this entrypoint is for compiled code calling something that is undefined,
 // and so no lexical environment is needed.
-    error(1, err_undefined_function_1, fname);
+    return error(1, err_undefined_function_1, fname);
 }
 
 LispObject undefined_2(LispObject fname, LispObject, LispObject)
-{   error(1, err_undefined_function_2, fname);
+{   return error(1, err_undefined_function_2, fname);
 }
 
 LispObject undefined_3(LispObject fname, LispObject, LispObject,
                        LispObject)
-{   error(1, err_undefined_function_3, fname);
+{   return error(1, err_undefined_function_3, fname);
 }
 
 LispObject undefined_4up(LispObject fname,
                          LispObject, LispObject, LispObject, LispObject)
-{   error(1, err_undefined_function_4up, fname);
+{   return error(1, err_undefined_function_4up, fname);
 }
 
 // The next few functions allow me to create variants on things! The
@@ -1530,26 +1668,16 @@ static void write_result(LispObject env, LispObject r, char *shared)
 // Cyclic and re-entrant structures could lead to failure here, and
 // uninterned symbols (eg gensyms) will not be coped with very well. But
 // SIMPLE data types should all be safe.
-    if_error(r = Lexplode(nil, r),
-             // Error handler
-             std::strcpy(shared, "Failed");
-// All of the uses of my_exit() in this part of the code are when a
-// fork of the main execution must terminate. So I quit exactly as if
-// I was closing down the system in a simple manner, and this will
-// do things like stopping threads - but these should be threads within the
-// forked copy of the main program so I believe I can not do any damage!
-// All the same this scheme for limited concurrent execution via fork() is
-// not really very satisfactory: forking on Windows has huge overheads,
-// forking anywhere replicates the heap, and at the very least when the
-// next garbage collection happens that is liable to get copied and so use
-// up a lot of space. And the scheme I have for returning a result uses a
-// fixed size buffer! So when I have genuine Lisp threads available I will
-// remove all this!
-             my_exit(2));
-    if_error(r = Llist_to_string(nil, r),
-             // Error handler
-             std::strcpy(shared, "Failed");
-             my_exit(3));
+    r = Lexplode(nil, r);
+    if (exceptionPending())         // Error handler
+    {   std::strcpy(shared, "Failed");
+        my_exit();
+    }
+    r = Llist_to_string(nil, r);
+    if (exceptionPending())
+    {   std::strcpy(shared, "Failed");
+        my_exit();
+    }
     len = length_of_byteheader(vechdr(r)) - CELL;
 // If the displayed form ou the output was too long I just truncate it
 // at present. A more agressive attitude would be to count that as a form
@@ -1575,12 +1703,12 @@ LispObject Lparallel(LispObject env, LispObject a, LispObject b)
     char *shared, *w;
     int overflow;
     LispObject r;
-    if (segid == -1) aerror("Unable to allocate a shared segment");
+    if (segid == -1) return aerror("Unable to allocate a shared segment");
 // Attach to the shared segment to obtain a memory address via which it can be
 // accessed. Again raise an error if this fails.
     shared = reinterpret_cast<char *>(shmat(segid, nullptr, 0));
     if (shared == reinterpret_cast<char *>(-1))
-        aerror("Unable to attach to shared segment");
+        return aerror("Unable to attach to shared segment");
 // the shared segment is set up to contain null strings in the two places
 // where it might be used to hold return values.
     shared[0] = shared[PARSIZE] = 0;
@@ -1592,21 +1720,24 @@ LispObject Lparallel(LispObject env, LispObject a, LispObject b)
     if (pid1 < 0)     // Task not created, must tidy up.
     {   shmdt(shared);
         shmctl(segid, IPC_RMID, 0);
-        aerror("Fork 1 failed");
+        return aerror("Fork 1 failed");
     }
     else if (pid1 == 0)
     {   // TASK 1 created OK
         LispObject r1;
-        if_error(r1 = Lapply2(nil, a, b, nil),
+        r1 = Lapply2(nil, a, b, nil);
+        if (exceptionPending())
+        {
 // If the evaluation failed I will exit indicating a failure.
-                 std::strcpy(shared, "Failed");
-                 my_exit(1));
+            std::strcpy(shared, "Failed");
+            my_exit();
+        }
 // Write result from first task into the first half of the shared memory block.
         write_result(nil, r1, shared);
 // Exiting from the sub-task would in fact detach from the shared data
 // segment, but I do the detaching explictly to feel tidy.
         shmdt(shared);
-        my_exit(0);
+        return Lstop1(nil, fixnum_of_int(0));
     }
     else
     {
@@ -1618,18 +1749,19 @@ LispObject Lparallel(LispObject env, LispObject a, LispObject b)
             waitpid(pid1, &status, 0);
             shmdt(shared);
             shmctl(segid, IPC_RMID, 0);
-            aerror("Fork 2 failed");
+            return aerror("Fork 2 failed");
         }
         else if (pid2 == 0)
         {   // TASK 2
             LispObject r2;
-            if_error(r2 = Lapply2(nil, a, b, lisp_true),
-                     // Error handler
-                     std::strcpy(shared, "Failed");
-                     my_exit(1));
+            r2 = Lapply2(nil, a, b, lisp_true);
+            if (exceptionPending())
+            {   std::strcpy(shared, "Failed");
+                my_exit();
+            }
             write_result(nil, r2, shared+PARSIZE);
             shmdt(shared);
-            my_exit(0);
+            return Lstop1(nil, fixnum_of_int(0));
         }
         else
         {
@@ -1650,7 +1782,7 @@ LispObject Lparallel(LispObject env, LispObject a, LispObject b)
                 waitpid(pid2, &status, 0);
                 shmdt(shared);
                 shmctl(segid, IPC_RMID, 0);
-                aerror("Task did not exit cleanly");
+                return aerror("Task did not exit cleanly");
             }
             if (pidx == pid1)
             {   w = shared;
@@ -1683,7 +1815,7 @@ LispObject Lparallel(LispObject env, LispObject a, LispObject b)
 #else
 
 LispObject Lparallel(LispObject env, LispObject a, LispObject b)
-{   aerror("parallel not supported on this platform");
+{   return aerror("parallel not supported on this platform");
 }
 
 #endif
@@ -1692,11 +1824,7 @@ LispObject Lsleep(LispObject env, LispObject a)
 {   int n;
     if (is_fixnum(a)) n = int_of_fixnum(a);
     else n = 1;
-#ifdef WIN32
-    Sleep(1000*n);
-#else
-    sleep(n);
-#endif
+    std::this_thread::sleep_for(std::chrono::milliseconds(n));
     return onevalue(nil);
 }
 
@@ -1724,6 +1852,7 @@ LispObject Lshow_stack_2(LispObject env, LispObject a1, LispObject a2)
     {   term_printf("%d: ", i);
         prin_to_terminal(stack[-i]);
         term_printf("\n");
+        if (exceptionPending()) return nil;
     }
     return onevalue(nil);
 }

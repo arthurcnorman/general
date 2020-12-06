@@ -31,10 +31,12 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id: lispthrow.h 5400 2020-09-16 19:35:33Z arthurcnorman $
+// $Id: lispthrow.h 5519 2020-11-25 13:56:33Z arthurcnorman $
 
 #ifndef __lispthrow_h
 #define __lispthrow_h 1
+
+// This version uses a flag rather than genuine C++ exceptions!
 
 
 //extern thread_local LispObject *stack;
@@ -91,7 +93,6 @@ extern  std::jmp_buf *global_jb;
 // collection safe and they should not be used to move data around.
 
 #ifdef CONSERVATIVE
-// I will assume C++17 here...
 inline size_t push_count = 0;
 inline size_t real_push_count = 0;
 #endif
@@ -155,6 +156,115 @@ inline void real_push(LispObject a, LispObject b, LispObject c,
     real_push_count++;
 #endif
 }
+
+class RealPush
+{   int n;
+    LispObject *v1, *v2, *v3, *v4, *v5, *v6;
+// I rather hope that when I create one of these the compiler will
+// remember rather than store the count from (n) and all the addresses of
+// the variables that I save the values of!
+public:
+    RealPush(LispObject &a1)
+    {   n = 1;
+        v1 = &a1;
+        *++stack = a1;
+#ifdef CONSERVATIVE
+        real_push_count++;
+#endif
+    }
+    RealPush(LispObject &a1, LispObject &a2)
+    {   n = 2;
+        v1 = &a1;
+        v2 = &a2;
+        *++stack = a1;
+        *++stack = a2;
+#ifdef CONSERVATIVE
+        real_push_count++;
+#endif
+    }
+    RealPush(LispObject &a1, LispObject &a2, LispObject &a3)
+    {   n = 3;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+#ifdef CONSERVATIVE
+        real_push_count++;
+#endif
+    }
+    RealPush(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4)
+    {   n = 4;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        v4 = &a4;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+        *++stack = a4;
+#ifdef CONSERVATIVE
+        real_push_count++;
+#endif
+    }
+    RealPush(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4, LispObject &a5)
+    {   n = 5;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        v4 = &a4;
+        v5 = &a5;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+        *++stack = a4;
+        *++stack = a5;
+#ifdef CONSERVATIVE
+        real_push_count++;
+#endif
+    }
+    RealPush(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4, LispObject &a5, LispObject &a6)
+    {   n = 6;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        v4 = &a4;
+        v5 = &a5;
+        v6 = &a6;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+        *++stack = a4;
+        *++stack = a5;
+        *++stack = a6;
+#ifdef CONSERVATIVE
+        real_push_count++;
+#endif
+    }
+    ~RealPush()
+    {   switch (n)
+        {   case 6:
+                *v6 = *stack--;
+            case 5:
+                *v5 = *stack--;
+            case 4:
+                *v4 = *stack--;
+            case 3:
+                *v3 = *stack--;
+            case 2:
+                *v2 = *stack--;
+            case 1:
+                *v1 = *stack--;
+#ifdef CONSERVATIVE
+                real_push_count++;
+#endif
+        }
+    }
+};
 
 inline void real_pop(LispObject& a)
 {   a = *stack--;
@@ -394,6 +504,114 @@ inline void popv(int n)
 #endif
 }
 
+class Push
+{   int n;
+    LispObject *v1, *v2, *v3, *v4, *v5, *v6;
+// I rather hope that when I create one of these the compiler will
+// remember rather than store the count from (n) and all the addresses of
+// the variables that I save the values of!
+public:
+    Push(LispObject &a1)
+    {   n = 1;
+        v1 = &a1;
+        *++stack = a1;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2)
+    {   n = 2;
+        v1 = &a1;
+        v2 = &a2;
+        *++stack = a1;
+        *++stack = a2;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3)
+    {   n = 3;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4)
+    {   n = 4;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        v4 = &a4;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+        *++stack = a4;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4, LispObject &a5)
+    {   n = 5;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        v4 = &a4;
+        v5 = &a5;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+        *++stack = a4;
+        *++stack = a5;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4, LispObject &a5, LispObject &a6)
+    {   n = 6;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        v4 = &a4;
+        v5 = &a5;
+        v6 = &a6;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+        *++stack = a4;
+        *++stack = a5;
+        *++stack = a6;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    ~Push()
+    {   switch (n)
+        {   case 6:
+                *v6 = *stack--;
+            case 5:
+                *v5 = *stack--;
+            case 4:
+                *v4 = *stack--;
+            case 3:
+                *v3 = *stack--;
+            case 2:
+                *v2 = *stack--;
+            case 1:
+                *v1 = *stack--;
+#ifdef CONSERVATIVE
+                push_count++;
+#endif
+        }
+    }
+};
 
 #else // TEMP
 
@@ -501,6 +719,55 @@ inline void popv(UNUSED_NAME int n)
 #endif
 }
 
+class Push
+{
+public:
+    Push(LispObject &a1)
+    {
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2)
+    {
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3)
+    {
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4)
+    {
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4, LispObject &a5)
+    {
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4, LispObject &a5, LispObject &a6)
+    {
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    ~Push()
+    {
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+};
 #endif // TEMP
 
 #else // CONSERVATIVE
@@ -600,6 +867,115 @@ inline void pop(LispObject& a, LispObject& b, LispObject& c,
 inline void popv(int n)
 {   stack -= n;
 }
+
+class Push
+{   int n;
+    LispObject *v1, *v2, *v3, *v4, *v5, *v6;
+// I rather hope that when I create one of these the compiler will
+// remember rather than store the count from (n) and all the addresses of
+// the variables that I save the values of!
+public:
+    Push(LispObject &a1)
+    {   n = 1;
+        v1 = &a1;
+        *++stack = a1;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2)
+    {   n = 2;
+        v1 = &a1;
+        v2 = &a2;
+        *++stack = a1;
+        *++stack = a2;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3)
+    {   n = 3;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4)
+    {   n = 4;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        v4 = &a4;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+        *++stack = a4;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4, LispObject &a5)
+    {   n = 5;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        v4 = &a4;
+        v5 = &a5;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+        *++stack = a4;
+        *++stack = a5;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    Push(LispObject &a1, LispObject &a2, LispObject &a3,
+             LispObject &a4, LispObject &a5, LispObject &a6)
+    {   n = 6;
+        v1 = &a1;
+        v2 = &a2;
+        v3 = &a3;
+        v4 = &a4;
+        v5 = &a5;
+        v6 = &a6;
+        *++stack = a1;
+        *++stack = a2;
+        *++stack = a3;
+        *++stack = a4;
+        *++stack = a5;
+        *++stack = a6;
+#ifdef CONSERVATIVE
+        push_count++;
+#endif
+    }
+    ~Push()
+    {   switch (n)
+        {   case 6:
+                *v6 = *stack--;
+            case 5:
+                *v5 = *stack--;
+            case 4:
+                *v4 = *stack--;
+            case 3:
+                *v3 = *stack--;
+            case 2:
+                *v2 = *stack--;
+            case 1:
+                *v1 = *stack--;
+#ifdef CONSERVATIVE
+                push_count++;
+#endif
+        }
+    }
+};
 #endif // CONSERVATIVE
 
 extern volatile bool tick_pending;
@@ -848,73 +1224,40 @@ public:
 // I will have a number of exception types. I will NOT make them carry
 // Lisp data with them even though that might seem reasonable. This is
 // because during the processing of a throw some finalization can occur,
-// and if some time that managed to cause garbage collection I would
-// not be confident that the GC could find and the excveption object to
-// treat it as a list base. I will have a number of sub-classes of
-// LispException just in case that ends up helping things be tidy.
+// and if on occasion that managed to cause garbage collection I would
+// not be confident that the GC could find the exception object to
+// treat it as a list base. So accompanying Lisp data is stored in separate
+// variables.
 
-// Throwing just an integer will be used as a way of stopping everything and
-// returning that integer as the return-code from the application.
+enum LispException
+{
+// LispNormal is for circumstances when no throw-like situation is in play. 
+    LispNormal      = 0x00,
 
-// LispException is rather abstract...
+// The next three are all varieties of error states.
+    LispError       = 0x11,
+    LispSignal      = 0x21,
+    LispResource    = 0x31,
 
-#ifndef LISPEXCEPTION_DEFINED
+// Now thee that are used to implement Lisp control structures within
+// the interpreter.
+    LispGo          = 0x12,
+    LispReturnFrom  = 0x22,
+    LispThrow       = 0x32,
 
-struct LispException : public std::exception
-{   virtual const char *what() const throw()
-    {   return "Generic Lisp Exception";
-    }
+// A final case exits from everythind and then sometimes restarts.
+    LispRestart     = 0x13
+
 };
 
-// Exceptions that count as "Errors" are or inherit from LispError, and
-// unwinding from one of them should lead to a backtrace.
+inline int exceptionFlag = LispNormal;
 
-struct LispError : public LispException
-{   virtual const char *what() const throw()
-    {   return "Lisp Error";
-    }
-};
-
-struct LispSignal : public LispError
-{   virtual const char *what() const throw()
-    {   return "Lisp Signal";
-    }
-};
-
-#endif // LISPEXCEPTION_DEFINED
-
-struct LispResource : public LispError
-{   virtual const char *what() const throw()
-    {   return "Lisp Resouce Limiter";
-    }
-};
-
-// Things that are not LispErrors are exceptions used to the system to
-// support Lisp features - GO, RETURN, THROW and RESTART.
-
-struct LispGo : public LispException
-{   virtual const char *what() const throw()
-    {   return "Lisp Go";
-    }
-};
-
-struct LispReturnFrom : public LispException
-{   virtual const char *what() const throw()
-    {   return "Lisp ReturnFrom";
-    }
-};
-
-struct LispThrow : public LispException
-{   virtual const char *what() const throw()
-    {   return "Lisp Throw";
-    }
-};
-
-struct LispRestart : public LispException
-{   virtual const char *what() const throw()
-    {   return "Lisp Restart";
-    }
-};
+inline bool errorState()
+{   return (exceptionFlag & 0xf) == 1;
+}
+inline bool exceptionPending()
+{   return exceptionFlag != LispNormal;
+}
 
 // If I build for debugging I will verify that the stack pointer is
 // properly unchanged across some scopes. This will help...
@@ -943,20 +1286,9 @@ public:
     }
 // While I am unwinding the stack because of exception handling the stack
 // can remain un-restored. It is only once I have caught the exception
-// that it must end up correct. Hence the use of std::uncaught_exceptions()
-// here to avoid complaints when they are not justified.
-// Since the code here is just used for debugging and anyway because I
-// think it is reasonable I will only report a problem if my software stack
-// ends up in an odd state when I am not doing any unwinding at all.
-// If I moved to having a load of Lisp code runnable during unwinding
-// (well perhaps unwind-protect can lead to that) I might want to review this.
+// that it must end up correct. Hence get-out of exceptionFlag is set.
     ~RAIIstack_sanity()
-    {
-#ifdef __cpp_lib_uncaught_exceptions
-        if (saveStack != stack && std::uncaught_exceptions() == 0)
-#else
-        if (saveStack != stack && !std::uncaught_exception())
-#endif
+    {   if (saveStack != stack && exceptionFlag == LispNormal)
         {   err_printf("[Stack Consistency fails] %p => %p in %s : %s:%d\n",
                        saveStack, stack, fname, file, line);
             err_printf("Data: ");
@@ -1113,18 +1445,21 @@ public:
 // try
 // {   jmp_buf jb;
 //     RAIIsave_stack_and_jb RAII2_Object; // Save SP and setjmp stuff.
-//     if (setjmp(jb) != 0) throw EEE;  // signals convert to exceptions!
+//     if (setjmp(jb) != 0) goto EEE;   // signals convert to exceptions!
 //     global_jb = &jb;                 // (*) only set new jmp_buf when ready.
 //     <ACTIVITY>
+//     if (exceptionPending()) goto EEE;
 // }                                    // At end of block destructor is called,
 //                                      // both for standard and exception exits.
-// catch (EEE_t)
-// {   <ERROR ACTIVITY>
-// }
+// Then somewhere I have...
+// EEE:
+//     if (exceptionFlags != WHATEVER EXPECTED) return;
+//     <ERROR ACTIVITY>
+//  
 //
 // Explanation...
 //
-// First the case when the setjmp stuff can be ignored this just reduces to
+// First the case when the setjmp stuff can be ignored this just like
 // "try { <ACTIVITY> } catch (EEE_t) { <ERROR_ACTIVITY> }" which is simple
 // code to handle exceptions that are raised within the C++ world. The extra
 // bulk and complication arises because I wish to be able to respond to
@@ -1164,6 +1499,8 @@ public:
 // cost.
 //
 
+// Even though I describe things in these comments using "try" and "catch"
+// I may use the faked exception scheme!
 
 // The full mess I seem to want is ugly and bulky. I will try hiding it
 // away in a number of macros... so the user writes
@@ -1176,21 +1513,34 @@ public:
 // and I will make them write the catch clauses explictly since what will be
 // needed there is liable to vary from case to case.
 
-// I provide two variants. One JUST preserves the sstack pointer, the more
+// I provide two variants. One JUST preserves the stack pointer, the more
 // costly one converts longjmp activations into throws of LispSignal.
 
 #define START_SETJMP_BLOCK                          \
-    std::jmp_buf jb;                                     \
+    std::jmp_buf jb;                                \
     RAIIsave_stack_and_jb save_stack_Object;        \
     switch (setjmp(jb))                             \
     {   default:                                    \
         case 1: exit_reason = UNWIND_SIGNAL;        \
                 if (miscflags & HEADLINE_FLAG)      \
                     err_printf("\n+++ Error %s: ", errorset_msg); \
-                throw LispSignal();                 \
+                goto endOfTryBlock;                 \
         case 0: break;                              \
     }                                               \
     global_jb = &jb;
+
+#define START_SETJMP_BLOCK1                         \
+    std::jmp_buf jb1;                               \
+    RAIIsave_stack_and_jb save_stack_Object1;       \
+    switch (setjmp(jb1))                            \
+    {   default:                                    \
+        case 1: exit_reason = UNWIND_SIGNAL;        \
+                if (miscflags & HEADLINE_FLAG)      \
+                    err_printf("\n+++ Error %s: ", errorset_msg); \
+                goto endOfTryBlock1;                \
+        case 0: break;                              \
+    }                                               \
+    global_jb = &jb1;
 
 #define START_TRY_BLOCK                             \
     RAIIsave_stack save_stack_Object;
@@ -1203,17 +1553,35 @@ public:
 //                 // Now the error handler
 //                 printf("Error in %s\n", "something"));
 
-#define on_backtrace(a, b)                          \
-    try                                             \
+// In the code for both args of on_backtrace I must go
+//    if (exceptionPending()) break;
+// where relevant.
+
+#define on_backtrace(a, b, howToExit)               \
+    for (;;)                                        \
     {   START_TRY_BLOCK;                            \
         a;                                          \
+        break;                                      \
     }                                               \
-    catch (LispError &e)                            \
-    {   int _reason = exit_reason;                  \
-        b;                                          \
-        exit_reason = _reason;                      \
-        throw;                                      \
+    switch (exceptionFlag)                          \
+    {   case LispError:                             \
+        case LispSignal:                            \
+        case LispResource:                          \
+            for (;;)                                \
+            {   int _reason = exit_reason;          \
+                int flag = exceptionFlag;           \
+                exceptionFlag = LispNormal;         \
+                b;                                  \
+                exceptionFlag = flag;               \
+                exit_reason = _reason;              \
+                break;                              \
+            }                                       \
+        default:                                    \
+            howToExit;                              \
+        case LispNormal:                            \
+            break;                                  \
     }
+    
 
 // There are also places where I want to continue after error and
 // set a default value if some fragmement of computation fails, and
@@ -1222,23 +1590,30 @@ public:
 //    if_error(a = construct_a_list(), a = nil);
 //    ignore_error(print_a_message());
 
-#define if_error(a, b)                              \
-    try                                             \
-    {   START_TRY_BLOCK;                            \
-        a;                                          \
-    }                                               \
-    catch (LispError &e)                            \
-    {   b;                                          \
-    }
+#define if_error(a, b)                               \
+    {{   START_TRY_BLOCK;                            \
+         a;                                          \
+     }                                               \
+ endOfTryBlock:                                      \
+     switch (exceptionFlag)                          \
+     {   case LispError:                             \
+         case LispSignal:                            \
+         case LispResource:                          \
+             exceptionFlag = LispNormal;             \
+             b;                                      \
+     }}
 
-#define ignore_error(a)                             \
-    try                                             \
-    {   START_TRY_BLOCK;                            \
-        a;                                          \
-    }                                               \
-    catch (LispError &e)                            \
-    {                                               \
-    }
+#define ignore_error(a)                              \
+    {{   START_TRY_BLOCK;                            \
+         a;                                          \
+     }                                               \
+ endOfTryBlock:                                      \
+     switch (exceptionFlag)                          \
+     {   case LispError:                             \
+         case LispSignal:                            \
+         case LispResource:                          \
+             exceptionFlag = LispNormal;             \
+     }}
 
 // ignore_exception() also recovers after any exception (eg SIGSEGV) gets
 // raised. Well the state of non-volatile local variables may be undefined
@@ -1247,14 +1622,44 @@ public:
 // does not catch Lisp "quit", "restart", "return-from", "throw" or
 // "resource-limit" exceptions.
 
-#define ignore_exception(a)                         \
-    try                                             \
+#define ignore_exception(a)                          \
+    {{   START_SETJMP_BLOCK;                         \
+         a;                                          \
+     }                                               \
+ endOfTryBlock:                                      \
+     exceptionFlag = LispNormal; }
+
+// The simple versions do not set a recovery label because the
+// protected block is simple enough not to need one.
+
+#define simple_if_error(a, b)                       \
+    {   START_TRY_BLOCK;                            \
+        a;                                          \
+    }                                               \
+    switch (exceptionFlag)                          \
+    {   case LispError:                             \
+        case LispSignal:                            \
+        case LispResource:                          \
+            exceptionFlag = LispNormal;             \
+            b;                                      \
+    }
+
+#define simple_ignore_error(a)                      \
+    {   START_TRY_BLOCK;                            \
+        a;                                          \
+    }                                               \
+    switch (exceptionFlag)                          \
+    {   case LispError:                             \
+        case LispSignal:                            \
+        case LispResource:                          \
+            exceptionFlag = LispNormal;             \
+    }
+
+#define simple_ignore_exception(a)                  \
     {   START_SETJMP_BLOCK;                         \
         a;                                          \
     }                                               \
-    catch (LispError &e)                            \
-    {                                               \
-    }
+    exceptionFlag = LispNormal;
 
 
 #endif // __lispthrow_h

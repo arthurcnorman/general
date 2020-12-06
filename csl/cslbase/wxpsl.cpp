@@ -1,4 +1,4 @@
-// wxpsl.cpp                               Copyright (C) Codemist 2011-2017
+// wxpsl.cpp                               Copyright (C) Codemist 2011-2020
 
 //
 // This code borrows from the redfront package by Dolzmann and Sturm,
@@ -8,7 +8,7 @@
 
 
 /**************************************************************************
- * Copyright (C) 2017, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *      parts of the code Copyright Andreas Dolzmann and Thomas Sturm     *
  *      with earlier development by Chris Cannam and Winfried Neun.       *
  *                                                                        *
@@ -38,7 +38,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: wxpsl.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $
 
 //
 // See the file "fwindemo.c" for a smaller example of how to use fwin. This

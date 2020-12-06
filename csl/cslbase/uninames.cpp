@@ -1,8 +1,8 @@
-// uninames.cpp                            Copyright (C) 2016-2017 Codemist
+// uninames.cpp                            Copyright (C) 2016-2020 Codemist
 
 
 /**************************************************************************
- * Copyright (C) 2017, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -30,7 +30,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: uninames.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $
 
 // This file is derived from one made available by the Unicode Formum.
 // The Unicode character name list is from the Unicode web site and

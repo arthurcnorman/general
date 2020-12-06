@@ -1,6 +1,6 @@
 // arith-plus.cpp                               Copyright (C) 2020 Codemist
 
-// $Id $
+// $Id: arith-plus.cpp 5387 2020-08-20 19:40:24Z arthurcnorman $
 
 #ifdef ARITHLIB
 

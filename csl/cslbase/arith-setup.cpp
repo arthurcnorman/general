@@ -40,7 +40,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: arith-setup.cpp 5387 2020-08-20 19:40:24Z arthurcnorman $
 
 
 #include "headers.h"
@@ -1201,7 +1201,7 @@ static LispObject Nmodf(LispObject env, LispObject a1)
         case TAG_BOXFLOAT: case TAG_BOXFLOAT+TAG_XBIT:
             switch (type_of_header(flthdr(a1)))
         {       default:
-                    aerror("badly formatted float data");
+                    return aerror("badly formatted float data");
                 case TYPE_SINGLE_FLOAT:
                     ff = std::modf(single_float_val(a1), &fi);
                     return cons(pack_single_float(fi), pack_single_float(ff));

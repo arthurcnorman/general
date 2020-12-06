@@ -1,9 +1,9 @@
 
-% RLISP to LISP converter. A C Norman 2004
+% RLISP to LISP converter. A C Norman 2004-20
 
 
 %%
-%% Copyright (C) 2017, following the master REDUCE source files.          *
+%% Copyright (C) 2020, following the master REDUCE source files.          *
 %%                                                                        *
 %% Redistribution and use in source and binary forms, with or without     *
 %% modification, are permitted provided that the following conditions are *
@@ -32,7 +32,7 @@
 %%
 
 
-% $Id $
+% $Id: extras.lsp 5433 2020-10-15 21:09:02Z arthurcnorman $
 
 (dm df (u !&optional env) (prog (g w) (setq g (gensym)) (setq w (list (quote 
 list) (quote (quote let!*)) (list (quote list) (list (quote list) (mkquote (

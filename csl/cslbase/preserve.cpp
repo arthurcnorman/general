@@ -2095,8 +2095,8 @@ int Igetc()
         else
         {   LispObject stream = qvalue(standard_input);
             if (!is_stream(stream)) return EOF;
-            if_error(c = getc_stream(stream),
-                     return EOF);
+            simple_if_error(c = getc_stream(stream),
+                            return EOF);
         }
     }
     else

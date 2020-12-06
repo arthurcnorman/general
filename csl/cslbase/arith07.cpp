@@ -36,7 +36,7 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: arith07.cpp 5387 2020-08-20 19:40:24Z arthurcnorman $
 
 #include "headers.h"
 
@@ -204,7 +204,7 @@ LispObject negate(LispObject a)
                     return make_complex(r, i);
                 }
                 default:
-                    aerror1("bad arg for minus",  a);
+                    return aerror1("bad arg for minus",  a);
             }
         }
         case TAG_BOXFLOAT:
@@ -224,7 +224,7 @@ LispObject negate(LispObject a)
 #endif // HAVE_SOFTFLOAT
             }
         default:
-            aerror1("bad arg for minus",  a);
+            return aerror1("bad arg for minus",  a);
     }
 }
 

@@ -1,8 +1,8 @@
-// babyreduce.cpp                          Copyright (C) 2016-2019 Codemist
+// babyreduce.cpp                          Copyright (C) 2016-2020 Codemist
 
 
 /**************************************************************************
- * Copyright (C) 2019, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -31,7 +31,7 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: babyreduce.cpp 5519 2020-11-25 13:56:33Z arthurcnorman $
 
 //
 // This is for use via the "new-embedded" structure and it provides a
@@ -95,8 +95,8 @@ int main(int argc, char *argv[])
     try
     {   res = submain(argc, argv);
     }
-    catch (int r)
-    {   res = r;
+    catch (std::runtime_error &e)
+    {   res = EXIT_FAILURE;
     }
     return res;
 }

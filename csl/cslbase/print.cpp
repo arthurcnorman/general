@@ -257,7 +257,7 @@ LispObject Ltyo(LispObject env, LispObject a)
     if (a == CHAR_EOF || a == fixnum_of_int(-1)) return onevalue(a);
     else if (is_char(a)) c = static_cast<int>(code_of_char(a));
     else if (is_fixnum(a)) c = static_cast<int>(int_of_fixnum(a));
-    else aerror1("tyo", a);
+    else return aerror1("tyo", a);
     push(a);
     if (!is_stream(stream)) stream = qvalue(terminal_io);
     if (!is_stream(stream)) stream = lisp_terminal_io;
@@ -267,13 +267,13 @@ LispObject Ltyo(LispObject env, LispObject a)
 }
 
 int char_to_illegal(int, LispObject f)
-{   aerror1("Attempt to write to an input stream or one that has been closed",
+{   return aerror1("Attempt to write to an input stream or one that has been closed",
             stream_type(f));
     return 1;
 }
 
 int char_from_illegal(LispObject f)
-{   aerror1("Attempt to read from an output stream or one that has been closed",
+{   return aerror1("Attempt to read from an output stream or one that has been closed",
             stream_type(f));
     return EOF;
 }
@@ -281,7 +281,7 @@ int char_from_illegal(LispObject f)
 int32_t write_action_illegal(int32_t op, LispObject f)
 {   if (op == WRITE_GET_INFO+WRITE_IS_CONSOLE) return 0;
     if (op != WRITE_CLOSE)
-        aerror1("Illegal operation on stream",
+        return aerror1("Illegal operation on stream",
                 cons_no_gc(fixnum_of_int(op >> 8), stream_type(f)));
     return 0;
 }
@@ -588,7 +588,7 @@ LispObject Lmake_concatenated_stream_2(LispObject env, LispObject a,
 
 LispObject Lmake_synonym_stream(LispObject env, LispObject a)
 {   LispObject w;
-    if (!is_symbol(a)) aerror1("make-synonym-stream", a);
+    if (!is_symbol(a)) return aerror1("make-synonym-stream", a);
     push(a);
     w = make_stream_handle();
     pop(a);
@@ -604,8 +604,8 @@ LispObject Lmake_synonym_stream(LispObject env, LispObject a)
 LispObject Lmake_two_way_stream(LispObject env, LispObject a,
                                 LispObject b)
 {   LispObject w;
-    if (!is_symbol(a)) aerror1("make-two-way-stream", a);
-    if (!is_symbol(b)) aerror1("make-two-way-stream", b);
+    if (!is_symbol(a)) return aerror1("make-two-way-stream", a);
+    if (!is_symbol(b)) return aerror1("make-two-way-stream", b);
     push(a, b);
     w = make_stream_handle();
     pop(b, a);
@@ -621,8 +621,8 @@ LispObject Lmake_two_way_stream(LispObject env, LispObject a,
 LispObject Lmake_echo_stream(LispObject env, LispObject a,
                              LispObject b)
 {   LispObject w;
-    if (!is_symbol(a)) aerror1("make-echo-stream", a);
-    if (!is_symbol(b)) aerror1("make-echo-stream", b);
+    if (!is_symbol(a)) return aerror1("make-echo-stream", a);
+    if (!is_symbol(b)) return aerror1("make-echo-stream", b);
     push(a, b);
     w = make_stream_handle();
     pop(b, a);
@@ -641,7 +641,8 @@ LispObject Lmake_echo_stream(LispObject env, LispObject a,
 // basic mechanisms necessary.
 
 LispObject Lmake_string_input_stream_n(LispObject, int, ...)
-{   aerror("make-string-input-stream");
+{   return aerror("make-string-input-stream");
+    return nil;
 }
 
 LispObject Lmake_string_input_stream_1(LispObject env, LispObject a)
@@ -664,7 +665,7 @@ LispObject Lmake_string_output_stream(LispObject env)
 LispObject Lget_output_stream_string(LispObject env, LispObject a)
 {   LispObject w;
     int32_t n, k;
-    if (!is_stream(a)) aerror1("get-output-stream-string", a);
+    if (!is_stream(a)) return aerror1("get-output-stream-string", a);
     w = stream_write_data(a);
     n = stream_byte_pos(a);
     stream_write_data(a) = nil;
@@ -694,7 +695,7 @@ LispObject Lget_output_stream_string(LispObject env, LispObject a)
 
 LispObject Lmake_function_stream(LispObject env, LispObject a)
 {   LispObject w;
-    if (!is_symbol(a)) aerror1("make-function-stream", a);
+    if (!is_symbol(a)) return aerror1("make-function-stream", a);
     push(a);
     w = make_stream_handle();
     pop(a);
@@ -835,7 +836,7 @@ int32_t write_action_synonym(int32_t c, LispObject f)
 {   int r;
     LispObject f1 = qvalue(stream_write_data(f));
     if (!is_stream(f1))
-        aerror1("attempt to act on",
+        return aerror1("attempt to act on",
                 cons_no_gc(fixnum_of_int(c >> 8), f));
     r = other_write_action(c, f1);
     if (c == WRITE_CLOSE)
@@ -934,6 +935,7 @@ const char *get_string_data(LispObject name, const char *why,
 #ifdef COMMON
     if (complex_stringp(name))
     {   name = simplify_string(name);
+        if (exceptionPending()) return nullptr;
         h = vechdr(name);
     }
     else
@@ -942,8 +944,14 @@ const char *get_string_data(LispObject name, const char *why,
         {   name = get_pname(name);
             h = vechdr(name);
         }
-        else if (!is_vector(name)) aerror1(why, name);
-        else if (!is_string_header(h = vechdr(name))) aerror1(why, name);
+        else if (!is_vector(name))
+        {   aerror1(why, name);
+            return nullptr;
+        }
+        else if (!is_string_header(h = vechdr(name)))
+        {   aerror1(why, name);
+            return nullptr;
+        }
     len = length_of_byteheader(h) - CELL;
     return reinterpret_cast<const char *>(&celt(name, 0));
 }
@@ -1088,7 +1096,7 @@ LispObject Lopen(LispObject env, LispObject name, LispObject dir)
     int d;
     std::memset(filename, 0, sizeof(filename));
     std::memset(fn1, 0, sizeof(fn1));
-    if (!is_fixnum(dir)) aerror1("open", dir);
+    if (!is_fixnum(dir)) return aerror1("open", dir);
     d = static_cast<int>(int_of_fixnum(dir));
 #ifdef DEBUG_OPENING_FILES
     trace_printf("Open file:");
@@ -1275,7 +1283,7 @@ LispObject Lopen(LispObject env, LispObject name, LispObject dir)
             break;
 
         case DIRECTION_IO | OPEN_PIPE:
-            aerror("reading and writing from pipes is not supported in CSL\n");
+            return aerror("reading and writing from pipes is not supported in CSL\n");
     }
 
     push(name);
@@ -1315,13 +1323,13 @@ LispObject Lwrs(LispObject env, LispObject a)
 {   LispObject old = qvalue(standard_output);
     if (a == nil) a = qvalue(terminal_io);
     if (a == old) return onevalue(old);
-    else if (!is_stream(a)) aerror1("wrs", a);
+    else if (!is_stream(a)) return aerror1("wrs", a);
     else if ((character_stream_writer *)stream_write_fn(
                  a) == char_to_illegal)
 #ifdef COMMON
         a = qvalue(terminal_io);
 #else
-        aerror("wrs (closed or input file)"); // closed file or input file
+        return aerror("wrs (closed or input file)"); // closed file or input file
 #endif
     setvalue(standard_output, a);
     return onevalue(old);
@@ -1334,7 +1342,7 @@ LispObject Lclose(LispObject env, LispObject a)
 //
     if (a == nil ||
         a == lisp_terminal_io) return onevalue(nil);
-    else if (!is_stream(a)) aerror1("close", a);
+    else if (!is_stream(a)) return aerror1("close", a);
     if (a == qvalue(standard_input))
         setvalue(standard_input, lisp_terminal_io);
     else if (a == qvalue(standard_output))
@@ -1448,7 +1456,7 @@ LispObject Ltruename(LispObject env, LispObject name)
     if (len >= sizeof(filename)) len = sizeof(filename);
 
     w1 = get_truename(filename,w,len);
-    if (w1 == nullptr) aerror0(filename);
+    if (w1 == nullptr) return aerror0(filename);
 
     truename = make_string(w1);
     std::free(w1);
@@ -1489,7 +1497,7 @@ LispObject Lchange_directory(LispObject env, LispObject name)
     w = get_string_data(name, "change-directory", len);
     if (len >= sizeof(filename)) len = sizeof(filename);
     err = change_directory(filename, w, static_cast<size_t>(len));
-    if (err != nullptr) aerror0(err);
+    if (err != nullptr) return aerror0(err);
     return onevalue(Lispify_predicate(err == nullptr));
 }
 
@@ -1650,7 +1658,7 @@ LispObject Lrename_file(LispObject env, LispObject from,
 // This function is a call-back from the file-scanning routine.
 //
 
-static void make_dir_list(string name, string leafname, int, long int)
+static void make_dir_list(string name, string leafname, int why, long int size)
 {   LispObject w = make_string(leafname.c_str());
     w = cons(w, stack[0]);
     stack[0] = w;
@@ -1664,8 +1672,7 @@ LispObject Llist_directory(LispObject env, LispObject name)
     std::memset(filename, 0, sizeof(filename));
     if (len >= sizeof(filename)) len = sizeof(filename);
     real_push(nil);
-    list_directory_members(filename, w,
-                           static_cast<size_t>(len), make_dir_list);
+    list_directory_members(&filename[0], w, len, make_dir_list);
     real_pop(result);
     return onevalue(nreverse(result));
 }
@@ -1708,7 +1715,7 @@ static void outprefix(bool blankp, int32_t len)
 static LispObject Lprint_precision(LispObject env, LispObject a)
 {   int32_t old = print_precision;
     if (a == nil) return onevalue(fixnum_of_int(old));
-    if (!is_fixnum(a)) aerror1("print-precision", a);
+    if (!is_fixnum(a)) return aerror1("print-precision", a);
     print_precision = int_of_fixnum(a);
     if (print_precision > 36) print_precision = 36;
     else if (print_precision < 1) print_precision = 15;
@@ -3436,7 +3443,7 @@ void prin_to_terminal(LispObject u)
 {   escaped_printing = escape_yes;
     active_stream = qvalue(terminal_io);
     if (!is_stream(active_stream)) active_stream = lisp_terminal_io;
-    ignore_error(internal_prin(u, 0));
+    simple_ignore_error(internal_prin(u, 0));
     ensure_screen();
 }
 
@@ -3444,7 +3451,7 @@ void prin_to_stdout(LispObject u)
 {   escaped_printing = escape_yes;
     active_stream = qvalue(standard_output);
     if (!is_stream(active_stream)) active_stream = lisp_standard_output;
-    ignore_error(internal_prin(u, 0));
+    simple_ignore_error(internal_prin(u, 0));
     ensure_screen();
 }
 
@@ -3452,7 +3459,7 @@ void prin_to_error(LispObject u)
 {   escaped_printing = escape_yes;
     active_stream = qvalue(error_output);
     if (!is_stream(active_stream)) active_stream = lisp_error_output;
-    ignore_error(internal_prin(u, 0));
+    simple_ignore_error(internal_prin(u, 0));
     ensure_screen();
 }
 
@@ -3460,7 +3467,7 @@ void prin_to_trace(LispObject u)
 {   escaped_printing = escape_yes;
     active_stream = qvalue(trace_output);
     if (!is_stream(active_stream)) active_stream = lisp_trace_output;
-    ignore_error(internal_prin(u, 0));
+    simple_ignore_error(internal_prin(u, 0));
     ensure_screen();
 }
 
@@ -3474,7 +3481,7 @@ void prinhex_to_trace(const char *msg, LispObject u)
     if (!is_stream(active_stream)) active_stream = lisp_trace_output;
     if (c != 0) putc_stream('\n', active_stream);
     trace_printf("## %s: ", msg);
-    ignore_error(internal_prin(u, escape_yes+escape_hex));
+    simple_ignore_error(internal_prin(u, escape_yes+escape_hex));
     putc_stream('\n', active_stream);
     ensure_screen();
 }
@@ -3483,7 +3490,7 @@ void prin_to_debug(LispObject u)
 {   escaped_printing = escape_yes;
     active_stream = qvalue(debug_io);
     if (!is_stream(active_stream)) active_stream = lisp_debug_io;
-    ignore_error(internal_prin(u, 0));
+    simple_ignore_error(internal_prin(u, 0));
     ensure_screen();
 }
 
@@ -3491,7 +3498,7 @@ void prin_to_query(LispObject u)
 {   escaped_printing = escape_yes;
     active_stream = qvalue(query_io);
     if (!is_stream(active_stream)) active_stream = lisp_query_io;
-    ignore_error(internal_prin(u, 0));
+    simple_ignore_error(internal_prin(u, 0));
     ensure_screen();
 }
 
@@ -3908,7 +3915,7 @@ LispObject Llinelength(LispObject env, LispObject a)
                                  stream);
     else if (a == lisp_true)
         oll = other_write_action(WRITE_SET_LINELENGTH_DEFAULT, stream);
-    else if (!is_fixnum(a)) aerror1("linelength", a);
+    else if (!is_fixnum(a)) return aerror1("linelength", a);
     else
     {   oll = int_of_fixnum(a);
         if (oll < 10) oll = 10;
@@ -3988,7 +3995,7 @@ static LispObject Lprinbinary(LispObject env, LispObject a)
 
 static LispObject Lprinhex2(LispObject env, LispObject a,
                             LispObject b)
-{   if (!is_fixnum(b)) aerror1("prinhex", b);
+{   if (!is_fixnum(b)) return aerror1("prinhex", b);
     push(a);
     prinhex(a, int_of_fixnum(b));
     pop(a);
@@ -3998,7 +4005,7 @@ static LispObject Lprinhex2(LispObject env, LispObject a,
 
 static LispObject Lprinoctal2(LispObject env, LispObject a,
                               LispObject b)
-{   if (!is_fixnum(b)) aerror1("prinoctal", b);
+{   if (!is_fixnum(b)) return aerror1("prinoctal", b);
     push(a);
     prinoctal(a, int_of_fixnum(b));
     pop(a);
@@ -4008,7 +4015,7 @@ static LispObject Lprinoctal2(LispObject env, LispObject a,
 
 static LispObject Lprinbinary2(LispObject env, LispObject a,
                                LispObject b)
-{   if (!is_fixnum(b)) aerror1("prinbinary", b);
+{   if (!is_fixnum(b)) return aerror1("prinbinary", b);
     push(a);
     prinbinary(a, int_of_fixnum(b));
     pop(a);
@@ -4252,7 +4259,7 @@ LispObject Lflush1(LispObject env, LispObject stream)
 LispObject Lttab(LispObject env, LispObject a)
 {   int32_t n;
     LispObject stream = qvalue(standard_output);
-    if (!is_fixnum(a)) aerror1("ttab", a);
+    if (!is_fixnum(a)) return aerror1("ttab", a);
     n = int_of_fixnum(a);
     if (!is_stream(stream)) stream = qvalue(terminal_io);
     if (!is_stream(stream)) stream = lisp_terminal_io;
@@ -4267,7 +4274,7 @@ LispObject Lttab(LispObject env, LispObject a)
 LispObject Lxtab(LispObject env, LispObject a)
 {   int32_t n;
     LispObject stream = qvalue(standard_output);
-    if (!is_fixnum(a)) aerror1("xtab", a);
+    if (!is_fixnum(a)) return aerror1("xtab", a);
     n = int_of_fixnum(a);
     if (!is_stream(stream)) stream = qvalue(terminal_io);
     if (!is_stream(stream)) stream = lisp_terminal_io;
@@ -4416,7 +4423,7 @@ static LispObject Lbinary_princ(LispObject, LispObject a)
 static LispObject Lbinary_prinbyte(LispObject env, LispObject a)
 {   int x;
     if (binary_outfile == nullptr) return onevalue(nil);
-    if (!is_fixnum(a)) aerror1("binary_prinbyte", a);
+    if (!is_fixnum(a)) return aerror1("binary_prinbyte", a);
     x = static_cast<int>(int_of_fixnum(a));
     PUTC(x, binary_outfile);
     if (io_limit >= 0 && io_now > io_limit) resource_exceeded();
@@ -4426,7 +4433,7 @@ static LispObject Lbinary_prinbyte(LispObject env, LispObject a)
 static LispObject Lbinary_prin2(LispObject env, LispObject a)
 {   uint32_t x;
     if (binary_outfile == nullptr) return onevalue(nil);
-    if (!is_fixnum(a)) aerror1("binary_prin2", a);
+    if (!is_fixnum(a)) return aerror1("binary_prin2", a);
     x = int_of_fixnum(a);
     PUTC(static_cast<int>(x >> 8), binary_outfile);
     PUTC(static_cast<int>(x), binary_outfile);
@@ -4437,7 +4444,7 @@ static LispObject Lbinary_prin2(LispObject env, LispObject a)
 static LispObject Lbinary_prin3(LispObject env, LispObject a)
 {   uint32_t x;
     if (binary_outfile == nullptr) return onevalue(nil);
-    if (!is_fixnum(a)) aerror1("binary_prin3", a);
+    if (!is_fixnum(a)) return aerror1("binary_prin3", a);
     x = int_of_fixnum(a);
     PUTC(static_cast<int>(x >> 16), binary_outfile);
     PUTC(static_cast<int>(x >> 8), binary_outfile);
@@ -4449,7 +4456,7 @@ static LispObject Lbinary_prin3(LispObject env, LispObject a)
 static LispObject Lbinary_prinfloat(LispObject env, LispObject a)
 {   uint32_t *w, x;
     if (binary_outfile == nullptr) return onevalue(nil);
-    if (!is_float(a)) aerror1("binary_prinfloat", a);
+    if (!is_float(a)) return aerror1("binary_prinfloat", a);
     w = (uint32_t *)&double_float_val(a);
     x = w[0];
     PUTC(static_cast<int>(x >> 24), binary_outfile);
@@ -4493,7 +4500,7 @@ static LispObject Lbinary_select_input(LispObject env, LispObject a)
 {   if (!is_stream(a) ||
         (std::FILE *)stream_file(a) == nullptr ||
         (character_stream_writer *)stream_write_fn(a) != 0)
-        aerror1("binary-select-input", a); // closed file or output file
+        return aerror1("binary-select-input", a); // closed file or output file
 
     binary_infile = stream_file(a);
     return onevalue(nil);
@@ -4640,14 +4647,14 @@ static LispObject Lopen_library_1(LispObject env, LispObject file)
 }
 
 static LispObject Lclose_library(LispObject env, LispObject lib)
-{   if (!is_library(lib)) aerror1("close-library", lib);
+{   if (!is_library(lib)) return aerror1("close-library", lib);
     finished_with(library_number(lib));
     return onevalue(nil);
 }
 
 static LispObject Llibrary_name(LispObject env, LispObject lib)
 {   LispObject a;
-    if (!is_library(lib)) aerror1("library-name", lib);
+    if (!is_library(lib)) return aerror1("library-name", lib);
     a = make_string(fasl_files[library_number(lib)].name.c_str());
     return onevalue(a);
 }
@@ -5053,7 +5060,7 @@ start_again:
 // Elsewhere I have code that can call on an external "scp" program to support
 // a secure-fetch scheme, but I will NOT include that here.
 //
-        else aerror("Unknown protocol");
+        else return aerror("Unknown protocol");
     }
 //
 // If no host-name was given then the object concerned is on the

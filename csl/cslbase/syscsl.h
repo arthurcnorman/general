@@ -187,10 +187,11 @@ extern char *get_truename(char *filename, const char *old, size_t n);
 // list_directory_members calls the given callback function handing it
 // the name of each file in given directory.
 
-typedef void directory_callback(string name, string leafname, int, long int);
+typedef void filescan_function(string name, string leafname,
+                               int why, long int size);
 
 extern void list_directory_members(char *filename, const char *old,
-                                   size_t n, directory_callback *fn);
+                                   size_t n, filescan_function *fn);
 
 //
 // (f) is an open file - truncate it at position (where).
@@ -200,9 +201,7 @@ extern int truncate_file(std::FILE *f, long int where);
 //
 // If I am to process directories I need a set of routines that will
 // scan sub-directories for me. The specification I want is:
-//       void scan_directory(string dir,
-//                           void (*proc)(string name, string leafname,
-//                                        int why, long int size));
+//       void scan_directory(string dir, filescan_function *proc);
 //
 // This is called with a file- or directory-name as its first argument
 // and a function as its second.
@@ -223,18 +222,14 @@ extern void set_hostcase(int a);
 #define SCAN_FILE       0
 #define SCAN_DIR        1
 
-extern void scan_directory(string dir,
-                           void (*proc)(string name, string leafname,
-                                        int why, long int size));
+extern void scan_directory(string dir, filescan_function *proc);
 
 //
 // scan_files() is just like scan_directory() excepr that it does not
 // recurse into sub-directories.
 //
 
-extern void scan_files(string dir,
-                       void (*proc)(string name, string leafname,
-                                    int why, long int size));
+extern void scan_files(string dir, filescan_function *proc);
 
 extern void unpack_date(unsigned long int r,
                         int *year, int *mon, int *day,

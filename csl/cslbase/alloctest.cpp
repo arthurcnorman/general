@@ -1,14 +1,14 @@
-// alloctest.cpp                                Copyright (C) 2019 Codemist
+// alloctest.cpp                                Copyright (C) 2020 Codemist
 
 // This is going to be so I can have a simple test harness for
 // newalloc.cpp and its friends.
 
 
-// $Id $
+// $Id: alloctest.cpp 5432 2020-10-15 20:40:59Z arthurcnorman $
 
 
 /**************************************************************************
- * Copyright (C) 2019, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -114,12 +114,14 @@ bool file_exists(char*, char const*, unsigned long, char*)
 
 const volatile char *errorset_msg;
 
-[[noreturn]] LispObject aerror(const char *msg)
+LispObject aerror(const char *msg)
 {   my_abort();
+    return 0;
 }
 
-[[noreturn]] LispObject aerror1(const char *msg, LispObject a)
+LispObject aerror1(const char *msg, LispObject a)
 {   my_abort();
+    return 0;
 }
 
 std::int64_t sixty_four_bits(LispObject a)

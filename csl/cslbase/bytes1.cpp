@@ -34,7 +34,7 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: bytes1.cpp 5422 2020-10-06 19:55:14Z arthurcnorman $
 
 #include "headers.h"
 
@@ -178,7 +178,7 @@ LispObject get(LispObject a, LispObject b, LispObject c)
     }
     prev = pl;
     pl = cdr(pl);
-    if (pl == prev) aerror("looped up plist in get");
+    if (pl == prev) return aerror("looped up plist in get");
     if (pl == nil)
     {
 #ifdef RECORD_GET
@@ -205,7 +205,7 @@ LispObject get(LispObject a, LispObject b, LispObject c)
         }
         prev = pl;
         pl = cdr(pl);
-        if (pl == prev) aerror("looped up plist in get");
+        if (pl == prev) return aerror("looped up plist in get");
         if (pl == nil)
         {
 #ifdef RECORD_GET
@@ -269,7 +269,7 @@ static LispObject remprop(LispObject a, LispObject b)
         }
         prevp = pl;
         pl = cdr(prevp);
-        if (pl == prevp) aerror("looped up plist in remprop");
+        if (pl == prevp) return aerror("looped up plist in remprop");
     }
     return nil;
 }
@@ -356,7 +356,7 @@ LispObject Lget(LispObject env, LispObject a, LispObject b)
     }
     prev = pl;
     pl = cdr(pl);
-    if (pl == prev) aerror("looped up plist in Lget");
+    if (pl == prev) return aerror("looped up plist in Lget");
     if (pl == nil)
     {
 #ifdef RECORD_GET
@@ -383,7 +383,7 @@ LispObject Lget(LispObject env, LispObject a, LispObject b)
         }
         prev = pl;
         pl = cdr(pl);
-        if (pl == prev) aerror("looped up plist in Lget");
+        if (pl == prev) return aerror("looped up plist in Lget");
         if (pl == nil)
         {
 #ifdef RECORD_GET
@@ -469,7 +469,7 @@ LispObject Lflagp(LispObject env, LispObject a, LispObject b)
     }
     prev = pl;
     pl = cdr(pl);
-    if (pl == prev) aerror("looped up plist in Lflagp");
+    if (pl == prev) return aerror("looped up plist in Lflagp");
     if (pl == nil)
     {
 #ifdef RECORD_GET
@@ -494,7 +494,7 @@ LispObject Lflagp(LispObject env, LispObject a, LispObject b)
         }
         prev = pl;
         pl = cdr(pl);
-        if (pl == prev) aerror("looped up plist in Lflagp");
+        if (pl == prev) return aerror("looped up plist in Lflagp");
         if (pl == nil)
         {
 #ifdef RECORD_GET
@@ -581,7 +581,7 @@ LispObject Lflagpcar(LispObject env, LispObject a, LispObject b)
     }
     prev = pl;
     pl = cdr(pl);
-    if (pl == prev) aerror("looped up plist in flagpcar");
+    if (pl == prev) return aerror("looped up plist in flagpcar");
     if (pl == nil)
     {
 #ifdef RECORD_GET
@@ -606,7 +606,7 @@ LispObject Lflagpcar(LispObject env, LispObject a, LispObject b)
         }
         prev = pl;
         pl = cdr(pl);
-        if (pl == prev) aerror("looped up plist in flagpcar");
+        if (pl == prev) return aerror("looped up plist in flagpcar");
         if (pl == nil)
         {
 #ifdef RECORD_GET
@@ -685,7 +685,7 @@ LispObject Lremflag(LispObject env, LispObject a, LispObject b)
             }
             prevp = pl;
             pl = cdr(prevp);
-            if (pl == prevp) aerror("looped up plist in remflag");
+            if (pl == prevp) return aerror("looped up plist in remflag");
         }
     }
     return onevalue(nil);
@@ -699,7 +699,7 @@ LispObject Lremprop(LispObject, LispObject a, LispObject b)
 LispObject Lplist(LispObject env, LispObject a)
 {   LispObject r;
     int i;
-    if (!symbolp(a)) aerror1("plist", a);
+    if (!symbolp(a)) return aerror1("plist", a);
     r = qplist(a);
 #ifdef COMMON
     LispObject r1 = nil;
@@ -1120,6 +1120,7 @@ LispObject carerror(LispObject a)
     if (a == nil) return a;
 #endif
     error(1, err_bad_car, a);
+    return nil;
 }
 
 LispObject cdrerror(LispObject a)
@@ -1128,22 +1129,27 @@ LispObject cdrerror(LispObject a)
     if (a == nil) return a;
 #endif
     error(1, err_bad_cdr, a);
+    return nil;
 }
 
-[[noreturn]] LispObject car_fails(LispObject a)
+LispObject car_fails(LispObject a)
 {   error(1, err_bad_car, a);
+    return nil;
 }
 
-[[noreturn]] LispObject cdr_fails(LispObject a)
+LispObject cdr_fails(LispObject a)
 {   error(1, err_bad_cdr, a);
+    return nil;
 }
 
-[[noreturn]] LispObject rplaca_fails(LispObject a)
+LispObject rplaca_fails(LispObject a)
 {   error(1, err_bad_rplac, a);
+    return nil;
 }
 
-[[noreturn]] LispObject rplacd_fails(LispObject a)
+LispObject rplacd_fails(LispObject a)
 {   error(1, err_bad_rplac, a);
+    return nil;
 }
 
 #define current_byte         (((unsigned char *)codevec)[ppc])
@@ -1274,7 +1280,7 @@ LispObject bytestream_interpret(size_t ppc, LispObject lit,
             trace_printf("\n");
         }
     }
-    if (len > 20000) aerror("Stack overflow");
+    if (len > 20000) return aerror("Stack overflow");
     else w = bytestream_interpret1(ppc, lit, entry_stack);
     return w;
 }

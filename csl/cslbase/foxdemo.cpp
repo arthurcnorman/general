@@ -1,10 +1,10 @@
-// foxdemo.cpp                             Copyright (C) 2016-2017 Codemist
+// foxdemo.cpp                             Copyright (C) 2016-2020 Codemist
 
 
 // A simple test of the FOX GUI library.
 
 /**************************************************************************
- * Copyright (C) 2017, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -32,7 +32,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-/* $Id $
+/* $Id: foxdemo.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"

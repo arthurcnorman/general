@@ -36,7 +36,7 @@
 % variables (the one to !!fleps1 bit me!) that ought not to be done
 % more than once. 
 
-% $Id $
+% $Id: compat.lsp 5035 2019-06-17 17:47:25Z arthurcnorman $
 
 (cond
   ((not (globalp '!!fleps1)) (progn

@@ -1,10 +1,10 @@
 %
 % Compiler from Lisp into byte-codes for use with CSL/CCL.
-%       Copyright (C) Codemist, 1990-2019
+%       Copyright (C) Codemist, 1990-2020
 %
 
 %%
-%% Copyright (C) 2019,                                 A C Norman, Codemist
+%% Copyright (C) 2020,                                 A C Norman, Codemist
 %%
 %% Redistribution and use in source and binary forms, with or without
 %% modification, are permitted provided that the following conditions are
@@ -33,7 +33,7 @@
 %%
 
 
-% $Id $
+% $Id: compiler.red 5432 2020-10-15 20:40:59Z arthurcnorman $
 
 % Pretty-well all internal functions defined here and all fluid and
 % global variables have been written with names of the form s!:xxx. This

@@ -1,4 +1,4 @@
-// bytes.cpp                              Copyright (C) 1991-2019, Codemist
+// bytes.cpp                              Copyright (C) 1991-2020, Codemist
 //
 //
 // version of bytes1.c that does not keep counts of how many
@@ -8,7 +8,7 @@
 //
 
 /**************************************************************************
- * Copyright (C) 2019, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -37,7 +37,7 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: bytes.cpp 5432 2020-10-15 20:40:59Z arthurcnorman $
 
 //
 // This file is in the process of being removed. Its sole purpose is to

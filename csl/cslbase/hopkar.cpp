@@ -37,7 +37,7 @@
 //
 //                                    A C Norman, October 2015.
 
-// $Id $
+// $Id: hopkar.cpp 5331 2020-04-25 13:47:28Z arthurcnorman $
 
 #include <cstdio>
 #include <cstdlib>

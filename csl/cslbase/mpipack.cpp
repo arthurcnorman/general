@@ -1,10 +1,10 @@
-// mpipack.cpp                             Copyright (C) 2016-2017 Codemist
+// mpipack.cpp                             Copyright (C) 2016-2020 Codemist
 //
 // Packing stuff into buffers for cross-PE communication
 //
 
 /**************************************************************************
- * Copyright (C) 2017, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -32,7 +32,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: mpipack.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $
 
 
 #ifndef header_mpipack_h
@@ -85,7 +85,7 @@ static void default_check_buffer(int n)
         mpi_pack_buffer = reinterpret_cast<char*>(std)::realloc(
                               mpi_pack_buffer, mpi_pack_size);
         if (mpi_pack_buffer == 0)
-            aerror0("Not enough memory for MPI buffer.");
+            return aerror0("Not enough memory for MPI buffer.");
     }
 }
 static char* mpi_buffer_bottom;
@@ -99,7 +99,7 @@ static void scatter_check_buffer(int n)
         mpi_buffer_bottom = reinterpret_cast<char*>(std)::realloc(
                                 mpi_buffer_bottom, mpi_real_size);
         if (mpi_buffer_bottom == 0)
-            aerror0("Not enough memory for MPI buffer.");
+            return aerror0("Not enough memory for MPI buffer.");
         mpi_pack_buffer = mpi_buffer_bottom + mpi_pack_offset;
     }
 }

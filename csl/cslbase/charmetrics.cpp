@@ -1,4 +1,4 @@
-// charmetrics.cpp                              Copyright (C) 2017 Codemist
+// charmetrics.cpp                              Copyright (C) 2020 Codemist
 
 //=======================================================================//
 //                                                                       //
@@ -13,7 +13,7 @@
 
 
 /**************************************************************************
- * Copyright (C) 2017, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -42,7 +42,7 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: charmetrics.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $
 
 
 #ifdef CREATE
@@ -1566,7 +1566,7 @@ int main(int argc, char *argv[])
                      " *************************************************************************/\n");
         std::fprintf(dest, "\n");
         std::fprintf(dest,
-                     "// $Id $
+                     "// $Id: charmetrics.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $\n");
         std::fprintf(dest, "\n");
         std::fprintf(dest, "\n");
         std::fprintf(dest, "#ifndef __STDC_CONSTANT_MACROS\n");
@@ -1667,7 +1667,7 @@ int main(int argc, char *argv[])
         std::fprintf(rdest, "\n");
         std::fprintf(rdest, "\n");
         std::fprintf(rdest,
-                     "%% $Id $
+                     "%% $Id: charmetrics.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $\n");
         std::fprintf(rdest, "\n");
         std::fprintf(rdest,
                      "#if (or (memq 'psl lispsystem!*) (memq 'jlisp lispsystem!*))\n");
@@ -1828,7 +1828,7 @@ int main(int argc, char *argv[])
         std::fprintf(smldest, "\n");
         std::fprintf(smldest, "\n");
         std::fprintf(smldest,
-                     "$Id $
+                     "$Id: charmetrics.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $\n");
         std::fprintf(smldest, "\n*)\n\n");
         std::fprintf(smldest, "\n");
         std::fprintf(smldest, "val F_cmuntt     = 0;\n");

@@ -42,7 +42,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id: machine.h 5414 2020-10-03 14:43:05Z arthurcnorman $
+// $Id: machine.h 5519 2020-11-25 13:56:33Z arthurcnorman $
 
 
 #ifndef header_machine_h
@@ -250,6 +250,7 @@ using std::atomic;    // If I am going to be multi-threaded then very many
 
 #include <iomanip>
 #include <exception>
+#include <stdexcept>
 #include <cassert>
 #include <map>
 #include <unordered_map>

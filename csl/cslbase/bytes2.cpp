@@ -35,7 +35,7 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: bytes2.cpp 5386 2020-08-19 20:54:40Z arthurcnorman $
 
 LispObject A_reg;
 LispObject r1, r2, r3;
@@ -127,12 +127,12 @@ size_t xppc;
 #ifdef DEBUG
     if (check_stack(reinterpret_cast<char *>(&ffname[0]), __LINE__))
     {   err_printf("\n+++ stack overflow\n");
-        aerror("stack overflow");
+        return aerror("stack overflow");
     }
 #else
     if (check_stack("bytecode_interpreter",__LINE__))
     {   err_printf("\n+++ stack overflow\n");
-        aerror("stack overflow");
+        return aerror("stack overflow");
     }
 #endif
 #else // CHECK_STACK
@@ -140,7 +140,7 @@ size_t xppc;
         if ((uintptr_t)p < C_stacklimit)
         {   err_printf("\n+++ stack overflow\n");
             if (C_stacklimit > 1024*1024) C_stacklimit -= 1024*1024;
-            aerror("stack_overflow");
+            return aerror("stack_overflow");
         }
     }
 #endif // CHECK_STACK
@@ -152,7 +152,6 @@ next_opcode:   // This label is so that I can restart what I am doing
 // following a CATCH or to handle UNWIND-PROTECT.
     my_assert(A_reg != 0,
         [&]{ trace_printf("A_reg == 0 @ bytes2.cpp line __LINE__\n"); });
-    try
     {
 // The try block will neeed to cope with
 // .  Various errors raised by functions called from here: a fragment of
@@ -182,7 +181,8 @@ next_opcode:   // This label is so that I can restart what I am doing
         case 1: exit_reason = UNWIND_SIGNAL;
             if (miscflags & HEADLINE_FLAG)
                 err_printf("\n+++ Error %s: ", errorset_msg);
-            throw LispSignal();
+            exceptionFlag = LispSignal;
+            goto endOfTryBlock;
         case 0: break;
     }
     global_jb = &jb;
@@ -222,7 +222,7 @@ next_opcode:   // This label is so that I can restart what I am doing
 //
                 err_printf("\nUnrecognized opcode byte %x\n",
                            (reinterpret_cast<unsigned char *>(codevec))[ppc-1]);
-                aerror("compiler failure");
+                return aerror("compiler failure");
 
             case OP_ONEVALUE:
 // ONEVALUE is here to support a proposed re-write of the multiple values
@@ -1457,28 +1457,32 @@ next_opcode:   // This label is so that I can restart what I am doing
 // the block that was the signal handler.
                 switch (exit_reason)
                 {   case UNWIND_NULL:      continue;
-                    case UNWIND_GO:        throw LispGo();
-                    case UNWIND_RETURN:    throw LispReturnFrom();
-                    case UNWIND_THROW:     throw LispThrow();
-                    case UNWIND_RESTART:   throw LispRestart();
-                    case UNWIND_RESOURCE:  throw LispResource();
-                    case UNWIND_SIGNAL:    throw LispSignal();
-                    case UNWIND_ERROR:     throw LispError();
-                    case UNWIND_FNAME:     throw LispError();
-                    case UNWIND_UNWIND:    throw LispError();
-                    default:               throw LispError();
+                    case UNWIND_GO:        exceptionFlag = LispGo; goto endOfTryBlock;
+                    case UNWIND_RETURN:    exceptionFlag = LispReturnFrom; goto endOfTryBlock;
+                    case UNWIND_THROW:     exceptionFlag = LispThrow; goto endOfTryBlock;
+                    case UNWIND_RESTART:   exceptionFlag = LispRestart; goto endOfTryBlock;
+                    case UNWIND_RESOURCE:  exceptionFlag = LispResource; goto endOfTryBlock;
+                    case UNWIND_SIGNAL:    exceptionFlag = LispSignal; goto endOfTryBlock;
+                    case UNWIND_ERROR:     exceptionFlag = LispError; goto endOfTryBlock;
+                    case UNWIND_FNAME:     exceptionFlag = LispError; goto endOfTryBlock;
+                    case UNWIND_UNWIND:    exceptionFlag = LispError; goto endOfTryBlock;
+                    default:               exceptionFlag = LispError; goto endOfTryBlock;
                 }
 
             case OP_THROW:
                 real_pop(r1);       // the tag to throw to
                 for (r2 = catch_tags; r2!=nil; r2=cdr(r2))
                     if (r1 == car(r2)) break;
-                if (r2==nil) aerror1("throw: tag not found", r1);
+                if (r2==nil)
+                {   aerror1("throw: tag not found", r1);
+                    goto endOfTryBlock;
+                }
                 exit_tag = r2;
                 exit_value = A_reg;
                 assert(A_reg != 0);
                 exit_reason = UNWIND_THROW;
-                throw LispThrow();
+                exceptionFlag = LispThrow;
+                goto endOfTryBlock;
 
 //
 // I expect that calling functions with 0, 1, 2 or 3 arguments will
@@ -2502,8 +2506,10 @@ next_opcode:   // This label is so that I can restart what I am doing
 //*****************************************************************************
     } // end of switch block
 } // end of try block
-catch (LispException &e)
-{
+endOfTryBlock:
+if (exceptionFlag != LispNormal)
+{   int save = exceptionFlag;
+    exceptionFlag = LispNormal;
 // What follows is my current guess for a good diagnostic...
     if (SHOW_FNAME)
     {   err_printf("Inside: ");
@@ -2514,7 +2520,10 @@ catch (LispException &e)
 // CATCH or an UNWIND-PROTECT marker.
     for (;;)
     {   unwind_stack(entry_stack, true);
-        if (stack == entry_stack) throw;   // re-throw!
+        if (stack == entry_stack)
+        {   exceptionFlag = save;
+            return nil;   // re-throw!
+        }
 // Here I have a CATCH/UNWIND record within the current function
         real_pop(r1, r2);
 // If the tag matches exit_tag then I must reset pc based on offset (r2)
@@ -2536,6 +2545,8 @@ catch (LispException &e)
         }
     }
 }
+
+    return nil;
 
 
 // end of bytes2.cpp

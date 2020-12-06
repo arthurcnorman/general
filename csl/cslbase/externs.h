@@ -35,7 +35,7 @@
  *************************************************************************/
 
 
-// $Id: externs.h 5421 2020-10-06 16:42:36Z arthurcnorman $
+// $Id: externs.h 5519 2020-11-25 13:56:33Z arthurcnorman $
 
 #ifndef header_externs_h
 #define header_externs_h 1
@@ -316,7 +316,7 @@ extern void debug_show_trail_raw(const char *msg, const char *file,
 #define debug_show_trail(data) debug_show_trail_raw(data, __FILE__, __LINE__)
 
 #define debug_assert(x) \
-  if (!(x)) { debug_show_trail("Assertion failed"); my_exit(999); }
+  if (!(x)) { debug_show_trail("Assertion failed"); my_exit(); }
 
 #else
 
@@ -786,7 +786,7 @@ extern void checksum(LispObject a);
 
 extern void ensure_screen();
 extern int window_heading;
-[[noreturn]] extern void my_exit(int n);
+extern void my_exit();
 
 extern uint64_t base_time;
 extern std::chrono::high_resolution_clock::time_point base_walltime;
@@ -994,6 +994,28 @@ inline LispObject nvalues(LispObject r, int n)
     return r;
 }
 
+class SingleValued
+{
+public:
+    SingleValued()
+    {}
+    ~SingleValued()
+    {   exit_count = 1;
+    }
+};
+
+class MultiValued
+{
+    int n;
+public:
+    MultiValued(int nn)
+    {   n = nn;
+    }
+    ~MultiValued()
+    {   exit_count = n;
+    }
+};
+
 //
 // The function "equal" seems to be pretty critical (certainly for Standard
 // Lisp mode and Reduce). So I write out the top-level part of it in-line
@@ -1141,7 +1163,7 @@ extern LispObject tagbody_fn(LispObject args, LispObject env);
 // The variables here are always extern - they never survive in an image
 // file.
 //
-[[noreturn]] extern LispObject resource_exceeded();
+extern LispObject resource_exceeded();
 extern int64_t time_base,  space_base,  io_base,  errors_base;
 extern int64_t time_now,   space_now,   io_now,   errors_now;
 extern int64_t time_limit, space_limit, io_limit, errors_limit;

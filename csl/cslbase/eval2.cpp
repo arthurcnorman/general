@@ -33,7 +33,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: eval2.cpp 5428 2020-10-12 17:06:37Z arthurcnorman $
 
 #include "headers.h"
 
@@ -129,7 +129,7 @@ LispObject apply(LispObject fn, LispObject args,
             name_of_caller[len] = 0;
             std::sprintf(message, "Bad function called from %s: ",
                          name_of_caller);
-            aerror1(message, fn);
+            return aerror1(message, fn);
         }
 // apply_lambda() is the key part of calls to interpreted functions.
         if ((def = car(fn)) == lambda)
@@ -164,7 +164,7 @@ LispObject apply(LispObject fn, LispObject args,
     name_of_caller[len] = 0;
     std::sprintf(message, "Bad function called from %s: ",
                  name_of_caller);
-    aerror1(message, fn);
+    return aerror1(message, fn);
 }
 
 
@@ -207,43 +207,46 @@ static LispObject block_fn(LispObject iargs, LispObject ienv)
     STACK_SANITY;
     if (!consp(iargs)) return onevalue(nil);
     stackcheck(iargs, ienv);
-    real_push(car(iargs),          // my_tag
-              cdr(iargs),          // args
-              ienv);
-    LispObject &env = stack[0];
-    LispObject &args = stack[-1];
-    LispObject &my_tag = stack[-2];
+    {   LispObject ia = car(iargs), id = cdr(iargs);
+        RealPush save(ia,          // my_tag
+                      id,          // args
+                      ienv);
+        LispObject &env = stack[0];
+        LispObject &args = stack[-1];
+        LispObject &my_tag = stack[-2];
 // I need to augment the (lexical) environment with the name of my
 // tag in such a way that return-from can throw out to exactly the
 // correct matching level.  This is done by pushing (0 . tag) onto
 // the environment - the 0 marks this as a block name.
-    my_tag = cons(fixnum_of_int(0), my_tag);
-    env = cons(my_tag, env);
-    p = nil;
-    while (consp(args))
-    {   p = car(args);
-        try
-        {   START_TRY_BLOCK;
-            p = eval(p, env);
-        }
-        catch (LispReturnFrom &e)
-        {   setcar(my_tag, fixnum_of_int(2)); // Invalidate
-            if (exit_tag == my_tag)
-            {   real_popv(3);
-                return nvalues(exit_value, exit_count);
+        my_tag = cons(fixnum_of_int(0), my_tag);
+        env = cons(my_tag, env);
+        p = nil;
+        while (consp(args))
+        {   p = car(args);
+            {   START_TRY_BLOCK;
+                p = eval(p, env);
             }
-            else throw;
-        }
-        catch (LispError &e)
-        {   int _reason = exit_reason;
-            err_printf("\nEvaluating: ");
-            loop_print_error(car(args));
-            exit_reason = _reason;
-            throw;
+            switch (exceptionFlag)
+            {   case LispReturnFrom:
+                    setcar(my_tag, fixnum_of_int(2)); // Invalidate
+                    if (exit_tag == my_tag)
+                    {   exceptionFlag = LispNormal;
+                        return nvalues(exit_value, exit_count);
+                    }
+                    else return nil;
+                case LispError:
+                case LispSignal:
+                case LispResource:
+                    {   int _reason = exit_reason;
+                        err_printf("\nEvaluating: ");
+                        loop_print_error(car(args));
+                        exit_reason = _reason;
+                        return nil;
+                    }
+            }
         }
         args = cdr(args);
     }
-    real_popv(3);
     return p;
 }
 
@@ -252,39 +255,46 @@ static LispObject catch_fn(LispObject args, LispObject env)
     STACK_SANITY;
     if (!consp(args)) return onevalue(nil);
     stackcheck(args, env);
-    push(args, env);
-    tag = car(args);
-    tag = eval(tag, env);
-    tag = catch_tags = cons(tag, catch_tags);
-    pop(env, args);
+    {   Push save(args, env);
+        tag = car(args);
+        tag = eval(tag, env);
+        if (exceptionPending()) return nil;
+        tag = catch_tags = cons(tag, catch_tags);
+        if (exceptionPending()) return nil;
+    }
     push(tag);
-    try
     {   START_SETJMP_BLOCK;
         v = progn_fn(cdr(args), env);
     }
-    catch (LispThrow &e)
-    {   pop(tag);
-        catch_tags = cdr(tag);
-        write_barrier(caraddr(tag), tag);
-// Hmm - ought I to put a write_varrier on the CDR. Well it gets changed
+endOfTryBlock:
+    switch (exceptionFlag)
+    {   case LispThrow:
+            pop(tag);
+            catch_tags = cdr(tag);
+            write_barrier(caraddr(tag), tag);
+// Hmm - ought I to put a write_barrier on the CDR. Well it gets changed
 // to point to NIL, and NIL is at a fixed address so the GC does not need
 // to know!
-        setcdr(tag, nil);        // Invalidate the catch frame
-        if (exit_tag == tag) return nvalues(exit_value, exit_count);
-        else throw;
-    }
-    catch (LispException &e)
-    {   pop(tag);
-        catch_tags = cdr(tag);
-        write_barrier(caraddr(tag), tag);
-        setcdr(tag, nil);        // Invalidate the catch frame
-        throw;
+            setcdr(tag, nil);        // Invalidate the catch frame
+            if (exit_tag == tag)
+            {   exceptionFlag = LispNormal;
+                return nvalues(exit_value, exit_count);
+            }
+            else return nil;
+        case LispNormal:
+            break;
+        default:
+            pop(tag);
+            catch_tags = cdr(tag);
+            write_barrier(caraddr(tag), tag);
+            setcdr(tag, nil);        // Invalidate the catch frame
+            return nil;
     }
     pop(tag);
     catch_tags = cdr(tag);
     write_barrier(caraddr(tag), tag);
     setcdr(tag, nil);            // Invalidate the catch frame
-    return v;
+    return onevalue(v);
 }
 
 // let_fn_1 is used for various things that bind variables - and in CSL
@@ -303,7 +313,6 @@ static LispObject catch_fn(LispObject args, LispObject env)
 #define env        stack[-5]
 #define body       stack[-6]
 #define bvl        stack[-7]
-#define Return(v)  { real_popv(8); return (v); }
 
 class unbinder_t
 {   LispObject *save;
@@ -331,98 +340,108 @@ LispObject let_fn_1(LispObject bvlx, LispObject bodyx,
 // is SPECIAL.
 //
 {   stackcheck(bvlx, bodyx, envx);
-    real_push(bvlx, bodyx, envx);
-    real_push(nil, nil, envx, nil, nil);
+    if (exceptionPending()) return nil;
+    {   RealPush save1(bvlx, bodyx, envx);
+        LispObject t1=nil, t2=nil, t3=nil, t4=nil;
+        RealPush save2(t1, t2, envx, t3, t4);
 // Find local declarations - it is necessary to macro-expand
 // items in the body to see if they turn into declarations.
-    for (;;)
-    {   if (!consp(body)) break;
-        p = macroexpand(car(body), env);
-        body = cdr(body);
-        if (!consp(p))
-        {   if (stringp(p) && consp(body)) continue;
-            body = cons(p, body);
-            break;
-        }
-        if (car(p) != declare_symbol)
-        {   body = cons(p, body);
-            break;
-        }
-        for (p = cdr(p); consp(p); p = cdr(p))
-        {   q = car(p);
-            if (!consp(q) || car(q) != special_symbol) continue;
-            // here q says (special ...)
-            for (q=cdr(q); consp(q); q = cdr(q))
-                local_decs = cons(car(q), local_decs);
-        }
-    }
-
-    for (; consp(bvl); bvl=cdr(bvl))
-    {   LispObject z;
-        q = car(bvl);
-        if (consp(q))
-        {   z = cdr(q);
-            q = car(q);
-            if (consp(z)) z = car(z);
-            else z = nil;
-        }
-        else z = nil;
-        if (!is_symbol(q) || q==nil || q==lisp_true)
-        {   LispObject qq = q;
-            error(1, err_bad_bvl, qq);
-        }
-        else
-        {   Header h = qheader(q);
-            if (z != nil) z = eval(z, env);
-            z = cons(q, z);
-            if (compilerp == BODY_COMPILER_LET)
-            {   specenv = cons(z, specenv);
-                q = acons(q, work_symbol, env1);
-                env1 = q; // Locally special
+        for (;;)
+        {   if (!consp(body)) break;
+            p = macroexpand(car(body), env);
+            if (exceptionPending()) return nil;
+            body = cdr(body);
+            if (!consp(p))
+            {   if (stringp(p) && consp(body)) continue;
+                body = cons(p, body);
+                if (exceptionPending()) return nil;
+                break;
             }
-            else if (h & SYM_GLOBAL_VAR) aerror1("Attempt to bind", q);
-            else if (h & SYM_SPECIAL_VAR) specenv = cons(z, specenv);
-            else
-            {   LispObject w;
-                for (w = local_decs; w!=nil; w = cdr(w))
-                {   if (q != car(w)) continue;
-                    setcar(w, fixnum_of_int(0));
-// The next few calls to cons() maybe lose w, but that is OK!
-                    specenv = cons(z, specenv);
-                    q = acons(q, work_symbol, env1);
-                    env1 = q;
-                    goto bound;
+            if (car(p) != declare_symbol)
+            {   body = cons(p, body);
+                if (exceptionPending()) return nil;
+                break;
+            }
+            for (p = cdr(p); consp(p); p = cdr(p))
+            {   q = car(p);
+                if (!consp(q) || car(q) != special_symbol) continue;
+                // here q says (special ...)
+                for (q=cdr(q); consp(q); q = cdr(q))
+                {   local_decs = cons(car(q), local_decs);
+                    if (exceptionPending()) return nil;
                 }
-                env1 = cons(z, env1);
-            bound:  ;
             }
         }
-    }
 
-    while (local_decs!=nil)         // Pervasive special declarations
-    {   LispObject q1 = car(local_decs);
-        local_decs=cdr(local_decs);
-        if (!is_symbol(q1)) continue;
-        q1 = acons(q1, work_symbol, env1);
-        env1 = q1;
-    }
+        for (; consp(bvl); bvl=cdr(bvl))
+        {   LispObject z;
+            q = car(bvl);
+            if (consp(q))
+            {   z = cdr(q);
+                q = car(q);
+                if (consp(z)) z = car(z);
+                else z = nil;
+            }
+            else z = nil;
+            if (!is_symbol(q) || q==nil || q==lisp_true)
+            {   LispObject qq = q;
+                error(1, err_bad_bvl, qq);
+                if (exceptionPending()) return nil;
+            }
+            else
+            {   Header h = qheader(q);
+                if (z != nil) z = eval(z, env);
+                if (exceptionPending()) return nil;
+                z = cons(q, z);
+                if (exceptionPending()) return nil;
+                if (compilerp == BODY_COMPILER_LET)
+                {   specenv = cons(z, specenv);
+                    if (exceptionPending()) return nil;
+                    q = acons(q, work_symbol, env1);
+                    if (exceptionPending()) return nil;
+                    env1 = q; // Locally special
+                }
+                else if (h & SYM_GLOBAL_VAR) return aerror1("Attempt to bind", q);
+                else if (h & SYM_SPECIAL_VAR) specenv = cons(z, specenv);
+                else
+                {   LispObject w;
+                    for (w = local_decs; w!=nil; w = cdr(w))
+                    {   if (q != car(w)) continue;
+                        setcar(w, fixnum_of_int(0));
+// The next few calls to cons() maybe lose w, but that is OK!
+                        specenv = cons(z, specenv);
+                        q = acons(q, work_symbol, env1);
+                        if (exceptionPending()) return nil;
+                        env1 = q;
+                        goto bound;
+                    }
+                    env1 = cons(z, env1);
+                    if (exceptionPending()) return nil;
+                bound:  ;
+                }
+                if (exceptionPending()) return nil;
+            }
+        }
+
+        while (local_decs!=nil)         // Pervasive special declarations
+        {   LispObject q1 = car(local_decs);
+            local_decs=cdr(local_decs);
+            if (!is_symbol(q1)) continue;
+            q1 = acons(q1, work_symbol, env1);
+            if (exceptionPending()) return nil;
+            env1 = q1;
+        }
 // I treat the case where there are no new (special) bindings specially
 // because in that case I can tail-call to the next stage of evaluation, and
 // that saves stack.
-    if (specenv == nil)
-    {   LispObject bodyx = body, env1x = env1;
-//
+        if (specenv == nil)
+        {   LispObject bodyx = body, env1x = env1;
 // See expansion of Return() for an explanation of why body and env1 have
 // been moved into new local variables before the call..
-//
-        if (compilerp == BODY_PROG)
-        {   Return(tagbody_fn(bodyx, env1x));
+            if (compilerp == BODY_PROG)
+                return tagbody_fn(bodyx, env1x);
+            else return progn_fn(bodyx, env1x);
         }
-        else
-        {   Return(progn_fn(bodyx, env1x));
-        }
-    }
-//
 // I instate the special bindings after all values to bind have been
 // collected. But this is where I will need to arrange to ensure that
 // when for ANY reason at all the code here is unwound that the fluid
@@ -435,13 +454,15 @@ LispObject let_fn_1(LispObject bvlx, LispObject bodyx,
     }
 // The above has instated bindings. Subject to not getting asynchronous
 // interruptions once I start to bind any I bind all.
-    {   unbinder_t raii;
-        if (compilerp == BODY_PROG)
-            body = (tagbody_fn(body, env1));
-        else body = (progn_fn(body, env1));
+        {   unbinder_t raii;
+            if (compilerp == BODY_PROG)
+                body = (tagbody_fn(body, env1));
+            else body = (progn_fn(body, env1));
+        }
+        if (exceptionPending()) return nil;
+        bodyx = body;
+        return bodyx;
     }
-    bodyx = body;
-    Return(bodyx);
 }
 
 #undef local_decs
@@ -467,10 +488,11 @@ LispObject cond_fn(LispObject args, LispObject env)
     {   LispObject p = car(args);
         if (consp(p))
         {   LispObject p1;
-            push(args, env);
-            p1 = car(p);
-            p1 = eval(p1, env);
-            pop(env, args);
+            {   Push save(args, env);
+                p1 = car(p);
+                p1 = eval(p1, env);
+            }
+            if (exceptionPending()) return nil;
             if (p1 != nil)
             {   args = cdr(car(args));
 // Here I support the case "(cond (predicate) ...)" with no consequents
@@ -549,15 +571,15 @@ static LispObject defun_fn(LispObject args, LispObject)
                     interpreted_3, interpreted_4up);
             if (qvalue(comp_symbol) != nil &&
                 qfn1(compiler_symbol) != undefined_1)
-            {   push(fname);
+            {   Push save(fname);
                 args = ncons(fname);
                 (*qfn1(compiler_symbol))(compiler_symbol, args);
-                pop(fname);
             }
             return onevalue(fname);
         }
     }
-    aerror("defun");
+    return aerror("defun");
+    return nil;
 }
 
 static LispObject defmacro_fn(LispObject args, LispObject)
@@ -572,7 +594,7 @@ static LispObject defmacro_fn(LispObject args, LispObject)
     if (consp(args))
     {   fname = car(args);
         args = cdr(args);
-        if (!consp(args)) aerror("Badly formatted use of defmacro");
+        if (!consp(args)) return aerror("Badly formatted use of defmacro");
         LispObject bvl = car(args);
 // Here if bvl is a list such as (u) I will expand it to be (u &optional g).
         if (consp(bvl) && cdr(bvl) == nil)
@@ -607,23 +629,25 @@ static LispObject defmacro_fn(LispObject args, LispObject)
             if (qvalue(comp_symbol) != nil &&
                 qfn1(compiler_symbol) != undefined_1)
             {   LispObject t1, t2;
-                real_push(fname);
-                if (!(consp(args) &&
-                      consp(cdr(args)) &&
-                      cdr(cdr(args)) == nil &&
-                      (t1 = car(args),
-                       t2 = cdr(car(cdr(args))),
-                       equal(t1, t2))))
-                {   fname = stack[0];
-                    args = ncons(fname);
-                    (*qfn1(compiler_symbol))(compiler_symbol, args);
+                {   RealPush save(fname);
+                    if (!(consp(args) &&
+                          consp(cdr(args)) &&
+                          cdr(cdr(args)) == nil &&
+                          (t1 = car(args),
+                           t2 = cdr(car(cdr(args))),
+                           equal(t1, t2))))
+                    {   fname = stack[0];
+                        args = ncons(fname);
+                        if (exceptionPending()) return nil;
+                        (*qfn1(compiler_symbol))(compiler_symbol, args);
+                    }
                 }
-                real_pop(fname);
             }
             return onevalue(fname);
         }
     }
-    aerror("defmacro");
+    return aerror("defmacro");
+    return nil;
 }
 
 static LispObject eval_when_fn(LispObject args, LispObject env)
@@ -654,13 +678,16 @@ static LispObject flet_fn(LispObject args, LispObject env)
     {   LispObject w = car(d);
         if (consp(w) && consp(cdr(w)))
         {   LispObject w1;
-            push(args, d, env, w);
-            w1 = list2star(funarg, my_env, cdr(w));
-            pop(w);
-            w1 = cons(w1, car(w));
-            pop(env);
+            Push save(args, d);
+            {   Push save1(env);
+                {   Push save2(w);
+                    w1 = list2star(funarg, my_env, cdr(w));
+                }
+                if (exceptionPending()) return nil;
+                w1 = cons(w1, car(w));
+                if (exceptionPending()) return nil;
+            }
             env = cons(w1, env);
-            pop(d, args);
         }
         d = cdr(d);
     }
@@ -684,14 +711,17 @@ LispObject function_fn(LispObject args, LispObject env)
             args = list2star(funarg, env, cdr(args));
         return onevalue(args);
     }
-    aerror("function");
+    return aerror("function");
 }
 
 
 LispObject go_fn(LispObject args, LispObject env)
 {   LispObject p, tag;
     STACK_SANITY;
-    if (!consp(args)) aerror("go");
+    if (!consp(args))
+    {   return aerror("go");
+        return nil;
+    }
     else tag = car(args);
     for(p=env; consp(p); p=cdr(p))
     {   LispObject w = car(p), z;
@@ -700,31 +730,38 @@ LispObject go_fn(LispObject args, LispObject env)
             (z = car(cdr(w)), eql(z, tag)))
         {   exit_tag = w;
             exit_reason = UNWIND_GO;
-            throw LispGo();  // only exit_tag matters here.
+            exceptionFlag = LispGo;  // only exit_tag matters here.
+            return nil;
         }
     }
     error(1, err_go_tag, tag);
+    return nil;
 }
 
 static LispObject if_fn(LispObject args, LispObject env)
 {   LispObject p=nil, tr=nil, fs=nil;
     STACK_SANITY;
-    if (!consp(args)) aerror("if");
+    if (!consp(args)) return aerror("if");
+    if (exceptionPending()) return nil;
     p = car(args);
     args = cdr(args);
-    if (!consp(args)) aerror("if");
+    if (!consp(args)) return aerror("if");
+    if (exceptionPending()) return nil;
     tr = car(args);
     args = cdr(args);
     if (!consp(args)) fs = nil;
     else
     {   fs = car(args);
         args = cdr(args);
-        if (args != nil) aerror("if");
+        if (args != nil) return aerror("if");
+        if (exceptionPending()) return nil;
     }
     stackcheck(p, env, tr, fs);
-    push(fs, tr, env);
-    p = eval(p, env);
-    pop(env, tr, fs);
+    if (exceptionPending()) return nil;
+    {   Push save(fs, tr, env);
+        p = eval(p, env);
+    }
+    if (exceptionPending()) return nil;
     if (p == nil)
         return eval(fs, env);      // tail call on result
     else return eval(tr, env);      // ... passing back values
@@ -735,19 +772,23 @@ static LispObject labels_fn(LispObject args, LispObject env)
     STACK_SANITY;
     if (!consp(args)) return onevalue(nil);
     stackcheck(args, env);
+    if (exceptionPending()) return nil;
     my_env = env;
     d = car(args);     // The bunch of definitions
     while (consp(d))
     {   LispObject w = car(d);
         if (consp(w) && consp(cdr(w)))
         {   LispObject w1;
-            push(args, d, env, w);
-            w1 = list2star(funarg, nil, cdr(w));
-            pop(w);
-            w1 = cons(w1, car(w));
-            pop(env);
+            Push save(args, d);
+            {   Push save1(env);
+                {   Push save2(w);
+                    w1 = list2star(funarg, nil, cdr(w));
+                    if (exceptionPending()) return nil;
+                }
+                w1 = cons(w1, car(w));
+                if (exceptionPending()) return nil;
+            }
             env = cons(w1, env);
-            pop(d, args);
         }
         d = cdr(d);
     }
@@ -776,107 +817,123 @@ static LispObject letstar_fn(LispObject args, LispObject ienv)
 {   if (!consp(args)) return onevalue(nil);
     STACK_SANITY;
     stackcheck(args, ienv);
-    real_push(car(args), cdr(args), ienv); // bvl, body, env
-    real_push(nil, nil,                    // p, q
-              nil, nil);                   // specenv, local_decs
-    LispObject &local_decs = stack[ 0];
-    LispObject &specenv    = stack[-1];
-    LispObject &p          = stack[-2];
-    LispObject &q          = stack[-3];
-    LispObject &env        = stack[-4];
-    LispObject &body       = stack[-5];
-    LispObject &bvl        = stack[-6];
-    for (;;)
-    {   if (!consp(body)) break;
-        p = macroexpand(car(body), env);
-        body = cdr(body);
-        if (!consp(p))
-        {   if (stringp(p) && consp(body)) continue;
-            body = cons(p, body);
-            break;
+    if (exceptionPending()) return nil;
+    {   LispObject aa = car(args), ad = cdr(args);
+        RealPush save1(aa, ad, ienv);    // bvl, body, env
+        LispObject px=nil, qx=nil, specenvx=nil, local_decsx=nil;
+        RealPush save2(px, qx, specenvx, local_decsx);
+        LispObject &local_decs = stack[ 0];
+        LispObject &specenv    = stack[-1];
+        LispObject &p          = stack[-2];
+        LispObject &q          = stack[-3];
+        LispObject &env        = stack[-4];
+        LispObject &body       = stack[-5];
+        LispObject &bvl        = stack[-6];
+        for (;;)
+        {   if (!consp(body)) break;
+            p = macroexpand(car(body), env);
+            if (exceptionPending()) goto endOfTryBlock;
+            body = cdr(body);
+            if (!consp(p))
+            {   if (stringp(p) && consp(body)) continue;
+                body = cons(p, body);
+                if (exceptionPending()) goto endOfTryBlock;
+                break;
+            }
+            if (car(p) != declare_symbol)
+            {   body = cons(p, body);
+                if (exceptionPending()) goto endOfTryBlock;
+                break;
+            }
+            for (p = cdr(p); consp(p); p = cdr(p))
+            {   q = car(p);
+                if (!consp(q) || car(q) != special_symbol) continue;
+                // here q says (special ...)
+                for (q=cdr(q); consp(q); q = cdr(q))
+                {   local_decs = cons(car(q), local_decs);
+                    if (exceptionPending()) goto endOfTryBlock;
+                }
+            }
         }
-        if (car(p) != declare_symbol)
-        {   body = cons(p, body);
-            break;
-        }
-        for (p = cdr(p); consp(p); p = cdr(p))
-        {   q = car(p);
-            if (!consp(q) || car(q) != special_symbol) continue;
-            // here q says (special ...)
-            for (q=cdr(q); consp(q); q = cdr(q))
-                local_decs = cons(car(q), local_decs);
-        }
-    }
 // Now I will start doing some binding...
-    try
-    {   START_SETJMP_BLOCK;
-        for (; consp(bvl); bvl=cdr(bvl))
-        {   LispObject z;
-            q = car(bvl);
-            if (consp(q))
-            {   z = cdr(q);
-                q = car(q);
-                if (consp(z)) z = car(z);
+        {   START_SETJMP_BLOCK;
+            for (; consp(bvl); bvl=cdr(bvl))
+            {   LispObject z;
+                q = car(bvl);
+                if (consp(q))
+                {   z = cdr(q);
+                    q = car(q);
+                    if (consp(z)) z = car(z);
+                    else z = nil;
+                }
                 else z = nil;
-            }
-            else z = nil;
-            if (!is_symbol(q) || q==nil || q==lisp_true)
-            {   error(1, err_bad_bvl, q);
-            }
-            else
-            {   Header h = qheader(q);
-                if (z != nil)
-                    z = eval(z, env);
-                if (h & SYM_GLOBAL_VAR)
-                    aerror1("attempt to bind", q);
-                if (h & SYM_SPECIAL_VAR)
-                {   p = z;
-                    z = acons(q, qvalue(q), specenv);
-                    specenv = z;
-                    setvalue(q, p);
+                if (!is_symbol(q) || q==nil || q==lisp_true)
+                {   error(1, err_bad_bvl, q);
+                    goto endOfTryBlock;
                 }
                 else
-                {   for (p = local_decs; p!=nil; p = cdr(p))
-                    {   LispObject w;
-                        if (q != car(p)) continue;
-                        setcar(p, fixnum_of_int(0));
-                        w = acons(q, qvalue(q), specenv);
-                        specenv = w;
-                        w = acons(q, work_symbol, env);
-                        env = w;
-                        setvalue(q, z);
-                        goto bound;
+                {   Header h = qheader(q);
+                    if (z != nil) 
+                    {   z = eval(z, env);
+                        if (exceptionPending()) goto endOfTryBlock;
                     }
-                    q = acons(q, z, env);
-                    env = q;
-                bound:  ;
+                    if (h & SYM_GLOBAL_VAR)
+                    {   return aerror1("attempt to bind", q);
+                        goto endOfTryBlock;
+                    }
+                    if (h & SYM_SPECIAL_VAR)
+                    {   p = z;
+                        z = acons(q, qvalue(q), specenv);
+                        if (exceptionPending()) goto endOfTryBlock;
+                        specenv = z;
+                        setvalue(q, p);
+                    }
+                    else
+                    {   for (p = local_decs; p!=nil; p = cdr(p))
+                        {   LispObject w;
+                            if (q != car(p)) continue;
+                            setcar(p, fixnum_of_int(0));
+                            w = acons(q, qvalue(q), specenv);
+                            if (exceptionPending()) goto endOfTryBlock;
+                            specenv = w;
+                            w = acons(q, work_symbol, env);
+                            if (exceptionPending()) goto endOfTryBlock;
+                            env = w;
+                            setvalue(q, z);
+                            goto bound;
+                        }
+                        q = acons(q, z, env);
+                        if (exceptionPending()) goto endOfTryBlock;
+                        env = q;
+                    bound:  ;
+                    }
                 }
             }
+            while (local_decs!=nil)         // Pervasive special declarations
+            {   q = car(local_decs);
+                local_decs=cdr(local_decs);
+                if (!is_symbol(q)) continue;
+                q = acons(q, work_symbol, env);
+                if (exceptionPending()) goto endOfTryBlock;
+                env = q;
+            }
+            body = progn_fn(body, env);
+            if (exceptionPending()) goto endOfTryBlock;
+            for (bvl = specenv; bvl != nil; bvl = cdr(bvl))
+            {   LispObject w = car(bvl), v = car(w), z = cdr(w);
+                setvalue(v, z);
+            }
+            return onevalue(body);
         }
-        while (local_decs!=nil)         // Pervasive special declarations
-        {   q = car(local_decs);
-            local_decs=cdr(local_decs);
-            if (!is_symbol(q)) continue;
-            q = acons(q, work_symbol, env);
-            env = q;
+endOfTryBlock:
+        if (exceptionPending())
+        {   for (bvl = specenv; bvl != nil; bvl = cdr(bvl))
+            {   LispObject w = car(bvl), v = car(w), z = cdr(w);
+                setvalue(v, z);
+            }
+            return nil;
         }
-        body = progn_fn(body, env);
-        for (bvl = specenv; bvl != nil; bvl = cdr(bvl))
-        {   LispObject w = car(bvl), v = car(w), z = cdr(w);
-            setvalue(v, z);
-        }
-        {   LispObject bodyx = body;
-            real_popv(7);
-            return bodyx;
-        }
-    }
-    catch (LispException &e)
-    {   for (bvl = specenv; bvl != nil; bvl = cdr(bvl))
-        {   LispObject w = car(bvl), v = car(w), z = cdr(w);
-            setvalue(v, z);
-        }
-        real_popv(7);
-        throw;
+        else return onevalue(nil);
     }
 }
 

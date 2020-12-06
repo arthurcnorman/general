@@ -1,4 +1,4 @@
-// glyphtable.cpp                          Copyright (C) 2016-2017 Codemist
+// glyphtable.cpp                          Copyright (C) 2016-2020 Codemist
 
 #error DEFUNCT
 
@@ -9,7 +9,7 @@
 // Build bitmap tables relating to characters present in fonts
 
 /**************************************************************************
- * Copyright (C) 2017, Codemist.                         A C Norman       *
+ * Copyright (C) 2020, Codemist.                         A C Norman       *
  *                                                                        *
  * Redistribution and use in source and binary forms, with or without     *
  * modification, are permitted provided that the following conditions are *
@@ -37,7 +37,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id $
+// $Id: glyphtable.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $
 
 
 //
@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
     std::fprintf(out, " * elsewhere in the Reduce project.\n");
     std::fprintf(out, " */\n\n");
     std::fprintf(out,
-                 "/* $Id $
+                 "/* $Id: glyphtable.cpp 5433 2020-10-15 21:09:02Z arthurcnorman $ */\n");
     std::fprintf(out, "\n#include <cstdint>\n\n");
     std::fprintf(out, "typedef struct _fontmap\n");
     std::fprintf(out, "{\n");

@@ -36,7 +36,7 @@
  *************************************************************************/
 
 
-// $Id $
+// $Id: sysfwin.cpp 5422 2020-10-06 19:55:14Z arthurcnorman $
 
 #ifdef __CYGWIN__
 // If I am under Cygwin and I will need to use some Windows calls it
