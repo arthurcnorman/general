@@ -1,0 +1,48 @@
+\chapter{Register Machines}
+\index{Register machines}
+\section{Flowcharts}
+If you needed to explain about the sorts of step-by-step methods that
+are commonly used with computers to solve problems you would quite
+probably start by drawing some {\em flowcharts}. These are a traditional
+way of explaining how to build up a sequence of tests and actions so that
+by threading a path through the chard you trace out steps that solve your
+problem. Flowcharts are not just used with computers --- indeed they grew out
+of schemes that were to formalise and describe business proceduces in days
+before computers had been invented. They commonly appear in pamphlets
+explaining how to use or fix problems with all sorts of domestic equipment,
+and using then to describe things that everybody already understands quite
+well is possible if a bit ridiculous. Traditionally different shaped cells are
+written join up using arrows. There ought always to be a cell to start at
+and one labelled {\bf stop}.\footnote{Making the pictures for this
+article will be something I want to delaY until I have the basic word drafted
+--- so I will use CRUDE text-art for now.}
+
+\begin{verbatim}
+     (start}
+       |   <-----------------------
+       /\                 |re-read |
+     understood this? --------------
+       \/
+        | 
+     (stop)
+
+\end{verbatim}\footnote{I want some trivial and obvious but slightly jokey
+exampe of an irrelevant flowchart here}
+
+\section{Examples}
+\begin{enumerate}
+\item Multiply a number by a constant
+\item Divide by a constant,checking if division is exact
+\item Multiply two integers
+\item Test equality of two values
+\item note consequences of above for packing several
+integers into one register and for letting a register machine simulate
+actions common in full-scale programming systems
+\end{enumerate}
+
+\section{A Harder Problem}
+The Busy Beaver\index{Busy Beaver} problem is \ldots
+
+(take home problem is to seek the
+second-busiest beaver for a register machine with n states, n = 2,3,\ldots
+

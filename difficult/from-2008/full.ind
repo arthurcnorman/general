@@ -1,0 +1,13 @@
+
+ \begin{theindex} 
+% \makeatletter\scan@allowedfalse
+{\bfseries\hfil B\hfil}\nopagebreak
+
+%  \item Busy Beaver\pfill 6
+
+  \indexspace
+{\bfseries\hfil R\hfil}\nopagebreak
+
+%  \item Register machines\pfill 5
+
+ \end{theindex}

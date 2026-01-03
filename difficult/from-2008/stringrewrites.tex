@@ -1,0 +1,19 @@
+\chapter{String re-writing}
+This starts with a world that is close to that of the cellular automata
+mentioned earlier. Your formalism is a set of rewrites such as
+\begin{verbatim}
+    abaa -> axba
+    xxx -> ya
+\end{verbatim}
+etc., where the re-writes are just of strings of characters, they may not
+preserve the length of the overall string and you keep applying them for
+so long as one of the left hand sides of a rule is present as a
+sub-string of your initial input. Key ideas are universal capability,
+non-determinacy and confluence and Knuth-Bendix style completion.
+
+\begin{enumerate}
+\item What is the consequence of these rewrites?
+\item Create a set of rewrites to achieve this effect
+\item Is the following set of rewrites confluent?
+\item Extent these to make them confluent
+\end{enumerate}

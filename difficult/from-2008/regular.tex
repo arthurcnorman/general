@@ -1,0 +1,28 @@
+\chapter{Regular Languages}
+This is obviously related to the previous topic, but is here because it
+is an area where there are few prerequisites, where results are maybe fun
+and where puzzles abound. It starts with an explanation of what regular
+expressions are (so easy!) and probably talks through the Pumping Lemma
+(that many will find it hard to absorb all at once) as the ``gee-whiz,
+Computer Science has some real clever stuff in it'' bit.
+
+\begin{enumerate}
+\item The puzzles/problems set can be styled after {\em here is a language
+ described in words --- can you find a regular expression for it or can you
+convince yourself that there is not one}.
+\item Here is a two regular expressions. Can you produce regular
+expressions that are for the complement of each and the the intersection
+of the two languages?
+\item Here is a regular expression, are there any strings that it does not
+ match?
+\item Here are two machines, or two regular expressions, or one of each.
+Do they accept the same language?
+\item Especially if you permit intersection and complementation as extra
+constructors, try to find a regular expression written in $n$ symbols where
+that shortest non-empty string it can accept is as long as possible.
+Eg \verb+(aaa*)&(aaaaa)*+ matches strings of lengths that are both
+multiplies of 3 and of 5, hence only multiples of 15. Can you do better
+[the answer is yes, if your RE is of length $k$ you can make it match
+strings of length over $2^{2^{2^{2^{...2^{k}}}}}$ for any height tower of exponents
+you like, so this seemingly harmless problem is not quite elementary!]
+\end{enumerate}

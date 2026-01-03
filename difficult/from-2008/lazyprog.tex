@@ -1,0 +1,24 @@
+\chapter{Lazy Programming}
+Rather than cut-down ML this is thinking cut-down Miranda or Haskell. And
+it introduces a list comprehension notation, as in
+\begin{verbatim}
+    {x^2 | x in {1,2,...}}
+\end{verbatim}
+that is used in place of map and that copes with non-terminating lists.
+See all the early Miranda-related stuff from Turner for witty examples of
+what this can achieve.
+
+\begin{enumerate}
+\item Describe the list \verb+{2,3,5,7,11,13,17,...}+ of primes.
+\item Interpret a list as the digits in a number expressed in some radix.
+So the in decimal the reciprocal of 7 is \verb+{1,4,2,8,5,7,1,...}+.
+Do basic arithmetic on the infinite precision representation that this
+gives you.
+\item Develop code to convert from one radix to another. What is the
+reciprocal of seven in octal?
+\item Introduce the idea of a mixed radix where the ration between the
+weights of columns is not constant. Now \verb+{1,1,1,1,1,...}+ with radix
+\verb+{1,2,3,4,...}+ is a way of representing the mathematical constant e, and
+if you apply radix conversion you get that in decimal to unlimited
+precision.
+\end{enumerate}

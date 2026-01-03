@@ -1,0 +1,21 @@
+\chapter{Functional Programming}
+ML is already a notably small language, but one could cut it down yet
+further so the only utterances available were
+\begin{verbatim}
+    fun f 0 = value      fun f nil = value
+    fun f n = ...n...    fun f (a::b) = ...a...b...
+\end{verbatim}
+plus multi-argument variants. All function definitions are global so you
+have no scope issues at all. So this is really just recursive functions!
+Via currying, map and a few more bits of cleverness I can start to write
+worthwhile but mind-bending programs using no more syntax than that! And
+providing infrastructure that could do just that is close to trivial.
+
+\begin{enumerate}
+\item append, reverse
+\item Use of map, filter, fold
+\item Check Larry's ML tickable problems and ones from earlier
+generations of the course to find further exercises --- there are plenty of
+opportunities! Including ones that will burn out the brains of the
+smartest customers!
+\end{enumerate}
