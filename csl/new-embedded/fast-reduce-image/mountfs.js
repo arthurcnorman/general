@@ -1,5 +1,0 @@
-var Module = {
-	'preRun': [
-	    () => {}
-	]
-};
