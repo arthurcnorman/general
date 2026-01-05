@@ -1,0 +1,327 @@
+\chapter{Counter Machines}
+To fully understand computation it can be good to strip things down to
+absolute basics. Doing so may at first make it seem as if nothing useful
+can be achieved, or that it it could be that setting it up would be
+intolerably clumsy and laborious. Happily if you are prepared to take
+a few liberties with notation and if you are willing to view the time
+that a program would take to run as a total irrelevance things turn out
+to be less clumsy and less laborious then one might have expected. So
+in this chapter the emphasis will be on one particular way of looking
+at proogramming. It is the use of flowcharts, as often used when introducing
+computation to real beginners.
+
+A text that aims to get people to understand what computers do and
+how they are driven might start with a version of instructions to
+make a cup of tea along the following lines:
+\begin{enumerate}
+\item Put water in the kettle;
+\item Put tea in the teapot;
+\item Switch kettle on;
+\item wait a bit;
+\item See if kettle is boiling: if not go back to step 4;
+\item Pour (boiling) water into teapot;
+\item Wait 3 minutes;
+\item Done!
+\end{enumerate}
+And having introduced the laborious step by step description of actions
+they then draw it out as a flowgraph with actions in square boxes,
+tests in squashed boxed sitting on their corner and loads of arrows
+that indicate the flow from box to box. One location is identified as the
+starting point and another and where to stop.
+
+Well pretty well any program that does not involve defining and using
+functions can be rendered this way, and the chains of arrows provide a
+nice visual indication of what one would call ``the flow of control''.
+
+Switching a kettle on is not typically a primitive operation that a computer
+can perform, so in real programs the box contents will be individual
+statements valid in the programming language concerned. If we are trying to
+find a really deep understanding of computation it is natural to wonder
+how small a collection of different sorts of statement and different sorts
+of test it is possible to get away with and still have scope for
+interesting behavior. Counter machines\footnote{There are a number of
+different names used for these primitive models of computation and a
+range of different sets of operations they can perform, but all the
+variations can be coaxed into modelling each of the others so the key
+results about them are robust. The version used here follows
+Minsky\cite{Minsky61}} provide one extreme version. As
+considered here a counter machine has a (small) number of variables each
+of which can hold a non-negative whole number, i.e.\ $0,1,2\ldots$.
+In due course we may think of those numbers as codes for text using
+any of the standard ways in which characters can be coded as numbers.
+The program we will develop will have its input data provided in its
+first register (which I will call $A$), and all the other registers start
+off holding zero.
+
+Apart from a box that ia labelled ``stop'' the only square action boxes
+that can be used have as their action statement that increments one of the
+registers. The only lozenge-shaped test-boxes that can be present
+check the value of one of the registers. If that value is zero they
+drop through to the next part of the flowgraph, otherwise they decrease the
+value in that register by 1 and go somewhere else. When the machine reaches
+its stop state the value in register $A$ is considered to be the result
+it has calculated. Although this is of course just an integer, just as was
+the case with the input it can be interpeted as character data. To make this
+point as clear as possible, and computer file contaning text is stored
+on disc or transmitted over a network as some sequence of bits, and one
+frequently used scheme transmits everything in 8-bit chunks, with a scheme
+that means that the commonly used characaters (e.g.\ a-z, A-Z, 0-9 and
+various punctuation marks are fitted into one 8-bit unit (byte) while
+more exotic characters such as Greek $\alpha$, $\beta$, $\pi$ and the rest
+use two bytes and specialist symbols including many geometric shapes,
+lots of emoticons and pictures of the pieces for a chessboard use yet
+more bytes. One can then interpret this potentially rather long string
+of bits as the denotation of a binary number. In that way every file
+on your computer as a really natural interpretation as an integer and
+could be passed to a counter machine! Of course from a practical point of
+view this is totally absurd given that the only things we can do with
+numbers is to increment and decrement them. It would not take a very long
+input string to hit a situation where the number representing it was so
+large that counting it down to zero would involve more steps than there are
+atoms in the universe, and taking those steps would take more time
+than most people are prepared to wait. So this is to be viewed as a
+theoretician's model of computation. So the previous demand that you
+view computing time as an utter irrelevance really has pretty sharp teeth.
+
+The big assertion to be made here is that for any computer program that
+can be provided with all its input at the start and deliver all its output
+when it stops, and subject only to the understanding that input and output
+will be encoded as big numbers, that it will be possible to devise a
+register machine implementation of whatever that program does.
+Is this going to be difficult? Well at some level yes it is -- but once
+you have grasped how to attack the translation it is going to be less
+horrendous than it at first seemed. So the next few paragraphs show
+how the various key features in ``ordinary'' programming languages can
+be supported, Once that are in place transcribing  the rest of the target
+program will be straightforward.
+
+It is useful to start with better arithmetic then mere adding and subtracting
+one.
+
+{\it Here I will show the bits of code in a programming-language like notation
+because preparing flowchart diagrams would pain me. But for the final
+version many need to be drawn out, perhaps especially the early ones. }
+
+For addition consider setting up something that behaves like $A = B+C$ where
+$A$, $B$ and $C$ are registers and where $D$ is spare one.
+Well in fact it hardly deserves to be described as ``difficuly''.
+\begin{verbatim}
+   while A!=0 do A--
+   while D!=0 do D--
+   while B!=0 do B--, A++, D++
+   while D!=0 do D--, B++
+   while C!=0 do C--, A++, D++
+   while D!=0 do D--, C++
+\end{verbatim}
+This has risked destroying $B$ and $C$ along the way, so it carefully
+preserved their values in $D$ and then restored them. If you were willing
+to leave them as zero things could be simplified a little. But the overall
+idea is that the counter machine can do something $B$ times by counting down
+in $B$ so we sum $B$ and $C$ by counting up in $A$ first $B$ times and
+then $C$.
+
+In what follows I will often assume that a target register starts off at zero
+and that there is no need to preserve anything but the trick of initially
+counding down in $A$ until it is zero and of saving values in $D$ shown above
+can be applied wherever it is necessary.
+
+Then of course multiplication can be coded as just repeated addition, so
+$A = B*C$ will be
+\begin{verbatim}
+   while B!=0 do B--, A = A + C
+\end{verbatim}
+and with that it will be clear that raising to a power, being merely
+repeated multiplication, is also straightforward. Well if expanded out
+fully the flowcharts concerned may start to look untidy. But if one
+views each operation that gets implemented as a nice block of nodes that
+can be packages and thought of and presented as a unit things are not
+so bad.
+
+Subtraction involves a new issue because the numbers in a counter machine
+may never go negative. So the statement you first though of as being
+$A = B - C$ needs to be handled more like
+``if $B < C$ then drop through not changing anything,
+otherwise set $A = B - C$ and take the other exit from the lozenge''.
+Given that it is easy to mechanise it by decreasing $B$ and $C$ in turn and
+noticing which one hits zero first. Then as necessary things are restored
+(using the ``$D$ trick'') or $A$ can be set. It should be pretty obvious
+that by using this that division can be coded up in a way that leaves
+both a quotient and a remainder.
+
+It is perhaps useful to note that multiplication and division by
+known constants is rather easier. So for instance $A = 2*A$ needs
+a single workspace register $D$ but is then
+\begin{verbatim}
+  while A!=0 do A--, D++
+  while D!=0 do D--, A++, A++
+\end{varbatim}
+and halving $A$ if it is even amounts to
+\begin{verbatim}
+  if A!=0 then
+    A--;
+    if A!=0 then
+      A--
+      D++
+      go back to start
+    else               A was odd
+      while D!=0 do D--, A++, A++
+      exit reporting A odd and unchanged
+   else
+     while D!=0 do D--, A++
+     exit reporting that A has been halved.
+\end{verbatim} 
+
+Given the above that multiply and divide by 2, and the fairly obvious small
+variations on them that multiply and divide by 3, 5,\ldots one can in fact
+with a little bit of extra encoding of data get away with a counter machine
+that only has two registers, say $A$ and $D$. If you had really wanted
+say three registers $A$, $B$ and $C$ you handle that by putting the value
+of $2^A 3^B 5^C$ in the main register of the two-register setup. What would
+have been increment or decrement operations on $A$, $B$ and $C$ now
+expand into multiplications of (test) divisions by 2, 3 and 5. By using
+more primes there you can model as many registers as you feel you need. And
+Provided you are drawing out the flowchart with the sub-blocks for
+known operations written as blobs rather than by revealing all the
+fundamental steps inside them this does not even make things seem much worse.
+Well that is unless your resolution falters and you consider what it
+means in terms of the number of steps taken to perform some calculation,
+so it is proper to stress again that this is a game where you have agreed
+not to think about that.
+
+It is now clear that simple integer arithmetic can be handled at least
+if you restrict yourself to positive values. The next thing to
+consider will be arrays, since they are a pretty frequent component of
+programs. Well in the same spirit that there was an explanation of how
+to encode a string of text as a number, here is a recipe for dealing
+with an arrany of $N$ integers with values $a_i$ for $i$ from $0$ to
+$N-1$. Set up a string that starts with a 1 then has $a_{N-1}$ zeros before
+another 1, then $a_{N-2}$ zeros and so on down so that the string ends
+in $a_0$ zeros. So if the array was of length 3 and the values in it
+were $2$, $4$ and $6$ we would set up $100000010000100$. Now view this
+as the representation of a number in binary and view that number as an
+encoding of the state of the array. Well that step is simple - but it is
+now necessary to verify that the key operations of accessing the $j$th
+and updating it can be performed using a counter machine.
+
+Actually those two operations are remarkably easy to arange. First
+note that counting the number of trailing zeros in the binary representation
+of a number just amounts to finding out how many times 2 divides into it
+evenly. And division by 2 is one of the things we have seen that counter
+machines can do. To trim off a trailing 1 from an encoding you just need
+the transformation $N \rightarrow (N-1)/2$ which is also straightforward.
+With those two operations in place it is then easy to trim $j-1$ entries from
+a packed array, leaving the item at position $j$ as the next to inspect,
+and it is then easy to read its value. To replace it all that is needed
+is to start by deleting $j$ items and then put back the replacement
+followed by everything that had been removed. To put a new value $k$ on
+the ``front'' of an array means just extending its binary representation by
+a $1$ follow3ed by $k$ zeros. And that is $N -> 2^{k}(2N+1)$. Again the
+computation there is simple enough arithmatic that the counter machine can
+be set up to do it.
+
+The arrays set up as above could (of course?) be nested, and one way to
+cope with negative integers would be to represent a positive value $N$ as
+and arrray of length $1$ $[0,N]$ and a negative value $-N$ as $[1,N]$.
+All the basic arithmetic operations would now need to extract and check the
+sign marker but that is ``just a bit more programming''. And since we
+are interested in shoding how to make things difficult that can not
+be seen as a problem. Those who are serious massochists could look
+to the standard representation of floating point numbers as arrays of
+length 3 with one field for sign, an exponent represented by a number
+in the range $0..2027$ and a $52$ bit mantissa. All the basic arithmetic
+operations on floating point values amount to integer operations on the
+components of these triples.
+
+Well with simple variables mapping onto counter machine registers and arrays
+packed up as explained above and strings represented as arrays of
+characters, with the individual characters held as integer codes (as they
+would be anyway in languages like C and C++) it should be clear that
+the flowchard for any program that does not perform input or output
+operations while running but is just presented with some input at the
+start and just generates results as it stops can be expanded into a flowchart
+for a counter machine. What may be more amazing will be that each textual
+expansion along the way when making this transformation only increases things
+by a constant factor, so the new flowchar based on an almost ultimately
+primitive model of computing will only be a constant factor larger then
+the natural one you started with.
+
+What about function definitions and function calls? Well even they are
+not a disaster. If you review the way that arrays have been introduced here
+you will observe that they do not have any predefined limit to the
+number of entried in them. In fact the representation used behaves more
+like flexible lists than rigid arrays and slightly different ways
+of looking a them allows one to perform operations that amount to
+pushing a new item onto the front of a list and at some later time
+popping it off. Those operations are just what you need to provide a
+stack structure that keeps track of procedure calls. And what is goin on there
+is really a fairly close relative on how compilers work when mapping
+procedures and their calls onto the hardware of real machines. Working
+through the full details here would become tedious but anybody who has
+followed this far should be able to sort it out for themselves if they
+really wanted to. The conclusion one ends up with is that counter machines
+can express pretty well any computation that an ordinary computer could
+be programmed to perform subject mainly to the constraint that all
+input data must be available from the start and no output should be
+inspected until the program terminates. For many purposes the limitation
+will not be severe
+
+A good joke about counter machines is that one of the earliest
+transistorized desktop electronic computer was built at a time when
+hardware to do complicated things such as addition and multiplication
+was seriously challenging, so internally it worked by counting, and it
+got as far as offering a square root operation to its users. So perhaps
+the ideas here have more pracical impact than you might have expected.
+
+Now some of the constructions shown here are unduly general and so it
+would be possible to model ``real computers'' in a more compact and possibly
+more efficient way. While we are only concerned with abstracion that is again
+not a big issue, but it does make one ask ``Given a computation that is
+to be done, what is the most compact counter machine that will achieve it?''
+or in other words how much better that the direct modelling shown here
+can we do? This is not just a difficult problem. It is one that in general
+can not be solved in any systematic way. It is natrual to feel that if
+ons has a counter machine with $M$ nodes that solves a problem then if
+resource constraints are being ignored one can enumerate all the
+counter machine configurations with less then $M$ nodes (start by
+cataloguing all directed graphs with that size limit) and just check
+which if any behave in the same way as the original. By scanning from
+smallest opwards one would natrurally come across the best. The painful
+reality here is that given a counter machine (or indeed any other sufficiently
+general model of computation) there can be no algorithm that will in
+general certify that example setups will have terminating patterns
+of computation. A consequence of that is that it can not be possible
+to guarantee to be able to verify that two counter-machine configurations
+have the same behaviour. However it will be possible to spot some
+cases that agree, and to identify others that do not. So for a {\em really}
+difficult problem design software that does the best you can to
+take the description of a counter machine and optimise it.
+
+There is another famous challenge-problem assocoiated with counter machines,
+Consider all possible machined with $M$ nodes (and $K$ registers).
+Consider their behaviours when started with all their registers zero.
+Among all of those which one halts and when it does has the
+largest possible value in its first register.
+Obviously there can be machines that never halt - perhaps
+the simplest version just increments a register and returns to its
+starting state, so it sits there counting up for ever. Such cases are
+to be discarded -- it is just machines that actually terminate that
+are of concern.
+
+With a truly tiny number of nodes this question is easy to answer. A
+machine with one node plus a stopping one can not do better than to
+make its first node increment its register and transfer to the helt node.
+So the answer there is $1$. An alterative version of the challenge is to
+maximise the number of steps taken before the halt state is reached --
+both versions are remarkably tough. It is plausible that a register
+machine with just 2 registers and only 3 nodes (plus the stopping one)
+can compute for much longer than you would have expected before
+terminating, and I here leave that as a topic for enthusiasts to explore.
+
+{\em Hmmm - google AI summary for "busiest minsky machine" seems to
+suggest that a 2-register 3-state machine might take thousands of
+steps and then stop. I have not spent time working out what design
+behaves that way and the AI summary feels slightly incomplete and in
+particular does not point me at ``proper'' papers or reports. SO I hope that
+somebody better at web search than me can find proper detailed documentation!}
+
+
