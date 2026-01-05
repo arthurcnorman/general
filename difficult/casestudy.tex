@@ -1,0 +1,81 @@
+\chapter{A case study}
+This sketches one of the most impressive cases there has been of somebody
+starting a project and then going to town in the way they insisted
+that everything should be exactly to their taste.
+
+In the early 1960s Donald Knuth began a project to write a book. It was a
+time of change in that somewhat before then serious books had been prepared
+by armies of compositors placing metel type in trays, but it was becoming
+clear that computer-aided publication was going to be the way forward. Knuth
+could have prepared his work the old fashioned way by writing it out by hand,
+getting a secretary to prepare a typed version from that and then letting
+a publishing house and printers loose to finalise things. That would have been
+the easy route.
+
+However Knuth wanted greater control and knew that the standard route would
+not result in a publication up to his standards. So he diverted from
+his main book for a while and developed his own software to lay characters
+out on the page. There are multiple issues that have to be faced up to in that
+endeavour:
+\begin{itemize}
+\item Decide where to split lines and how to stretch text so that all lines
+end up neatly at the right margin;
+\item Kern letters propery -- i.e.\ arrange the separation between individual
+letters based on their shapes so that the overall visual effect is of
+uniformity. This includes allowing for the way that letters in
+{\it italic sloping style} abut gracefully with upright text that surrounds.
+\item Present displayed mathematics well. Doing so leads to a need to
+handle Greek letters and a huge number of special symbols, to manage
+subscripts and superscripts, fraction bars, nested brackets of various
+styles and vertical alignment (for instance in tables or presentations of
+matrices);
+\item Schemes for the generation of an incorporation of diagrams,
+generation of cross references, indexes and for the formatting of
+a title page and chapter headers.
+\end{itemize}
+The resulting system, \TeX ended up a great succcess and since then it has
+been used a standard tool for scientific publication.
+Many would have viewed that as at least as large a task as writing the book
+that motivated it.
+
+But that was not the end! Historically fonts had been designed by specialists
+and cut in metal. The transcription of those to computers was not in
+a very well developed state, and in particular Knuth felt that the computer
+fonts available to him were not good enough. One issue was that when you have
+a single style of lettering the exact shapes of small letters (for instance
+to use in a subscript) should not be simply scaled versions of the standard
+versions, and similarly huge versions for use in titles are not merely
+magnified copies of the original. So Knuth invented notations for describing
+the shaped of characters and how those shapes changed with size. And using
+that he developed the ``Computer Modern'' family of typefaces including all
+the symbols he would need in his book. This is another contribution that
+has lasted but that can be viewed as a deep diversion rendering his project
+of writing a book much harder than might have been expected.
+
+It is still the case that this story is incomplete. In writing the programs
+that could lay out text and define fonts Knuth was very aware that reading
+a program written by somebody else can be really difficult because the
+justification behind all the choices they have made is not visible. So
+he developed a scheme known as ``literate programming'' where code and
+a careful textual explanation of what it was doing (and why) were woven
+into a single document. By running one decoder over that document he could
+recover code to pass to a compiler and use, but with a different decoder
+he extracted a \TeX document by way of explanation. Within the single
+combined source the concept was that each fragment of code would be
+positioned adjacant to a careful explanation of it, and so as and when
+any changes were made it would be natural to keep the code and its
+documentation in step. Using this he was able to turn the commentary
+within the \TeX source code into a book ``TeX the program'' that could
+accompany his book that documented how to use it.
+
+With all that in place he could get back to ``The Art of Computer Programming''
+which expanded from an initial expectation of being a single volume
+into a sequence with each focussing a particular aspects of the subject. And
+these became standard issue to all aspiring and practising computer scientists
+amd \TeX became the most common way for them to prepare papers and books.
+
+This level of starting with a task that while large might have seemed
+reasonably straightforward and by demanding ``better'' escalating the
+projefct scope amazingly is a great illustration of the thoughts we
+present here. But for many practical reasons we will be concentrating
+on cases that do not demand quite the above levels of heroic enegy!
