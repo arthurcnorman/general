@@ -1,0 +1,132 @@
+\chapter{Solving a quadratic equation}
+There are introductions to programming that give as one of their
+earliest examples the challange of creating an application that
+reads in three numbers, $a$, $b$ and $c$ and then prints out the
+two solutions to the equation $a x^2 + b x + c = 0$. The clear
+expectation is that this will be done using the well-known formula
+$\frac{-b \pm \sqrt{b^2 - 4 a c)}}{2 a}$. When done by just writing out
+use of that formula the task is indeed easy enough to be in an
+introductory section about use of computers.
+
+However if one looks at the task more carefully and start to insist on
+getting as correct a result as possible for all legitimate inputs things
+become rather different. I will suppose that since this is a task
+set for beginners it is to be solved using the default way in which
+your computer handles numbers. In almost all cases this will follow
+an international standard called IEE~754 abd the program that is written
+will use a representation they call ``binary64'' which is commonly referrred
+to as ``double precision''. The task in hand here highlights several
+ways in which the computer arithmetic that is thereby provided can
+do things that a naive user might not hav thought about. So let's
+take these in turn and see how the equation solver will need to
+be made more elaborate to avoid them hurting.
+
+The (IEEE) floating point representation in a computer can not handle
+arbitrarily large numbers. Specifically it runs out of steam when values
+exceed around $1.8 \times 10^{308}$. Beyond that it stores values
+that represent ``infinity''. Now of course sensible people will
+not tend to work with problems that lead to numbers so absurdly large,
+and so it is common not to think much about it! However if one seeks
+perfection then the quadratic solver should deliver accurate results for
+any inputs where the results are sensible, and it should report
+failure in exactly the cases where the inputs do not lead to answers that
+can be represented in the floating point format that the computer uses.
+
+So now consider the case when some user provides the input
+$a=1, b=1, c=-1$. Substituting these into the formula leads to
+a pair of very sensible roots with values about $0.618034$ and
+$-1.618034$. Everything seems good. But now a rather less helpful
+user enthusiastically offers $a=b=2 \times 10^{154}$ and
+$c=-2 \times 10^{154}$. This fairly obviously has exactly the same
+two roots. However the with this and with various fairly closely related
+cases involving huge numbers it is possible to arrange that in the
+computation of $b^2 - 4 a c$ that either $b^2$ overflow or $4 a c$
+overflow or both, or that neither overflow but their difference does.
+It is furthemore possible for one or both of the terms to exceed the
+$1.8 \times 10^{308}$ maximum and hence overflow even though when they
+are combined the result is in range. This is all a mess! However
+this particular case can be tidied up by starting the calculation by
+dividing all of $a$, $b$ and $c$ by some large value so as to reduce them
+to sensible size numbers. At which point an additional issue comes into
+play. If you divide a floating point number by a general scale factor
+doing so can introduce rounding errors. Consider for instance the
+calculation of just $1/3$ and the computer will produce something
+in the style of $0.3333333333333333$\footnote{Since it is working in binary
+internally it will actually be more like $0.01010101\ldots$} which is
+not precisely the same since it terminates after a finite number of
+digits. Continuing the calculation with this corrupted value will
+naturally lead to a (small) error in the final result. Happily with
+IEEE floating point it is legitimate to divide by any power of $2$ and
+in that case no precision will be lost. So it will be necessary to
+identify a power of $2$ that is about the right size so that it can be used
+to rescale the input to avoid overflow.
+
+The situation with very very small numbers is in fact even more curious
+although the way to sort things out is basically the same. The smallest
+floating point value that can exist (with smaller values being flushed
+to zero) is about $4.94\times 10^(-324}$\footnote{$2^{-1917}$} but once
+values get lower than $2.23 \times 19^{-308}$ the representation starts to
+work with them an lower than normal precision. So to preserve as
+much accuracy as possible the scaling has to keep things away from not the
+point where underflow maps values to zero, but from some rather
+earlier-encountered threshold.
+
+For now and to prevent things geting quite out of hand the issues of
+rounding errors that might arise when multiplying $b$ by itself and so
+on up to and including those that could be introduced by the square root
+calculation are going to be ignored, but anybody who really wants to
+push for perfection regardless of the cost in difficulty can explore
+those paths. Also it would be proper to review cases where the true
+results are going to be very close to or beyond the overflow or underflow
+points so that good answers are produced in every case where that is possible.
+Part of that might involve finding a scale factor $\sigma$ and replacing $a$
+with $\sigma a$ and $c$ with $c / \sigma$\footnote(with $\sigma$ a power of
+2 to avoid introducing corruption through rounding}. Then a final result
+can be generated by multiplying or dividing the solutions to the
+scaled version by $\sigma$, and any overflow or underflow will then
+be captured in and limited to that final re-scaling operation.
+
+However there is a further and distinct way in which the naive use of the
+standard formula can generate seriously inaccurate results even after
+overflow is avoided and regardless of minor rounding errors.
+Supose that the value of $-b$ and $\sqrt{b^2 - 4 a c}$ are rather similar
+in absolute value. Then one of their sum and their difference will
+add two similar values and give a good result, while the other can lead
+to massive loss of precision as leading digits match and cancel out. To
+illustrate this consider the use of 8-digit decimal floating point on
+a pocket calculation and look at the equation $1.0000123 x^2 - 2*x +
+0.99991234 = 0$.
+Here $b^2 = 4.0000000$ and if it were calculated precisely
+$4 a c = 3.999698555687128$. However it is only possible to
+keep the first 8 digits of the latter, so it will be taken to have the
+value $3.9996986$ with the last digit that is kept rounded up. When these
+two values are subtracted one gets $0.0003014$ which gets normalised up
+to $3.014 \times 10^{--4}$. But a truer result would have been
+$0.00033014443$ to 8 significant digits. The discrepancy between these
+means that the result you end up with will only have around 4 correct
+digits rather than the 8 that you had hoped for. While we can all accept that
+the example shown here had awkward numbers deliberately chosen to give
+this severe cancellation of loading digits, there is no fundamental reason
+why such cases might not arise in real life.
+
+Happily (for those who like to deliver accurate anwers) or painfully (for
+those who see this adding yet an extra layer of complication and
+difficulty to the task) it is possible to avoid this calamity, because
+it is known that the product of the two roots of a quadratic will
+always be equal to $c/a$ and bacause whenever calculating one of the two roots
+does a subtraction that can lead to leading digit cancellation the other
+will be found by doing an addition that gives full precision results. So
+in effect one should calculate the more delicate root as
+$2 c/(-b - \sqrt{b^2 - 4 a c}))$ which will now be very respectable.
+OF course it will be necessary to judge which of the plus or minus cases
+is the one to use and which the one to avoid.
+
+So overall the program that solves a simple quadratic and that does not
+even worry about cases where there is no (real) solution is dramatically
+messier and calla for much more understanding that those novice
+programmers will have been ready to deploy. But if you are writing a library
+or application that is to be used by others you have a responsibility to
+cope with all cases, not just the ones you think about first!
+
+
+ 

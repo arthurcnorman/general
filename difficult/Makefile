@@ -7,6 +7,7 @@ full.pdf:	full.tex full.bib \
 		turing.tex \
 		lambda.tex \
 		primrecurse.tex \
+		quadratic.tex \
 		endpart.tex
 	pdflatex full
 
