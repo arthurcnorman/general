@@ -1,0 +1,104 @@
+\chapter{Turing Machines}
+There have been two or three big reasons for looking for minimal
+schemes that are able -- in some sense -- to compute.
+\begin{enumerate}
+\item If you want to build a computer it is very reasonable to try to
+make things easy for yourself by designing the simplest possible device
+that you can. Even though that might make life impressively harder for
+those who want to write programs for it. There are modest applications
+of this idea that have led to very successful commercial designs the
+successors of which are in widespread use today -- but the extremist
+version of it may provide a great basis for a fun practical construction
+project. The assertion ``I have made by own computer from scratch'' is
+obviously a good one to be able to make;
+\item If you are serious about wanting to develop a robust theory that
+{\em really} lets you understand what computers can do and what they can
+not it is rational to start with something simple. What you will be
+trying to do will be difficuly enough without needing to worry whether
+all the special capabilities built into modern computers and programming
+languages make big differences;
+\item Those who are concerned with how long it should take to solve some
+problem will find there are huge and shifting complications if they
+consider hours. minutes and seconds on a range of desktop and laptop
+machines as well as mobile phones and embedded controllers. By looking
+at timings on truly reduced hardware their results will be less of immediate
+relevance but can be ones that will remain valid as this year's
+computers are replaced by next years ones that are posisbly from a quite
+different manufacturer.
+\end{enumerate}
+
+The best known minimalist sort of computer is the Turing Machine. This
+emphasises the fact that a computer of any sort will have memory and if
+viewed from a distance all that it does can be seen as taking steps
+that each inspect and change a single item within that memory. In focussing
+on how data is stored it does not take any steps to make it particularly
+easy to coax it into solving the problem that interests you.
+
+The storage provided by a Turing Machine is a tape which is marked out in
+cells. Each cell can hold one of a modest number of symbols. The number
+of symbolc allowed in one of the parameters that describe exactly what
+sort of Turing machine is being considered. The tape is made long enough
+for whatever task you are happening to try to process. Some people would
+characterise that as a tape that is infinite in length, or would use
+the word ``unbounded'', but in any particular computation that the Turing
+Machine takes only a finite segment of it will be used. So for practical
+experimentation it can be acceptable to provide a limited length ``tape''
+and view an attempt to go beyond its end as merely reaching a limitation of
+the physical approximation to the abstract machine.
+
+The Turing machine starts with whatever input data it needs ready on the
+tape. It then works step by step: it has a read/write head positioned
+over some call of the tape and a cycle it takes will inspect the
+symbol there and based on an internal state (from a limited number) it
+will write back a possbly changed symbol and move the tape left or
+right. It also transfers into some internal state. One state will be
+special in that entering it causes the maching to halt. At that stage it
+is expected that it will be written its result onto the tape. The number of
+distinct states that the machine can be in is the second parameter alongside
+the size of the alphabet of symbols on the tape that characterise it.
+
+Programming a Turing machine has to involve setting up a table that
+is indexed by which symbol has just been read and which state the machine
+is in. When that information is used to inspect a row in the table
+you can read off the symbol to be written, the tape movement to apply and
+the identify of the next state that the machine should be in.  A reasonable
+expectation is that designing tables like that to perform even modestly
+elaborate computations will be a bit painful.
+
+One way to prove that it is really worthwhile setting up this fairly
+clumsy looking model of computation is a proof by construction that it
+makes it feasible to build a mechanism that follows its behaviour
+patter. In LEGO!
+
+\begin{verbatim}
+https://beta.ideas.lego.com/product-ideas/10a3239f-4562-4d23-ba8e-f4fc94eef5c7
+\end{verbatim}
+is a concrete realisation of this using under 3000 LEGO parts. While that is
+quite a lot, it can be put in perspective by comparing with the official
+LEGO kit to make a model of the Star Wars Death Star, which comes with
+9023 pieces -- bur rather fewer gearwheels.
+
+{\em blah blah blah including the remark that Wolfram suggests that there
+is a TM with just 2 states and 3 symbols that is ``weak univeral'' and one
+with 2 states and 5 symbols that is universal in the usual sense. And
+the 2 state 5 symbol version is surely very much within the scope of
+a variation on the LEGO build...
+
+The other things to note are that (sharply in contrast to counter
+machines) Turing machines can solve problems ``efficiently''. Well if
+a problem can be solved in $O(N)$ using ordinary programming it can
+be done in $O(N^2)$ on a TM.
+
+Furthermore rather simple extensions and generalisations to TMs allow
+for yet better efficeincy for many problems. One can consider a TM-like
+device wither with more than one tape or with just one tape by more than
+one read/write head.  As a concrete example of what could be done
+with them, Merge Sort was a solid solution to sorting vast amounts of data
+when computer memory was small and the data has to live on magnetic tapes.
+The treatment of those tapes and those in a multi-tape Turing machine
+are closely analagous to one another, so that sort of TM provides a
+really solid model for analysing what can be done.}
+
+
+
+

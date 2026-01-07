@@ -1,6 +1,12 @@
 # Computing Made Difficult
 
 full.pdf:	full.tex full.bib \
-		intro.tex
+		intro.tex \
+		casestudy.tex \
+		counters.tex \
+		turing.tex \
+		lambda.tex \
+		primrecurse.tex \
+		endpart.tex
 	pdflatex full
 

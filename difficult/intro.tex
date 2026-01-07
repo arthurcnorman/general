@@ -124,6 +124,24 @@ low precision floating point arithmetic for big parallel comutations in
 either graphics or artifical intelligence areas, and so these rather pedantic
 issues of precision come much closer to pracical reality.
 
+\item[Portability.]
+
+For small programs that are only intended for use over a fairly short
+perious of time and only by one person on their own computer it is
+not necessary to worry about portability. However larger projects
+raise more and more serious challenges. Windows, Macintosh, Android and
+Linux are amazingly not 100\% compatible with each other, and it is often
+necessary to use techniques that apply to just one particular system.
+Intel and AMD processors, ARM and Risc-V are all different and are either
+at present in widespread use or may become so. There are areas where each
+of those needs custom treatment to achieve goals even as simple sounding as
+measuring time with the highest feasible precision. Use of a sufficiently
+high level language can conceal these issues by arranging that all the mess
+is embedded within the language and its associated library - but for our
+purposes that still leave curious people with a need to know exactly what
+is going on. And very frequently common solutions that paper over differences
+carry costs that oen might like to avoid.
+
 \item[Demand the fastest (or most compact) solution that could  
 ever exist.]
 
@@ -285,6 +303,10 @@ Obviously these schemes for making life harder overlap in places, but it
 is also the case that several can all apply at the same time. The result
 is that challenges that started off seeming easy can end up causing quite
 severe headaches.
+
+One might reasonably ask whether real people apply any of these
+principles in their lives. The next chapter sketches a particularly
+extreme case, but in reality a great deal of work starts with tasks
 
 % End of intro.tex
 
