@@ -120,10 +120,23 @@ idea is that the counter machine can do something $B$ times by counting down
 in $B$ so we sum $B$ and $C$ by counting up in $A$ first $B$ times and
 then $C$.
 
+The big magic that makes setting up a counter machine a lot less difficult
+that it might first have seemed s that after having convinced yourself
+that the above does perform addition you can write boxes in your flowcharts
+with $A = B+C$ in them alongside the primitive ones that say just $A = A+1$.
+You work on from there producing additional calculations that you can
+use in boxes but then expand out into the primitives if you are really
+forced to. This is not really cheating -- it is just like program
+building in an ordinary computer language where you set up a collection
+of subroutines (which you sometimes call functions or procedures) and then
+use them freely in the higher level parts of what you do.
+
 In what follows I will often assume that a target register starts off at zero
 and that there is no need to preserve anything but the trick of initially
 counding down in $A$ until it is zero and of saving values in $D$ shown above
-can be applied wherever it is necessary.
+can be applied wherever it is necessary. And I will also suppose that the
+number of registers that my machine has, while finite, is large enough that
+I always have a spare one available. 
 
 Then of course multiplication can be coded as just repeated addition, so
 $A = B*C$ will be
@@ -179,14 +192,27 @@ say three registers $A$, $B$ and $C$ you handle that by putting the value
 of $2^A 3^B 5^C$ in the main register of the two-register setup. What would
 have been increment or decrement operations on $A$, $B$ and $C$ now
 expand into multiplications of (test) divisions by 2, 3 and 5. By using
-more primes there you can model as many registers as you feel you need. And
-Provided you are drawing out the flowchart with the sub-blocks for
-known operations written as blobs rather than by revealing all the
-fundamental steps inside them this does not even make things seem much worse.
-Well that is unless your resolution falters and you consider what it
-means in terms of the number of steps taken to perform some calculation,
-so it is proper to stress again that this is a game where you have agreed
-not to think about that.
+more primes there you can model as many registers as you feel you need.
+To do this properly you need to convince yourself that with one register that
+contains real data and one to use as temporary workspace you can manage the
+multiplications and divisions by 2, 3 etc., but those operations really are
+simple enough that that is not a severe challenge.
+
+fundamental steps inside them this does not even make things seem much worse:
+you can write your code with blocks that say $A=A+1$, $B=B+1$ and so on
+for as many variables as you need and each just denotes a mess of
+lower level messing with the two real registers you have. This
+scheme is completely general save for one caveat. That is that if
+your machine needs input, say the number $K$, it will have to have
+that encoded into its register as $2^K$, and similarly when the
+machine stops its result will be an encoded version of the true
+answer.
+
+So all is well and you can restrict yourself to using 2-register
+counter machines unless your resolution falters and you consider what it
+means in terms of the number of steps taken to perform some calculation.
+But it is proper to stress again that this is a game where you have agreed
+not to think about that!
 
 It is now clear that simple integer arithmetic can be handled at least
 if you restrict yourself to positive values. The next thing to
@@ -217,7 +243,9 @@ followed by everything that had been removed. To put a new value $k$ on
 the ``front'' of an array means just extending its binary representation by
 a $1$ follow3ed by $k$ zeros. And that is $N -> 2^{k}(2N+1)$. Again the
 computation there is simple enough arithmatic that the counter machine can
-be set up to do it.
+be set up to do it. The effect of all of this is that it becomes
+proper to write flowcharts with actions such as $A = B[C]$ that
+accesses the $C$th element of an array $B$.
 
 The arrays set up as above could (of course?) be nested, and one way to
 cope with negative integers would be to represent a positive value $N$ as
@@ -243,7 +271,9 @@ for a counter machine. What may be more amazing will be that each textual
 expansion along the way when making this transformation only increases things
 by a constant factor, so the new flowchar based on an almost ultimately
 primitive model of computing will only be a constant factor larger then
-the natural one you started with.
+the natural one you started with. And when writing out your flowchart
+you can use essentially all the operations from the instruction set
+of a traditional computer in the boxes.
 
 What about function definitions and function calls? Well even they are
 not a disaster. If you review the way that arrays have been introduced here
@@ -326,6 +356,13 @@ somebody better at web search than me can find proper detailed documentation!
 \begin{verbatim}
 
 https://codegolf.stackexchange.com/questions/279153/long-running-section-11-4-minsky-machine
+
+``Rick J. Griffiths in his dissertation in 2003 has adapted the
+busy beaver problem to Minsky's "register machines". His program is M
+written in Java.''
+
+and that is a Cambridge Part II dissertation and I may be able to
+find a copy in the Computer Laboratory archives\ldots
 
 \end{verbatim}
 }
