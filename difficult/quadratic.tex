@@ -17,7 +17,7 @@ an international standard called IEE~754 abd the program that is written
 will use a representation they call ``binary64'' which is commonly referrred
 to as ``double precision''. The task in hand here highlights several
 ways in which the computer arithmetic that is thereby provided can
-do things that a naive user might not hav thought about. So let's
+do things that a naive user might not havr thought about. So let's
 take these in turn and see how the equation solver will need to
 be made more elaborate to avoid them hurting.
 
@@ -90,24 +90,31 @@ However there is a further and distinct way in which the naive use of the
 standard formula can generate seriously inaccurate results even after
 overflow is avoided and regardless of minor rounding errors.
 Supose that the value of $-b$ and $\sqrt{b^2 - 4 a c}$ are rather similar
-in absolute value. Then one of their sum and their difference will
+in absolute value. This easily gappens when $b$ is rather larger than
+either $a$ or $c$. Then one of their sum and their difference will
 add two similar values and give a good result, while the other can lead
 to massive loss of precision as leading digits match and cancel out. To
 illustrate this consider the use of 8-digit decimal floating point on
-a pocket calculation and look at the equation $1.0000123 x^2 - 2*x +
-0.99991234 = 0$.
-Here $b^2 = 4.0000000$ and if it were calculated precisely
-$4 a c = 3.999698555687128$. However it is only possible to
-keep the first 8 digits of the latter, so it will be taken to have the
-value $3.9996986$ with the last digit that is kept rounded up. When these
-two values are subtracted one gets $0.0003014$ which gets normalised up
-to $3.014 \times 10^{--4}$. But a truer result would have been
-$0.00033014443$ to 8 significant digits. The discrepancy between these
-means that the result you end up with will only have around 4 correct
-digits rather than the 8 that you had hoped for. While we can all accept that
-the example shown here had awkward numbers deliberately chosen to give
-this severe cancellation of loading digits, there is no fundamental reason
-why such cases might not arise in real life.
+a pocket calculation and look at the equation $x^2 - 4003*x -1 = 0$.
+Here $-b$ is obviously just $4003.0000$ when written so that the 8
+digits of precison are made explicit. A careful  calculation of
+$\sqrt{b^2 - 4 a c}$ gives its value as $4003.000499625249859\ldots$ and
+to 8 digits that is $4003.0005. When the computer subtracts these it has
+no access to ant of the lower digits so the only result it can offer
+is $-0.0005$ while the ideal result would have been $-0.00049962524$, So
+although the arithmetic had been being performed keeping 8 significant
+digits thoughout the cancellation of leading digits in the subtration
+means that our final result has at best only 4 of its leading digits
+correct. Using a number larger than $4003$ would make this precision loss
+worse to an extent that even with full 64-bit IEEE arithmetic results
+can be unsatisfactory.
+
+
+While we can all accept that the example shown here might have been chosen
+with awkward numbers deliberately picked to give this severe cancellation
+of loading digits, there is no fundamental reason why such cases might not
+arise in real life and in fact it can occur so easily that it should be
+considered a common risk.
 
 Happily (for those who like to deliver accurate anwers) or painfully (for
 those who see this adding yet an extra layer of complication and
