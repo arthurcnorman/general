@@ -1,0 +1,135 @@
+\chapter{Turtle Graphics}
+
+One of the schemes often proposed for getting the very young into
+computation involved letting them draw pictures using a ``turtle''.
+This moves around the world leaving a trail that shows where it has been
+(so why is it not described as a snail?). It is possible to instruct it
+to move directly forward by some number of steps or to turn left or
+right by an angle that is usually specified in degrees. Combinations
+of these two operations can be repeated. So two very easy initial examples
+of what can be done are
+\begin{verbatim}
+  repeat 4 times
+    move forward by 10
+    turn left by 90 degrees
+\end{verbatim}
+end
+\begin{verbatim}
+  repeat 5 times
+    move forward by 10
+    turn left by 90
+    move forward by 10
+    turn right by 90
+\end{verbatim}
+where one of these draws a square and the other a zig-zag. By giving
+instructions that are less repetitive it will be possible to draw a house
+or other interesting outlines. It can be useful to be able to say
+``pen up'' and ``pen down'' so that the drawing being produced does not
+have to use a single continuous line and then perhaps the turtle can be
+used to create any drawing then could be made using a pencil. That sets
+one path towards difficulty: set out the instructions for a turtle to
+approximate some of the pencil work from Leonardo da Vinci or Albricht
+Durer! That would probably just ends up as a hugely long list of movements
+and although the output would be spectacular the text of the sequence of
+instructions to the turtle would not be very interesting or informative!
+So here we will concentrate on examples where the sequence of instructions
+is reasonably tidy. It was easy to understand what the square and zigzag
+scripts would lead to, but the point of this chapter is that with fairly
+harmless-looking extensions to the set of operations that a turtle can
+be asked to perform it gets remarkably harder to predict what will
+emerge or reason about it in detail. So what we provide here are a
+selection of more or less difficult questions and challenges ragarding
+turtle behaviour and we will not spoil them all by giving all the
+answers!
+
+\begin{enumerate}
+\item Start with something that is not too hard. For exactly what angles of
+turn will a sequence rather like the one that draws a square return to
+its starting point, and how many steps will that take? Angles do not need
+to be whole numbers of degrees.
+\item If the turtle position is computed using computer arithmetic that is
+only precise to say around 16 or 17 significant figuures, for a pattern that
+would close up in an ideal world how far from joining up can it be in
+reality? What are the consequences if the turtle keeps following the same
+pattern of activity for a really long time?
+\item What rule will lead to the turtle following a nice spiral path,
+and how does it behave beyond the time it reaches the centre (of it ever does)?
+\item Suppose that at each step the turtle moves forward by unit distance and
+then spins so that the next direction is utterly at random. That could include
+it keeping on in its original direction, totally backtracking or anything in
+between. After $N$ steps about how far from its starting point is it
+likely to be?
+\item As above, but the new random direction is limited, say to corespond
+to turning right by an angle uniformly chosen between 0 and 180 degrees? How
+much does this impact things as against the fully random turn?
+\item Suppose the turtle has a home and it makes a random turn that is almost
+fully random but that has a rather small bias toward pointint it homewards.
+How big does this bias be to give it a good change of getting within
+a reasonable range of its island? This case can be interpreted as a reasonable
+first attempt to model real bird or animal long range migration skills
+by exploring just how much navigational precision they actually need. And
+the traces of movement of several turtles trying this out can make nice
+pictures!
+\item For parameters $x$ and $N$ consider the turtle instructions:
+\begin{verbatim}
+  a = b = c = 0
+  repeat N times
+    a = a + x
+    b = b + a
+    c = c + b
+    move forward by 1
+    turn left by c
+\end{verbatim}
+This has introduced some arithmetic and is a generalisation of the challenge
+to understand what drawing will emerge from ``move 1;turn 1;move 1;turn 2;
+move 1; turn 3;\ldots'' where the angle turned at each step grows. Note that
+turning by angles over $360^{\circ}$ is perfectly respectable in that you
+just spin all the way around once (not havikng any overall effect!) and the
+turn by the specified angle less 360.
+The challenge here is to understand what values of $x$ lead to closed
+paths, how long the paths are before they join up (i.e.\ how large should
+$N$ be to make this neat), and what symmetries there will be in the
+picture created. For some values of $x$ one gets a 3-fold symmetry. Just
+what values of $x$ lead to that? Can one get a 5-fold symmetry ever?
+And why are the pictures so decorative?
+
+\end{enumerate}
+
+
+
+% This dates from some while ago and is no longer any use as such
+% because Java has first deprecated and subsequently removed the "Japplet"
+% facility that I used here and that provided a really easy way to set up
+% a pane on which "g.drawLine" could do its stuff!
+%/*
+% *  Turtle.java                                 A C Norman
+% *  illustration of Turtle Graphics and the "paint" method.
+% */
+%
+%import javax.swing.*;
+%import java.awt.*;
+%import static java.lang.Math.*;
+%
+%public class Turtle extends JApplet
+%{
+%    public void paint(Graphics g)
+%    {   // Try changing the following 3 numbers...
+%        double size = 5.0, inc = 11.0;
+%        int N = 5000;
+%        double x = 200.0, y=200.0,
+%               th1 = 0.0, th2 = 0.0, th3  = 0.0;
+%        for (int i=0; i<N; i++)
+%        {   th3 = th3 + inc;
+%            th2 = th2 + th3;
+%            th1 = th1 + th2;
+%            double x1 = x+size*cos(PI*th1/180.0);
+%            double y1 = y+size*sin(PI*th1/180.0);
+%            g.drawLine((int)x, (int)y, (int)x1, (int)y1);
+%            x = x1;
+%            y = y1;
+%        }
+%    }
+%}
+%/* end of Turtle.java */
+
+

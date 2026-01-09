@@ -8,6 +8,7 @@ full.pdf:	full.tex full.bib \
 		lambda.tex \
 		primrecurse.tex \
 		quadratic.tex \
+		turtle.tex \
 		endpart.tex
 	pdflatex full
 
