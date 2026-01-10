@@ -1,0 +1,151 @@
+\chapter{Ingenious Data Structures}
+
+Textbook of algorithms are often full of explanations of clever ways
+to do things that would not at first have been at all obvious. These
+have typically been invented because the more straightforward ways
+of solving the problems concerned can be improved on, often by
+huge amounts once you get to big enough test cases. So in this
+chapter a few of these schemes are presented as an ilustration of the
+way in which seeking the most efficient scheme can escalate difficulty quit
+a lot.
+
+\section{Binomial Heaps}
+A problem that can have plenty of real-world application is the
+maintainance of a priority queue. With such a queue anybody
+joining the queue has an associated weight or priority. The
+queue is processed by insisting that whenever the server finishes
+with one customer they next look after whichever one in the queue has
+highest priority. Clearly this scheme arranges that a new customer but
+very important customer can arrive and jump much of the queue. There are
+two main operations whose cost needs to be considered: inserting
+a new customer into the queue and identifying and removing the next
+to be served.
+
+The most naive scheme will be to keep all customers in the queue
+in a list arranged such that adding a new one has unit cost -- and not
+at that stage worrying about the priorities. Then to pick the next
+one to serve it may be necessary to scan the whole of that list to
+identify the most worthy member of it, and excise them from the
+list regardless of whether they are its is head, tail or somewhere in the
+middle. That may have optimised adding new customers to the queue
+but it makes selecting the next one to be served have a cost proportionate
+to the queue length. If this was in fact the best that coule be achieved
+all would be simple, but a datastructure called a ``heap'' improves on
+it sharply making the cost of both queue activities proportional to
+the logarithm of the queue length. For long queues this gives a very
+good saving.
+
+The explanation of heaps given here is not going to go into all the
+details and tricks that proper textbooks do because the main payoff
+of this section is something that builds on the general idea. So for
+now a heap is a structure arranged as a (binary) tree. Each node
+of the tree holds a customer and references to two sub-trees. Two key
+rules ar applied: the customer in each node is one who will have priority
+over every customer in either of the two sub-trees. And things are
+arranged so that the number of customers in each sub-tree are
+close to the same.  The first of these means that server has
+immediate access to the most important customer -- they are the one
+in the top node of the tree. The second ensures that the tree
+is nicely balanced and that if there are $N$ customers in all the
+the height of the tree is only $\log_{2}(N)$\footnote{Well that logarithm
+usually has a value that is not a whole number, so we need to round
+it up to get one!}. The management of such a heap is based on
+needing to be able to add new items to it while preserving its
+properties in time proportionate to its height, and equally
+being able to repair it when its top item is removed in a simmilarly
+fast way. Go and read the books to discover how that can be achieved,
+because the interest here is in making the problem slightly harder
+yet in a way that calls for further ingenuity.
+
+Imagine you now have priority queues all sorted, and your setup now
+happens to have two servers each with their own separate queue. You
+are not allowed to make any assumption about which arrriving customers
+joined which queue. Now one server finishes their shift, and the
+remaining one is left to handle all the work. This immediatly calls
+for the two separate priority queues to be consolidated. One could
+do that by asking each customer who has been abandoned by the server
+they were waiting for to join the other queue one at at time, but
+since the queues we are now thinking about represent the queues as
+trees it is likely that this has a significant cost. The scheme
+sketched next reduces that almost as much as is possible!
+
+Priority queues that may need to be merged can usefully be represented
+by a data structure known as a ``Binomial Heap''. All operations on
+such heaps have costs no worse that the logarithm of the number of
+items stored. The explanation here will start from the top level
+so that it can motivate the data structure used by showing why it is
+good.
+
+The key clever idea here is that if we have any number $N$ we can look
+at how it would be written in binary notation and express it as the
+sum of a bunch of powers of 2. So for instance $39$ is $100111$ in
+binary and that means $39 = 2^0 + 2^2 + 2^2 + 2^5$. If the number is $N$
+then we can saay that there are $\log N$ bits in its binary representation.
+
+If a Binomial Heap (which is going to act as a priority queue) has
+$N$ items stored in it then they are arranged in a buunch of
+sub-heaps each of which has size that is a power of 2. It is not yet
+clear just how these will be represented, but it will be arranged that the
+higest priority item in each sub-heap is instantly accessible. That
+means that the top item in the whole heap can be found by checking each
+of the (up to) $\log N$ sub-heaps.
+
+The clever part now emerges when you wish to consolidate two such
+heaps into one. The steps taken follow exactly the pattern used in
+performing addition on binary values. It can consider each possible
+power of 2 in turn. If neither input has a sub-heap that size
+then the output will not. If just one has then that will appear
+in the result. But if both do then those two sub-heaps get
+consolidated in a way that will be descrribed soon into a single
+one that corresponds to the next power of 2 up. In terms of
+the binary addition this is a ``carry''. Provided that the sub-heaps are
+kept with the $2^0$ one first and provided consolidating a pair
+of sub-heaps on size $2^j$ into a single one of size $2^{j+1}$ is
+cheap this manages to add (or pergaps we say form the union) of the
+two binomial heaps in logarithmic time.
+
+Now what about that consolidation step? Well a good way to represent
+a sub-heap of size $2^j$ is to have the highest priority item in it
+picked out and sitting at the top, and the remaining $2^j - 1$ items
+kept in a list of smaller heaps of size $2^{j-1}, 2^{j-2}, \ldots 4, 2, 1$.
+Happily this satisfies our hope that the top item in the sub-heap would
+be easy to find, and it means that the double size sub-tree can be
+formed very easily by comparing the top items in the two
+trees to me merged and just pushing the smaller one onto the
+list held by the larger.
+
+The task of removing the top item from a heap is equally straightforward.
+We alreadyu know we can identify which sub-heap had the desired
+element at its head. Remove that whole sub-heap from the top-level
+list. Now if you lop the top item from the bit of structure you have
+just retrieved you have a nice list of sub-heaps each of whose size
+is a power of two. Gosh that is just the shape of a geberal Binomial
+Heap and you can re-insert all its data into the main one using
+just the binary addition process already described.
+
+Those who are properly pedantic will observe that in each of the
+various sub-heaps you will wany to have stored not just the top
+element and not just a reference to the list of sub-sub heaps, but
+something to explain how many items are present (i.e.\ which power of
+2 is involved) and probably also a reference to the tail end of the
+chain of sub-sub-heaps so that tagging a new item on the end is
+really cheap. Doing all that carries some overhead but for cases with
+enough customers the savings by having costs that grow only
+logarithmically with the size of the queues is so much more valuable
+that it is not a big issue.
+
+The tricks and the elaboration of data representation here may seem
+extreme enough that it would be natural to expect it was the best that
+could be achieved. But massochists can look in the bext chapter
+of their Big Book of Algorithms to learn about ``Fibonacci Heaps'' that
+are yet more bizarre -- and which may only rather rarely be useful
+in practise because although from a theoretical analysis its costs
+grow slowly in pracise the overheads mean that simpler schemes test
+to win. But for anybody keen to see how difficult computing
+can be made looking at the them, and at the Brodal Queue and all
+other options for priority queue implementation can provide a fine
+collection of rabbit holes to dive into.
+
+\section{What next?}
+I have not decided yet!
+

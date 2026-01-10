@@ -11,6 +11,7 @@ full.pdf:	full.tex full.bib full.ind \
 		primrecurse.tex \
 		quadratic.tex \
 		turtle.tex \
+		ingenious.tex \
 		endpart.tex
 	pdflatex full
 
@@ -28,4 +29,5 @@ count:
 		primrecurse.tex \
 		quadratic.tex \
 		turtle.tex \
+		ingenious.tex \
 		endpart.tex
