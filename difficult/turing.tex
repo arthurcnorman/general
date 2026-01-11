@@ -149,7 +149,17 @@ can make trade-offs between the number of states, the size of the
 alphabet you allow on the tape, the ugliness of how data has to be
 coded for use and just how many compoutational steps will be taken
 to obtain your solution. That is a wild and confusing space to
-search within.
+search within. A variation on this is just to look for Turing machines
+that run for a seriously long time but then stop when they are started
+on an empty tape. For really small machines bounds are known. For instance
+if the tape can only hold one of two symbols in each call and the
+machine has 2, 3, 4 or 5 states the number of steps it might take
+before termination can be 6, 21, 107 and 47176870. With more states
+the number of steps becomes infeasible to write using commonly-used
+notations! These results show rather clearly that very small systems
+can have extraordinarily complex behaviour and is systems as small
+as these can behave in such extraordinary ways the detailed understanding of
+larger and less artifial ones will be difficult in the extreme.
 
 To finish this chapter it is proper to mention another variation on
 these machines that has enough witty consequences that it will form the
