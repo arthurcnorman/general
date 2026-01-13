@@ -68,4 +68,48 @@ one. Replacing the \verb@*@ with \verb@+@ does that. Hence you can now write
     number   {digit}+
 \end{verbatim}
 Note that this could be textually expanded to the slightly clunky but
-basic for for regular expressions. 
+basic for for regular expressions, so the extended notations are in general
+a matter of convenience rather than things that bring genuine new
+capabilities. And in that spirit here are two more useful extensions that
+similarly do not alter the range of patterns that can be expressed but that
+may make it easier to specify them.
+\begin{verbatim}
+    P & Q
+    ! P
+\end{verbatim}
+The idea is that the first of these will match every pattern provided that
+both \verb@P@ and \verb@Q@ do, while the second matches any input that
+\verb@P@ would fail to accept.
+While it is fairly straightforward to show that adding these constructs does
+not add any ability to match new sorts of pattern -- all they do is
+make it easier and more flexible to specify them -- the notes here are
+not going to explain the details there. Head for a suitable textbook if you
+need to know exactly how it can be done! But the typical places on
+your computer that provides support for regular expressions will typically not
+support these last two because in fact they unlock levels of practical
+difficulty that are hard to comprehend!
+
+Thus far the use of regular expressions to provide patterns that you can
+try to match against input text seems really rather easy despite the
+pessimistic statement above. So here to give some insight into just
+why adding those two last capabilities is so bad let's state what
+problem it turns from tolerable into being solvable in principle and
+theory but utterly dreadfil in practise.
+
+Consider a regular expression built up as follows and over an alphabet
+that consists of just the two letters \verb@a@ and \verb@b@.
+If one sets up a fairly messy example of such an expression it might
+not be instantly obvious what inputs it will match. The question that gets
+tricky is ``Is there any input at all that it will {\bf not} match?''.
+This may seem a frivolous and artificial question, because what on earth
+would be the point of a pattern that matched absolutely all input? Well
+actually it is not as stupid as it at first sounds! The components used
+to build up the regular expressiion may be modelling the behaviour of
+some machine or the progress through some program as it inspects the
+input. Succeeding in making match could correspond to successful
+processing, and so input that is not matched could amount to input
+data that causes the machine or program to fail. If that sounds a bit
+fanciful it is in fact almost exactly the insight used when considering
+how hard it will be to answer our question! And regular expressions and
+a certain simple class of machines or programs are very closely linked.
+
