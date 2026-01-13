@@ -1,0 +1,71 @@
+\chapter{Simple Pattern Matching}
+Sometimes you might want to search within some text but what you want to
+find is not just a fixed string. Perhaps it can allow options or
+repetition of sub-parts. Perhaps you want to put some sort of wild-cards
+into the pattern that is your target. There is a very well established
+scheme for setting up patterns for use in cases like this, and variations on
+it. Very many programming languages and even dialog-boxes in user interfaces
+use at least subsets of it. So for instance the pattern \verb@*.jpeg@ may
+be used to let you look for all files with the ``\verb@jpeg@'' suffix,
+while at least in a Linux shell the pattern ``\verb@*.\{cpp,h\}@ will match
+names that end in either \verb@.cpp@ or \verb@.h@. A fuller scheme used for
+pattern matching as part of the language PERL and available through libraries
+in almost all other programming languages as a bit more formal. A
+pattern is built up starting with the very simplest: patterns that
+consist of and match just one letter\footnote{It can also in fact be
+useful to have a basic pattern that matches an empty string.}. These
+simple patterns are combined using three constructions, If P and Q are
+existing patterns then one can write
+\begin{itemize}
+\item $P Q$ -- this is a pattern that matches anything that can start with
+a sequence that matches P and follows that with one that matches Q. Obviously
+the very easiest use of this is that it means that you can write a sequence
+of individual letters and they form a word to be spotted;
+\item $P | Q$ -- here we accept anything that matches either $P$ or $Q$.
+So \verb@cat|dog|rabbit@ matches strings that name creatures suitable as pets,
+and \verb@p(e|a)t@ illustrates that it is sometimes useful to have
+parentheses to group things. One needs some scheme to distinguish use of
+\verb@(@ as a literal character to be matched or a grouping marker, just
+as care is needed with the vertical bar. This pattern will match either
+\verb@pet@ or how you might treat one, i.e.\ \verb@pat@.
+\item $P*$ -- This is tge big one, It indicates an arbitrary repetition
+of the pattern $P$. So it is in effect equivalent to $(| P | P P | P P P |
+\ldots)$. Note there the initial option of no instances of $P$, i.e.\ of
+this matching the empty string. A really simple instance of this would
+be \verb@B(an)*a@ which matches \verb@ba, bana, banana, bananana@ and so on.
+\end{itemize}
+
+There are two viewpoints that can be taken about this. One is a practical
+one that adds a number of shorthand notations for things one might
+frequently want to do. A particular instance of this arises because these
+patterns (which are referred to as ``regular expressions'') provide
+an excellent way of characterising the ways in which tokens or symbols can
+be written in programming languages, and there are software tools that take
+a list of patterns and create a program that splits textual input up based
+on the. A first exxtension to notation that is used there is being able
+to give a name to a pattern fragment and then use it later. In the programs
+\verb@lex@ and \verb@flex@ one can name a fragment and then to refer to
+it you put the name in braces. You also enclose literal text in your pattern
+in double quotes. So for instance:
+\begin{verbatim}
+    digit    "0"|"1"|"2"|"3"|"4"|"5"|"6"|"7"|"8"|"8"
+    number   {digit}{digit}*
+\end{verbatim}
+gives a pattern for any (non-empty) string of digits and calls it ``number''.
+This example motivates two further expensions which clerly do not alter
+the range of patterns that can be expressed but that can make the
+presentation of the regular expressions concerned much more compact.
+Enclosing a collection of characters in square brackets and allowing
+character ranges is a help. If the opening square bracket is followed by
+\^{} then the expression is treated as if was a square bracket form
+enclosing all letters in your character set except the ones actually shown.
+WIth this the tabluation o digits becomes just \verb@[0-9]@. The second
+expension allows for the fact that \verb@*@ can indicate zero or more
+uses of the pattern that preceeds it and sometimes as here you want at least
+one. Replacing the \verb@*@ with \verb@+@ does that. Hence you can now write
+\begin{verbatim}
+    digit    [0-9]
+    number   {digit}+
+\end{verbatim}
+Note that this could be textually expanded to the slightly clunky but
+basic for for regular expressions. 

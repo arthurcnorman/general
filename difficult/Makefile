@@ -12,6 +12,7 @@ full.pdf:	full.tex full.bib full.ind \
 		quadratic.tex \
 		turtle.tex \
 		ingenious.tex \
+		pattern.tex \
 		endpart.tex
 	pdflatex full
 
@@ -30,4 +31,5 @@ count:
 		quadratic.tex \
 		turtle.tex \
 		ingenious.tex \
+		pattern.tex \
 		endpart.tex
