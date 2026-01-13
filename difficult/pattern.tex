@@ -32,7 +32,7 @@ as care is needed with the vertical bar. This pattern will match either
 of the pattern $P$. So it is in effect equivalent to $(| P | P P | P P P |
 \ldots)$. Note there the initial option of no instances of $P$, i.e.\ of
 this matching the empty string. A really simple instance of this would
-be \verb@B(an)*a@ which matches \verb@ba, bana, banana, bananana@ and so on.
+be \verb@B(an)*a@ which matches \verb@ba, Bana, Banana, Bananana@ and so on.
 \end{itemize}
 
 There are two viewpoints that can be taken about this. One is a practical
@@ -113,3 +113,111 @@ fanciful it is in fact almost exactly the insight used when considering
 how hard it will be to answer our question! And regular expressions and
 a certain simple class of machines or programs are very closely linked.
 
+There are two major parts to understanding where the difficulty comes
+from. The first is to show the way in which a regular expression can be
+``compiled'' into a nice program that will check for things that match it.
+The way of doing this in effect builds a sort of flowchart for the
+program, but it is not quite the normal sort. This one consists of
+blobs referred to as states and arrows fromn one to another where the arrows
+are laballed with characters from the input alphabet. One state is
+identified as where one starts, and any of the states can be marked
+with a ``success'' tag. The concept is that from where it starts the arrows
+are followed and when as a result one is positioned in a success state
+that means that the text absorbed to date has been matched. So for instance
+one of the earlier very easy cases ends up as
+\begin{verbatim}
+                   /-a->\ 
+   (start)  -p-> (.)    (.) -t-> (success)
+                   \-e->/
+\end{verbatim}
+which should be very easy to follow and to understand how it relates to
+the original regular expression.
+
+Expressions involving the \verb@*@ operator introduce loops in a
+rather straightforward way. The harder issue thart arises in the
+``\verb@Bananananana@'' example is that one ends up with a state where
+two arrows emerge from it each corresponding to the same symbol.
+% B(an)*a. This clearly deserves a proper picture not this dire
+% ascii art!
+\begin{verbatim}
+                  /-a-> (success)
+   (start)  -B-> (.)
+                / \-a-> (.) --|
+                ^             v
+                \----<--- n --|
+\end{verbatim}
+This is referred to as being nondeterministic in that there is no
+clear way to know which \verb@a@ arrow to follow. The understanding is
+that the flowchart is deemed to recognise a string if at least one way
+of making those arbitrary-seeming transition leads to it ending up
+in a success node at the end of the input.
+
+There are tricks that arrange that if one has a flowcharts corresponding to
+two regular expressions $P$ and $Q$ that one can construct ones for
+$P Q$, $P | Q$, $P \& Q$ and $P*$. The one for $! P$ is especially
+easy since all it has to do is swap which states are or are not
+tagged as success. Along the way these tricks can expand a nondeterministic
+scheme into one where each choice is unambiguous. As before the
+fine details of this are skipped here because none of it is difficult
+enough to match the book's title.
+
+An important observation is that the flowchart you end up with has
+a finite number of nodes, and if there is an input that can be presented
+that is not going to be matched that means there must be a non-success
+node present and a path from the starting state to it. Viewing the flowchart
+as a sort of maze and checking for this is very much something that
+will not correspond to a hard program at least provided you are not
+worried too much about performance. So phrased the way we need it
+here we claim that the question as to whether there are any strings
+not matched by a given regular expression is one where it is
+possible to write a program that answers it in a finite amount of
+time. To be specific, the program starts by elaborating the regular
+expression into a flowchart and it then maze-searches that to see if
+a non-succes state can be reached from the start position.
+
+Well the normal language used for this would be to say that the
+question is ``decidable'' and can be resolved by mapping the
+regular expression onto a ``deterministic finite state machine''\footnote{
+Well a non-determistic one might be as good, ane different authors
+us different names such as ``finite state machine'' or they
+abbreviate things to terms such as ``NDA'' for non-deterministic
+accepter. But the concept being discussed is the same whatever language
+is used when discussing it}
+and checking if a ``non-accepting state'' is reachable from the start.
+
+At this stage it may be useful to point out that a deterministic flowchart
+maps onto a really simple computer program that has a simple loop and
+a look-up table:
+\begin{verbatim}
+   state = start_state
+   while more_input do
+      state = transition_table[state, next_input_character]
+   return result_table[state]
+\end{verbatim}
+and this fact is part of why this sort of pattern matching is so
+popular in software.
+
+This has set up a problem that we can guarantee to solve, and despite the fact
+that setting up the \verb@transition_table@ as used above involves a bit
+of effort\footnote{\ldots and that good implementations seek ways of
+representing it in more compact ways than just a simple big rectabgular
+block} it really does not look too bad. But now we can lead into the
+pay-off in terms of difficulty. By designing a regular expression
+cunningly and using all the extended notations we have it is possible
+to arrange that if the regular expression is made up of $K$ symbols
+then the size of the flowchart and hence the time and effort needed
+to answer the initial question can end up greater than
+$2^{2^{\ldots 2^2}}$ where the tower of exponentiation has height $K$.
+This easily gets way beyond astronomical, as can be confirmed by reviewing
+the numbers that represent the side of the galaxy or known universe. On
+that basis it is probably fair to declare that obtaining the answer is
+difficult, even though one can have written a program that would
+deliver it if it could ever run to completion. And that it is absolutely
+known that the program would complete if give long enough -- the only
+problem is that ``long enough'' might exceed the lifetime of the
+universe.
+
+The assertion that something is that hard deserves some justification, and
+so here is a sketch of how it arises. All sorts of awkward details will
+be skimmed over!
+ 
