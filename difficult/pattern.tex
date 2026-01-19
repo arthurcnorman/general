@@ -219,5 +219,91 @@ universe.
 
 The assertion that something is that hard deserves some justification, and
 so here is a sketch of how it arises. All sorts of awkward details will
-be skimmed over!
+be skimmed over! But the key idea that is needed is that of a ``ruler''
+that measures out equally spaced regions within a string. It is really easy
+to set up a first ruler -- say one that marks out blocks of size 8. It
+can be just
+\begin{verbatim}
+    (@xxxxxxxx)*@
+\end{verbatim}
+where x is whatever notation is needed to indicate any symbol other than
+\verb|@|. Next we imagine strings of make up of blocks of 8 binary digits
+(i.e.\ 0 or 1) with \verb|@| markers delimiting them. That is rather like
+letting \verb|x| be just \verb+(9|1)+. The big trick is going to be to
+show how regular expressions (of the extended sort we are using) can
+be set up so that each block of digits represents the next number on
+from the one preceding it. Reasonably obviously after a block
+that consists of all \verb@1@s the next one will wrap down to be all
+zeros. If this can be done it will count through $256$ cases and
+the pattern will repeat every $256*9$ places\footnote{9 not 8 because of
+the separator characters}. With a bit of care that can be used as a ruler of
+length 2304. If one plays the same game and counts in binary using 2303
+cases (again allowing one place for delimiters) you get a ruler whose length
+is
+\begin{verbatim}
+187102682544606671618399988676916122961296441176
+378793467362922185738812723957008273396222507196
+450718835066402189844604212534032232582213445994
+570301527900475727992420119609334867451632864423
+386336405871424293286834627280583458966195878023
+395222963500178262460038442753498453473145509416
+797446992661769282780030702539981370145208497780
+884034346960865311536637165300665642784634272136
+161582997491100523144428904553691627642806571018
+942035192684322276762152773138383997289028171577
+699341006736273352567692013500760063147792391629
+493332050984078550818813985173756664875877103677
+895887735477524346872741142322581614027520945547
+313128199584962756924009392819118333080181099099
+0821606064228042539008
+\end{verbatim}
+and that is starting to be a big number! But there would be
+no reason to stop there: one could put on an extra layer and
+count up to around $2^{10^{693}}$ and beyond.
+
+Well the above has introduced an idea that it might be possible to
+use to generate absurdly long rulers. Two challenges remain. Just how
+is the step from $N$ to $2^N$ orchestrated, and given a rules like that
+how can that be turned into a regular expression where it is
+hard to tell if it will or will not match everything.
+
+Well before diving into details it is good to present another trick.
+Suppose one has two regular expressions each ready to match
+strings that are built up of out say just \verb@a@ and \verb@b@ it
+is useful to consider the alphabet of pairs \verb@a+a@, \verb@a+b@,
+\verb@b+a@ and \verb@b+b@. Then take the first of the two REs and
+rephrase it so that if works using just the first component of each
+composite character. And the second to use just the second component.
+Now you can insist that a composite string matches both of these
+and you have a single pattern that captures the behavior of both
+parts and locks them into step. If the second of the two REs you started
+with was a ruler you can ensure that aspects of the first are only accepted
+if they are the proper distance apart.
+
+So the way in which counting will be set up is mostly to create a collection
+of patterns that detect when some sequence of characters is {\bf not}
+consistent with a counting in binary behaviour. This is a key place where
+extending the most commonly used version of REs to allow negation gets
+exploited.
+
+The description of the counting sequence can then be built up by creating
+a number of REa each of which match strings in which one particular manner
+of being invalid applies. These van then be stuck together with {\em or}
+operators so that if any one of them detect a problem this will be noted.
+Finally the big composite can be negated because every string that is not
+matched as being invalid must be valid. A good place to start will
+be to match cases that do not have a regular patten of characters split
+into groups that are the length of the ruler by \verb+@+ marks. A
+failure here could either be a string where there were two \verb+@+ marks
+too close to=gether or one where there was too long a sequence between
+such a pair of delimiters. Well if anywhere at all in the string there is
+a \verb+@+ in the main text but not one in the ruler that marks trouble,
+If \verb+X+ stands for absolutely anything and \verb+x+ for anything other
+than \verb+@+ then we can have
+\begin{verbatim}
+   (X+X)* (x+@ | @+x) (X+X)*
+\end{verbatim}
+will match any configuration where the \verb+@+ marks appear in any
+places other than together as \verb|@+@|.
+
  
