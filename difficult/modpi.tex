@@ -1,0 +1,63 @@
+\chapter{Reduce to range 0 to $\pi/2$}
+
+When needing to compute a trigonometric function such as sine or cosine
+of some number (and when you are working in radians rather than degrees)
+it will normally be right to start by reducing the argument to by
+subtracting off multiples of $2 \pi$. That is because these functions are
+periodic so altering the argument by any multiple of $2 \pi$ does not
+change the value to be returned. In fact it will probably be useful to
+reduce by multiple of $\pi/2$ -- but the principles explained here apply
+in either version.
+
+A naive way of doing the reduction would be something along the lines of
+\begin{verbatim}
+   n = integer_part_of(x/(2*pi))
+   x = x - 2*n*pi
+\end{verbatim}
+and if computer arithmetic was in perfact agreement with mathematical ideas
+of numbers this would be enough to do the job. However floating point
+numbers on a computer have limited precision. An immediate consequence
+of that is that the mathematical value of $\pi$ can not be represented
+exactly there. So computationally (as distict from mathematically) the
+subtraction of \verb@2*n*pi@ is going to subtracte something that is not
+exactly what was ideally needed. A fine illustration of this arises when
+you simply ask the computer to show you the value of \verb@sin(2*pi)@. To
+illustrate this imagine that the computer works to a precision of 4 digits
+in decimal (while double precision would be 52 binary digits which is
+messier to present here). Then the computer's idea of \verb@pi@ will
+be $3.142$ precisely. It can not do any better. If you calculate the true
+value of \verb@sin@ of that exact valie and keep just 4 significant figures
+you do not get zero. You obtain $-0.0004073$. If the computer had started the
+calculation by subtracting its idea of \verb@pi@ and ended up getting zero
+it would have been wrong.
+
+Some would try to claim that the point being made here is aa bit pedantic
+and a result of zero is what the user ``expected'' so would be better.
+Here the view is that a good implementation of elementary functions should
+treat input values as standing for exactly what they say (which will
+always be values with only a limited number of digits) and that results
+should match the mathematical result based on those values. And that
+anything else is sub-standard.
+
+The issue has just been illustrated with a rather small argument value. It
+becomes much sharper if you consider large values. With 4-decimal
+floating point you could consider \verb@sin(3.142*10^50)@ where
+multiplying by a power of 10\footnote{With binary computer floating point
+one would multiply by a power of 2 here} leaves the number still
+exact within its precision limit. Here the trye result is
+$0.5026$. The jolly thing is that this arises because \verb@3.142e50@ needs
+not $10^50$ $\pi$s subtracting to get it reduced, but the implausible
+value $100012966238947028997166556903288025102454441383302 \pi$.
+That is the integer part of $3.142e10 / \pi$ calculated precisely.
+
+Looking at the above case it appears that to calculate accurate values
+of trig functions for large arguments (perhaps stupidly large arguments)
+is going to need serious multiple-precision arithmetic, as suggested
+by the need for 50 digits here. And for proper computer floating point the
+largest valid double precision float has value around $1.8 10^{308}$ and
+that starts to suggest that it may ne necessary to compute with precision
+equivalent to over 300 decimals. That would start to be expensive.
+
+{\em Explain how to do a LOT better}
+
+
