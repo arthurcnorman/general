@@ -1,13 +1,13 @@
-\chapter{Reduce to range 0 to $\pi/2$}
+\chapter{Reduce to range 0 to $\pi$}
 
 When needing to compute a trigonometric function such as sine or cosine
 of some number (and when you are working in radians rather than degrees)
 it will normally be right to start by reducing the argument to by
 subtracting off multiples of $2 \pi$. That is because these functions are
 periodic so altering the argument by any multiple of $2 \pi$ does not
-change the value to be returned. In fact it will probably be useful to
-reduce by multiple of $\pi/2$ -- but the principles explained here apply
-in either version.
+change the value to be returned. It might in fact be better to reduce
+the range to $0 \ldots \pi/2$ or possibly $0\pi/4 \ldots \pi/4$
+but the principles explained here apply in all such variations.
 
 A naive way of doing the reduction would be something along the lines of
 \begin{verbatim}
@@ -19,16 +19,19 @@ of numbers this would be enough to do the job. However floating point
 numbers on a computer have limited precision. An immediate consequence
 of that is that the mathematical value of $\pi$ can not be represented
 exactly there. So computationally (as distict from mathematically) the
-subtraction of \verb@2*n*pi@ is going to subtracte something that is not
+subtraction of \verb@2*n*pi@ is going to subtract something that is not
 exactly what was ideally needed. A fine illustration of this arises when
 you simply ask the computer to show you the value of \verb@sin(2*pi)@. To
 illustrate this imagine that the computer works to a precision of 4 digits
 in decimal (while double precision would be 52 binary digits which is
 messier to present here). Then the computer's idea of \verb@pi@ will
-be $3.142$ precisely. It can not do any better. If you calculate the true
-value of \verb@sin@ of that exact valie and keep just 4 significant figures
+be $3.142$ precisely, and its model for \verb@2*pi@
+will be $6.283$. Nots for a start that the second of these is
+not just twice the first! The computer can not do any better within the
+4-digit precision we are working with. If you calculate the true
+value of \verb@sin@ of that exact value and keep just 4 significant figures
 you do not get zero. You obtain $-0.0004073$. If the computer had started the
-calculation by subtracting its idea of \verb@pi@ and ended up getting zero
+calculation by subtracting its idea of \verb@2*pi@ and ended up getting zero
 it would have been wrong.
 
 Some would try to claim that the point being made here is aa bit pedantic
@@ -41,23 +44,98 @@ anything else is sub-standard.
 
 The issue has just been illustrated with a rather small argument value. It
 becomes much sharper if you consider large values. With 4-decimal
-floating point you could consider \verb@sin(3.142*10^50)@ where
+floating point you could consider \verb@sin(6.283*10^50)@ where
 multiplying by a power of 10\footnote{With binary computer floating point
 one would multiply by a power of 2 here} leaves the number still
-exact within its precision limit. Here the trye result is
-$0.5026$. The jolly thing is that this arises because \verb@3.142e50@ needs
-not $10^50$ $\pi$s subtracting to get it reduced, but the implausible
-value $100012966238947028997166556903288025102454441383302 \pi$.
-That is the integer part of $3.142e10 / \pi$ calculated precisely.
+exact within its precision limit. Here the true result is
+$-0.9725$. The jolly thing is that this arises because \verb@6.283e50@ needs
+not $10^50 *(2 \pi)$ subtracting to get it reduced, but the implausible
+value $99997050744637839463589668526950773666250995418728*(2 \pi)$.
+That is the integer part of $6.283e10 / (2 \pi)$ calculated precisely.
 
 Looking at the above case it appears that to calculate accurate values
-of trig functions for large arguments (perhaps stupidly large arguments)
-is going to need serious multiple-precision arithmetic, as suggested
-by the need for 50 digits here. And for proper computer floating point the
-largest valid double precision float has value around $1.8 10^{308}$ and
-that starts to suggest that it may ne necessary to compute with precision
-equivalent to over 300 decimals. That would start to be expensive.
+of trig functions for large arguments (perhaps stupidly large arguments that
+sensible people do not use a lot -- but perfectionists want to cope well with
+even awkward cases) is going to need serious multiple-precision arithmetic,
+as suggested by the need for 50 digits here. And for proper computer
+floating point the largest valid double precision float has value around
+$1.8 10^{308}$ and that starts to suggest that it may be necessary to
+work with precision equivalent to over 300 decimals. That would start to
+be expensive -- a.k.a.\ ``difficult''.
 
-{\em Explain how to do a LOT better}
+The scheme that somewhat amazingly makes the calculation cheap is to
+stop trying to divide by $2 \pi$ and instead multiply that by $1/(2 \pi)$
+where that value is
+$0.1591549430918953357688837633725143620344596457404564487476\ldots$
+So now we need to multiply that number by the big integer
+$628300000000000000000000000000000000000000000000000$ which is the
+proper way of viewing the number whose sine we are wanting to find.
+Well firstly that is multiplying the 50-digit number by just 4 digits which
+starts to feel not too bad. But better yet the the result is going to
+be of the form $999 \ldots 8728.7867\ldots$ where the bit before the decimal
+point is the huge integer multiple of $2 \pi$ that was reported earlier. And
+we are just not interested in its value. So when you are doing the
+multiplication there is no point at all about forming partial products that
+will only add into that part. Also any partial products that contribute
+much further down that the four digits immediately after the decimal point
+are not relevant unless they lead to carries up into the important
+four digits. The result of that is that you can get the required digits of
+the fractional part of your input divided by $2 \pi$ doing little more than
+a single length multiplication! The only cost is that youi need to have
+stored rather a lot of digits of the value of $2/\pi$.
 
+The above shows that by doing something just slightly tricky it is possible
+to turn something that looked at first as if it would either be impossible,
+or at best that it would be grimly expensive, into a fairly short calculation.
+
+But for perfectionists this is not the end of the difficulty! Note that
+in the imaginary 4-decimal precision arithmetic being used here to
+illustrated what is done\footnote{Using real 52 or 53-bit machine floating
+point does not add any significant extra issues} every floating point
+number bigger than \verb@999.9@ in fact describes a whole number. This is
+in the spirit that for instance $6.233e3$ has the integer value $6283$ and the
+next floating point value up, i.e.\ $6.284e3$ is then $6284$. That is a
+simple observation to make. The challenging question is ``How close to
+an exact multiple of $2 \pi$ can an a non-zero whole number less than
+$10^308$ be?'' The reason this is important is that when we find, for some $x$,
+the fractional part of $x/(2 \pi$ some number of digits immediately after
+the decimal point night be zeros. So in fact it will not be good enough as
+suggested by the previous paragraph to collect just four digits there. It
+is necessary to collect enough that there will be four {\em significant}
+digits following any leading zeros\footnote{\ldots and equivalent cases when
+the fraction has many leading 9 digits}.
+
+A useful observation is that $\pi$ is a transcendental number and that means
+that the remainder can never be zero, so we always have a finite number of
+leading zeros there, and if we limit the values of interest to the
+range up to $10^{308}$ (a value picked as an an approximation the the
+range supported by standard computer arithmetic) there must be a worst
+case. For almost all values of $x$ there are no or very few leading zeros,
+but the concern here has to be to get every single case correct and that
+involves seeking the most extreme behaviour.
+
+
+
+% Problem restated concisely:
+%
+% This is a Diophantine approximation problem for the irrational number .
+% Good approximations come from convergents of the continued fraction for .
+% If p/q is a convergent to , then q  p, so the integer multiple m = q
+% gives q close to integer n = p. Best small errors follow from convergents
+% and some near-convergents.
+%     m = 1: |  3| = 0.1415926536
+%     m = 106: |106  333|  0.0000000530 (5.3010^8)
+%     (These numeric magnitudes show 106 gives exceptionally tiny distance;
+% 355/113 is famous for approximating  itself, but when scaled as 113355
+% its absolute is larger than 106s case because the scalings differ.)
+%
+% ... so what you do is you comnpute continued fraction versions of pi
+% (or maybe 2pi) and each one gives you the best rational approximation
+% up the the size of its denominator, and the denominators grow faster than
+% phi^n because the slowest convergomg continued fraction is for phi with
+% all its partial quotients 1. So you expect that to get to 10^308 you only
+% need log_phi(10^308) steps and that is not too bad. Ha ha.  Explaining
+% and justifying that nicely will be "fun"
+%
+% But see it can be done!!!!
 
