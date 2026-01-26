@@ -28,7 +28,7 @@ parentheses to group things. One needs some scheme to distinguish use of
 \verb@(@ as a literal character to be matched or a grouping marker, just
 as care is needed with the vertical bar. This pattern will match either
 \verb@pet@ or how you might treat one, i.e.\ \verb@pat@.
-\item $P*$ -- This is tge big one, It indicates an arbitrary repetition
+\item $P*$ -- This is the big one, It indicates an arbitrary repetition
 of the pattern $P$. So it is in effect equivalent to $(| P | P P | P P P |
 \ldots)$. Note there the initial option of no instances of $P$, i.e.\ of
 this matching the empty string. A really simple instance of this would
@@ -59,7 +59,7 @@ Enclosing a collection of characters in square brackets and allowing
 character ranges is a help. If the opening square bracket is followed by
 \^{} then the expression is treated as if was a square bracket form
 enclosing all letters in your character set except the ones actually shown.
-WIth this the tabluation o digits becomes just \verb@[0-9]@. The second
+WIth this the tabluation of digits becomes just \verb@[0-9]@. The second
 expension allows for the fact that \verb@*@ can indicate zero or more
 uses of the pattern that preceeds it and sometimes as here you want at least
 one. Replacing the \verb@*@ with \verb@+@ does that. Hence you can now write
@@ -70,16 +70,20 @@ one. Replacing the \verb@*@ with \verb@+@ does that. Hence you can now write
 Note that this could be textually expanded to the slightly clunky but
 basic for for regular expressions, so the extended notations are in general
 a matter of convenience rather than things that bring genuine new
-capabilities. And in that spirit here are two more useful extensions that
+capabilities. And in that spirit here are a few more useful extensions that
 similarly do not alter the range of patterns that can be expressed but that
 may make it easier to specify them.
 \begin{verbatim}
     P & Q
-    ! P
+    ~ P
+    .
 \end{verbatim}
 The idea is that the first of these will match every pattern provided that
 both \verb@P@ and \verb@Q@ do, while the second matches any input that
-\verb@P@ would fail to accept.
+\verb@P@ would fail to accept. The single dot (\verb@.@) will match any
+single character, and so of course \verb@.*@ matches either anything
+at all (including nothing).
+
 While it is fairly straightforward to show that adding these constructs does
 not add any ability to match new sorts of pattern -- all they do is
 make it easier and more flexible to specify them -- the notes here are
@@ -87,7 +91,7 @@ not going to explain the details there. Head for a suitable textbook if you
 need to know exactly how it can be done! But the typical places on
 your computer that provides support for regular expressions will typically not
 support these last two because in fact they unlock levels of practical
-difficulty that are hard to comprehend!
+difficulty that are hard to comprehend.
 
 Thus far the use of regular expressions to provide patterns that you can
 try to match against input text seems really rather easy despite the
@@ -103,14 +107,14 @@ not be instantly obvious what inputs it will match. The question that gets
 tricky is ``Is there any input at all that it will {\bf not} match?''.
 This may seem a frivolous and artificial question, because what on earth
 would be the point of a pattern that matched absolutely all input? Well
-actually it is not as stupid as it at first sounds! The components used
+actually it is not as stupid as it at first sounds. The components used
 to build up the regular expressiion may be modelling the behaviour of
 some machine or the progress through some program as it inspects the
 input. Succeeding in making match could correspond to successful
 processing, and so input that is not matched could amount to input
 data that causes the machine or program to fail. If that sounds a bit
 fanciful it is in fact almost exactly the insight used when considering
-how hard it will be to answer our question! And regular expressions and
+how hard it will be to answer our question. And regular expressions and
 a certain simple class of machines or programs are very closely linked.
 
 There are two major parts to understanding where the difficulty comes
@@ -154,7 +158,7 @@ in a success node at the end of the input.
 
 There are tricks that arrange that if one has a flowcharts corresponding to
 two regular expressions $P$ and $Q$ that one can construct ones for
-$P Q$, $P | Q$, $P \& Q$ and $P*$. The one for $! P$ is especially
+$P Q$, $P | Q$, $P \& Q$ and $P*$. The one for $\sim P$ is especially
 easy since all it has to do is swap which states are or are not
 tagged as success. Along the way these tricks can expand a nondeterministic
 scheme into one where each choice is unambiguous. As before the
@@ -200,7 +204,7 @@ popular in software.
 This has set up a problem that we can guarantee to solve, and despite the fact
 that setting up the \verb@transition_table@ as used above involves a bit
 of effort\footnote{\ldots and that good implementations seek ways of
-representing it in more compact ways than just a simple big rectabgular
+representing it in more compact ways than just a simple big rectangular
 block} it really does not look too bad. But now we can lead into the
 pay-off in terms of difficulty. By designing a regular expression
 cunningly and using all the extended notations we have it is possible
@@ -214,52 +218,74 @@ that basis it is probably fair to declare that obtaining the answer is
 difficult, even though one can have written a program that would
 deliver it if it could ever run to completion. And that it is absolutely
 known that the program would complete if give long enough -- the only
-problem is that ``long enough'' might exceed the lifetime of the
-universe.
+problem is that ``long enough'' might hugely exceed the expected lifetime
+of the universe.
 
 The assertion that something is that hard deserves some justification, and
 so here is a sketch of how it arises. All sorts of awkward details will
-be skimmed over! But the key idea that is needed is that of a ``ruler''
-that measures out equally spaced regions within a string. It is really easy
-to set up a first ruler -- say one that marks out blocks of size 8. It
+be skimmed over. But the key idea that is needed is that of a ``ruler''
+that measures out lengths of strings. It is really easy
+to set up a first ruler -- say one that marks out blocks of size 3.
 can be just
 \begin{verbatim}
-    (@xxxxxxxx)*@
+   ruler3    ...
 \end{verbatim}
-where x is whatever notation is needed to indicate any symbol other than
-\verb|@|. Next we imagine strings of make up of blocks of 8 binary digits
-(i.e.\ 0 or 1) with \verb|@| markers delimiting them. That is rather like
-letting \verb|x| be just \verb+(9|1)+. The big trick is going to be to
-show how regular expressions (of the extended sort we are using) can
-be set up so that each block of digits represents the next number on
-from the one preceding it. Reasonably obviously after a block
-that consists of all \verb@1@s the next one will wrap down to be all
-zeros. If this can be done it will count through $256$ cases and
-the pattern will repeat every $256*9$ places\footnote{9 not 8 because of
-the separator characters}. With a bit of care that can be used as a ruler of
-length 2304. If one plays the same game and counts in binary using 2303
-cases (again allowing one place for delimiters) you get a ruler whose length
-is
+where the core of the ruler is just the string of three unspecified
+characters.
+
+The step on from this is to set up an expression that will match patterns
+that when this ruler is of length $k$ they are of length $2^k$. A path
+towards this is to seek a combination of patterns that will only match things
+that are basically like
 \begin{verbatim}
-187102682544606671618399988676916122961296441176
-378793467362922185738812723957008273396222507196
-450718835066402189844604212534032232582213445994
-570301527900475727992420119609334867451632864423
-386336405871424293286834627280583458966195878023
-395222963500178262460038442753498453473145509416
-797446992661769282780030702539981370145208497780
-884034346960865311536637165300665642784634272136
-161582997491100523144428904553691627642806571018
-942035192684322276762152773138383997289028171577
-699341006736273352567692013500760063147792391629
-493332050984078550818813985173756664875877103677
-895887735477524346872741142322581614027520945547
-313128199584962756924009392819118333080181099099
-0821606064228042539008
+   $000$001$010$011$100$101$110$111$
 \end{verbatim}
-and that is starting to be a big number! But there would be
-no reason to stop there: one could put on an extra layer and
-count up to around $2^{10^{693}}$ and beyond.
+ib other words a sequnce of ruler-length segments that count in binary, and
+that use some fence charecter to separate them. This is not as terrible
+a challenge as it may at first seem: we set up regular expressions one
+at a time each of which forces some partial constraint on what is allowed
+and combine them all with \verb@&@ until the above is the only possibility
+left. Well actually it is a little more fancy than that. A first step
+is to impose the basic regularity and \verb@($ {ruler3})* $@ is a pattern that
+can generate the upper line in the following.
+\begin{verbatim}
+   $...$...$...$...$...$...$...$...$
+   $000$001$010$011$100$101$110$111$
+\end{verbatim}
+We can now view pairs of characters that are positioned one above each other
+as single units in a larger alphabet. In running text I will show these
+pairs in angle brackets> and with that it becomes easy to force all the
+\verb@$@ characters in the two lines to match up:
+\begin{verbatim}
+   (<$$> | <~$~$>)*
+\end{verbatim}
+since this is just intended to say that any \verb@$@ in one line must
+match with one on the other.
+Next it is easy to force the start of the text to begin with \verb@$000$@:
+\begin{verbatim}
+   <$$>(.0)*<$$>.*
+\end{verbatim}
+reads that between the first two fences while anything goes on the top line
+the bottom line is all zeros. The final \verb@.*@ says that as far as this
+little rule is concerned anything goes after that first segment.
+
+Now for the bit which is obviously going to be tricky which arranges that
+each segment can be read as the next binary number up from the previous one.
+The rules for incrementing a number in binary are built around a
+transformation where a final string of the form \verb@01*@ (ie a zero followed
+by a (possible) string of ones) turns into a one (possibly) followed by
+zeros. The word ``possible`` is being used there to ensure that the case that
+the last significant bit of the number starts off as a 1 is coped with.
+All bits to the left of that final zero must remain unchanged.
+A pattern line \verb@$(0|1)*01*$@ spots this within a single number, with the
+fences \verv@$@ marking that the start and end of the number. That
+idea can be built on with something like \verb@$(0|1)*01*$(0|1)*10*$@
+that attempts to starting to show how the low bits in must relate from one
+digit to the next. This still has two big issues: the position within
+it of everything is not well enough tied down, and there is nothing yet to
+insist that high order bite remain unchanged.
+
+
 
 Well the above has introduced an idea that it might be possible to
 use to generate absurdly long rulers. Two challenges remain. Just how
@@ -267,43 +293,3 @@ is the step from $N$ to $2^N$ orchestrated, and given a rules like that
 how can that be turned into a regular expression where it is
 hard to tell if it will or will not match everything.
 
-Well before diving into details it is good to present another trick.
-Suppose one has two regular expressions each ready to match
-strings that are built up of out say just \verb@a@ and \verb@b@ it
-is useful to consider the alphabet of pairs \verb@a+a@, \verb@a+b@,
-\verb@b+a@ and \verb@b+b@. Then take the first of the two REs and
-rephrase it so that if works using just the first component of each
-composite character. And the second to use just the second component.
-Now you can insist that a composite string matches both of these
-and you have a single pattern that captures the behavior of both
-parts and locks them into step. If the second of the two REs you started
-with was a ruler you can ensure that aspects of the first are only accepted
-if they are the proper distance apart.
-
-So the way in which counting will be set up is mostly to create a collection
-of patterns that detect when some sequence of characters is {\bf not}
-consistent with a counting in binary behaviour. This is a key place where
-extending the most commonly used version of REs to allow negation gets
-exploited.
-
-The description of the counting sequence can then be built up by creating
-a number of REa each of which match strings in which one particular manner
-of being invalid applies. These van then be stuck together with {\em or}
-operators so that if any one of them detect a problem this will be noted.
-Finally the big composite can be negated because every string that is not
-matched as being invalid must be valid. A good place to start will
-be to match cases that do not have a regular patten of characters split
-into groups that are the length of the ruler by \verb+@+ marks. A
-failure here could either be a string where there were two \verb+@+ marks
-too close to=gether or one where there was too long a sequence between
-such a pair of delimiters. Well if anywhere at all in the string there is
-a \verb+@+ in the main text but not one in the ruler that marks trouble,
-If \verb+X+ stands for absolutely anything and \verb+x+ for anything other
-than \verb+@+ then we can have
-\begin{verbatim}
-   (X+X)* (x+@ | @+x) (X+X)*
-\end{verbatim}
-will match any configuration where the \verb+@+ marks appear in any
-places other than together as \verb|@+@|.
-
- 
