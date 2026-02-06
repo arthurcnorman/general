@@ -271,19 +271,38 @@ little rule is concerned anything goes after that first segment.
 
 Now for the bit which is obviously going to be tricky which arranges that
 each segment can be read as the next binary number up from the previous one.
-The rules for incrementing a number in binary are built around a
-transformation where a final string of the form \verb@01*@ (ie a zero followed
-by a (possible) string of ones) turns into a one (possibly) followed by
-zeros. The word ``possible`` is being used there to ensure that the case that
-the last significant bit of the number starts off as a 1 is coped with.
-All bits to the left of that final zero must remain unchanged.
-A pattern line \verb@$(0|1)*01*$@ spots this within a single number, with the
-fences \verv@$@ marking that the start and end of the number. That
-idea can be built on with something like \verb@$(0|1)*01*$(0|1)*10*$@
-that attempts to starting to show how the low bits in must relate from one
-digit to the next. This still has two big issues: the position within
-it of everything is not well enough tied down, and there is nothing yet to
-insist that high order bite remain unchanged.
+The process of incrementing a binary number can be achieved using the
+following constraints, only provided that the underlined characters can be
+kept exactly one ruler-length apart:\\
+\verb@       ...@\textbf{\underline{0}}\verb@ ... 0 ... $ ... @\textbf{\underline{0}}\verb@ ...@\\
+\verb@       ...@\textbf{\underline{1}}\verb@ ... 0 ... $ ... @\textbf{\underline{1}}\verb@ ...@\\
+\verb@       ...@\textbf{\underline{0}}\verb@ ... 1*... $ ... @\textbf{\underline{1}}\verb@ ...@\\
+\verb@       ...@\textbf{\underline{1}}\verb@ ... 1*... $ ... @\textbf{\underline{0}}\verb@ ...@\\
+where the first two cases have at least one zero after the particular
+character and the second two do not -- which will mean that any characters
+there will all be ones. Note that these four cases are mutually exclusive but
+also cover every possibility in the part before the \verb@$@ fence mark.
+If we can set up patterns for each then just the ``or'' of all those
+pattens will cover all cases and will force the segment to the right
+of the fence to be represent the next number up. Well that insight is
+not quite right yet because the patterns shown must apply in every bit
+position while simple us of the above patterns do not ensure that. The
+fix is to adjust each of the four patterns to match an incorrect
+bit in the subsequent block, as in\\
+\verb@       ...@\textbf{\underline{0}}\verb@ ... 0 ... $ ... @\textbf{\underline{1}}\verb@ ...@\\
+and in that way set up a pattern that will successfully match any sequence
+that is {\em not} a valid counting sequence. The negation of this will then
+capture just the ones that are correct.
+
+Arranging that the underlined characters are exactly the correct distance
+apart can use basically the same scheme as had been used to force
+everything into regular blocks -- basically it views the underlining as
+an separable part of the character and uses a ruler-based pattern rather
+like\\
+\verb@    .*@\textbf{\underline{ }}\verb@xxxx@\textbf{\underline{ }}\verb@.*@\\
+to sset up two underscores that are in this case 4 characters apart. But
+the \verb@xxxx@ can be replaced by any longer sequence whose length
+is fixed.
 
 
 

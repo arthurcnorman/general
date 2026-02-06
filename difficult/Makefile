@@ -2,8 +2,8 @@
 
 # I have not put in rules to deal with bibliography and index here.
 
-full.pdf:	full.tex full.bib full.ind \
-		intro.tex \
+chapters =	intro.tex \
+		watt.tex \
 		casestudy.tex \
 		counters.tex \
 		turing.tex \
@@ -15,6 +15,10 @@ full.pdf:	full.tex full.bib full.ind \
 		ingenious.tex \
 		pattern.tex \
 		endpart.tex
+
+
+full.pdf:	full.tex full.bib full.ind \
+		$(chapters)
 	pdflatex full
 
 
@@ -22,16 +26,6 @@ full.pdf:	full.tex full.bib full.ind \
 # around 11000 which is maybe at the 13% level.
 
 count:
-	wc full.tex \
-		intro.tex \
-		casestudy.tex \
-		counters.tex \
-		turing.tex \
-		lambda.tex \
-		primrecurse.tex \
-		quadratic.tex \
-		turtle.tex \
-		modpi.tex \
-		ingenious.tex \
-		pattern.tex \
-		endpart.tex
+	wc full.tex $(chapters)
+
+# end of Makefile
