@@ -1,0 +1,98 @@
+\chapter{Galactic algorithms}
+
+Gaalactic algorithms are ones that have costs that grow slowly with the
+size of their input to an extent that for large enough cases thay will
+do better than simpler methods, but that suffer from such large
+overheads that they will never become practically useful for any
+plausible cases. The finest ones will provably achieve the slowest
+possible growth rate for the problem that they solve. Some of the
+most impressive have overheads that can be expressed as a constant factor
+multiplier in their cost formula with that constant exceeding astronomical
+proportions. There will obviously be case that come close to fitting into
+this category. Because such methods are not of a lot of practical use one
+cound be tempted to view them as frivolous, but where they represent
+a better growth rate than any other known method or are provable optimal
+in that respect they can both be of intellectual interest and can provide
+ideas to guide work towards schemes that can be useful in the real world.
+
+A number of galactic algorithms illustrate how much more complicated
+things get if you aime for the absolutely best possible method, but
+here we start off explaining one that has been known for some time
+and is neither terribly complicated nor terribly expensive, but that
+despite it giving a theoretical speedup will onlt achieve that in cases
+pushing against the size limits of the biggest available computers, and
+even then its advantage will be slight.
+
+\section{Matrix Multiplication}
+The straightforward scheme for multiplying a pair of square matrices of
+size $n \times n$ has cost that grows proportional to $n^{3}$. Our first
+galactic algorithm represented a breakthrough discovery that this
+growth rate was not the best possible, and that a tolerably straightforward
+scheme could achive a cost that grows as $n^{\log_{2} 7}$ which is
+about $n^{2.80735}$. To show how this is done it is sufficient to
+consider the very simple case of forming the prodict of a pair of $2 \times 2$
+matrices $A$ and $B$. The four elements of their product as evaluated
+in the classical manner aee just $A_{11} B_{11} + A_{12} B_{21}$ and three
+rather similar looking values and a total of 8 multiplications and 4
+additions are used. A paper by Strassen\cite{strassen} instead managed to
+show that using just 7 multiplcations that worked on carefully chosen sums
+and differences (e.g.$($A_{11} + A_{22})(B_{11} + B_{22})$) it was possible
+to express all the values needed in the product matrices as sums and
+differences involving these 7 values. Here we leave finding exactly how
+to do that as either a puzzle to work on or a topic to research! A variety
+of different schemes have been found, all ending up with just 7
+multiplications but some with more and some with fewer additions.
+
+Once the base case of $2 \times 2$ matrices has been handled large case can
+be treated by partitioning each matrix into four blocks (padding out with
+zeros if necessary to make those blocks all square and all the same size)
+and coping there by using just 7 multiplications (which are now matrix ones)
+on those half size blocks. An analysis of the growth rate in time spent
+using this scheme fairly clearly suggests that doubling the side of
+the matrices multiplies the amount of work by a factor of 7, hance the
+$n^{\log_{2} 7$ result. This is clever and quite elegant, and not even
+too hard to program. But as against the classical method it struggles
+even to break even until matrices are larger than almost all applications,
+amd it certainly does not deliver truly valuable speedup for some way
+beyond that. A further concern with this approach is its impact on how
+rounding errors propagate through the calculation.
+
+But this is not the end. Since the Strassen work others have sought
+to find schemes that are at lease assymptotically faster, with a long
+sequence of reports og gradually reduction of the exponent in the
+cost function. As of 2026 the best growth rate that has been reported is
+around $n^{2.37134}$ which looks like a distinct improvement over
+Strassen. So far nobody has been able to show what the ultimate limit
+for solving this problem will be. Most of these improved schemes work
+by splitting large matrices into more then 4 blocks and all of them
+are even further from practicality then the Strassen method.
+
+\section{Integer multiplication}
+Multiplying integers is a pretty fundamental operation, but here to
+make things harder the emphasis will be on large integers -- typically
+ones with from hundreds to millions of decimal digits. Things start
+off in a style almost parallel to the matrix multiplication one,
+with first the simple ``schoolbook'' methos that will form the
+product of a pair of $N$ digit numbers using around $N^2$ operations.
+The first improvement on this is dus to Karatsuba\cits{karatsuba} and
+works by observing that for 2-digit numbers one can form the
+partial products $a_{1}b_{1}, a_{1}b_{2} + a_{2}b_{1} and a_{2}b_{2)
+using 3 rather than the obvious 4 multiplications by calculating
+$a_{1}b_{1}, (a_{1}+a_{2})(b_{1}+b_{2}) and a_{2}b_{2} and doing a couple
+of subtractions. By taking large numbers are splitting each in half
+this can be applied recursively leading to a method where costs
+grow like $N^{\log_{3} 2$. This scheme can become proper to
+use when numbers exceed say 10^{300}, but the exact break even point will
+be quite sensitive to details of the computer used and just how everything
+was coded. So this not a galactic algorithm.
+
+The next scheme of note may start to be competitive when multiplying
+numbers of magnitude around 10^{4000}.
+
+
+
+
+
+
+ 
+

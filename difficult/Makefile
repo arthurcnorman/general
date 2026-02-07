@@ -3,10 +3,10 @@
 # I have not put in rules to deal with bibliography and index here.
 
 chapters =	intro.tex \
-		watt.tex \
 		casestudy.tex \
 		counters.tex \
 		turing.tex \
+		galactic.tex \
 		lambda.tex \
 		primrecurse.tex \
 		quadratic.tex \

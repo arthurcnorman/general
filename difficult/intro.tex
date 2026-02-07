@@ -14,7 +14,7 @@ computers and software and the design and construction and analysis  of
 programs has astonishing layers of difficulty just beneath the shiny
 and simple-looking surface.
 
-There are basically twoo reasons for investigating this difficulty. The
+There are basically two reasons for investigating this difficulty. The
 first can obviously arise if you are trying to build a computer-based
 product or solve some particular problem and you come face to face with 
 the unhappy fact that the world is messy and that naive or simplistic
@@ -52,7 +52,7 @@ an example in reasonable detail:
 
 \begin{longdescription}
 \item[Look beneath the abstraction to understand how something  
-is implemented or how it ``really'' works.]
+is implemented or how it ``really'' works]
 
 There are an amazing number of instances of this. Any time you ask a
 computer to sort some data, do a database lookep, compile a program,
@@ -61,12 +61,62 @@ be kept secret there is a great deal of technology that happily most
 people can just take for granted. One can view this as rather like the
 situation with almost all technology from digital watches to aeroplanes -- 
 almost anybody can take advantage of them. Plenty of people will be able 
-to present an overview of how and why they work. But the details ens up
+to present an overview of how and why they work. But the details end up
 almost unimaginably complex. So the attitude of this point will underpin
-almost all of the sections here!
+almost all of the sections here! Here an analogy might be that leaping
+on a motorbike or into a car and driving off probably seems pretty
+straightforward. Understanding in full detail how the engine and
+transmission works to a level where you can see how to design the
+next version to further optimise power or fuel efficiency or cost of
+manufacture is a very different business! For computers one can consider
+details not just of the program being written, but also the compiler used
+to process it, the operating system that as installed, how the instruction
+set of the computer is implemented in terms of gates and other logic
+circuitry down to the device physics behind the transistors inside.
+Of course for {\em practical} purposes it is not generally necessary to
+have specialist understanding of all the levels, but gaining it reveals
+just how difficult it is to get a proper in depth understanding of
+computation. A happy though here is that the very earliest computers,
+while much less powerful and very much less convenient to use, were
+really a lot simpler and so looking back in history makes it possible
+to understand them from top to bottom much more easily. 
 
-\item[Seek a full analysis of what is going on, including  
-identification and characterisation of best and worst cases.]
+\section{A Product rather than something only for personal use}
+This is perhaps best explained by an analogy with feature films.
+One could dream that anybody with a modern phone could capture video and
+a few friends could take parts in film. The status of the cameras on current
+phones which are inexpensive (at least in comparison with professional gear!)
+and can deliver remarkably high quality is analagous to the way in
+which these days computers are cheap, powerful and can so an amazing range of
+things following just a few clicks on an app or a web-resource.
+By choosing the plot you would not need any elaborate scenery or props,
+and you can avoid the need for potentially dangerous stunts.
+Some films pretend to be constructed by pasting together ``found footage''
+extracted from the phones of characters (who will normally have vanished
+or died) further boosting the illusion that almost no serious equipment
+is needed. To get a clearer view of reality look at the list of credits
+at the end of a film and see the size of team really involved in even a
+seemingly simple one. Check the budget involved and let that give another
+indication of the complexity of the full process -- even before the issues
+of marketing and distribution are taken into account. So the reality is that
+in general the finished product almost conceals the fact that it relies on the
+work of hundreds anmd sometimes thousands of people: scouting for locations,
+make up artists, lighting technicians, foley artists who add sound effects
+and many many more down to the transport catering teams who support the
+people more on the front line. In general while being a member of an audience
+you are almost unaware of all of this -- save that if it was missing that
+would be very noticable. This situation can seen as an ``iceberg syndrome''
+where something that looks simple and where indeed an individual amateur
+could start to develop something in fact relies on such a wide range
+of techniques and skills that for any one person to master them all
+would represent a huge challenge. The message here is that making a
+a home-movie is amazingly easy, but the simpliciy there conceals the fact
+there is a great deal of difficulty in creatiing a block-buster. The
+same sort of things applies as between a bit of software created
+just for your own private use and a full-blown product.
+
+
+\item[Do a full analysis of what is going on, including edge cases]
 
 There is a scheme called ``Newton's Method'' or ``The Newton-Raphson 
 Iteration'' that provides a simple to implement way of obtaining numeric
@@ -124,7 +174,7 @@ low precision floating point arithmetic for big parallel comutations in
 either graphics or artifical intelligence areas, and so these rather pedantic
 issues of precision come much closer to pracical reality.
 
-\item[Portability.]
+\item[Portability]
 
 For small programs that are only intended for use over a fairly short
 perious of time and only by one person on their own computer it is
@@ -166,8 +216,19 @@ to as a graph). The other is simply multiplying numbers together. We will
 summarise and discuss each of these and various other cases where 
 optimising for speed or size turns a reasonable problem into a tough one.
 
-\item[Investigate tasks where the underpinning theory is much deeper
-that one might have expected from the fairly simple problem statement.]
+One nice term sometimes used is ``galactic algorithms''. This is used
+to refer to ways of solving problems that in the long term would be
+better or faster than the simpler methods more commonly used, but achieve
+their closer approach to optimality at the cost of impressive overheads.
+Sometimes by way of a constant factor slowdown that would not by overcome
+by the fact that their cost grows a little more slowly than the standard
+schemes, and sometimes by such a level of implmentation complication and
+mess that it will basically never make sense for some rather minor
+improvement. A few examples of this style will be covered here. The
+term ``galactic'' is to suggest something of the magnitude of problem
+instances where some of these would necome competitive. 
+
+\item[Challenging underpinning theory behind a simple-looking problem]
 I do not have nice test here, just a list of a few 
 \begin{enumerate}
 \item Simplify algebraic formulae.
@@ -177,8 +238,7 @@ make a boolean formula evaluate to TRUE.
 \item Generate an unpredictable (ie random) sequence.
 \end{enumerate}
 
-\item[Work subject to constraints that render the obvious approaches
-     unavailable.]
+\item[Constraints that rule out obvious approaches]
 
 In some real sense all computer projects fall into this category because 
 if you had a programming language or software package that aligned well 
@@ -200,8 +260,7 @@ obviously practical, but for instance a highlight in one case is a report
 of how somebody has built a computer out of lego based on one of them such 
 that in principle it is fully general purpose!
 
-\item[Attack problems where there is no complete solution to try to  
-deal with interesting cases in a practical way.]
+\item[Seek good partial solutions to intractable problems]
 
 Some -- indeed many -- of the challenges that arise in the real world turn
 out to be such that nobody knows how to solve them in general and there is
@@ -212,7 +271,7 @@ that obtain approximate solutions or ones that sometimes or perhaps often
 get to the best answer, but are not guaranteed to complete the task. WQe 
 provide several examples!
 
-\item[Apply wilfully perverse techniques to achieve your goal.]
+\item[Wilfully perverse techniques that achieve your goal.]
 
 There can be great joy in exploring stupid ways of solving problems -- and 
 sometimes these emerge when a naive programmer submits their best efforts 
@@ -223,7 +282,7 @@ be seen to be pretty well absurd. We can illustrate this with cases from
 simple tasks the like of which are set as exercises in an elementary 
 programming class: reversing a list, sorting some data and the like.
 
-\item[Set up challenges that are not realistic but that are good puzzles.]
+\item[Unrealistic challenges make are good puzzles]
 
 Would any reasonable person want to invent unrealistic or pointless tasks? 
 Why yes - those involved in recruitment of any sort might want "puzzle 
@@ -233,8 +292,7 @@ the ability to think on the feet. Perhaps giving a preview of such
 cases undermines the joy in them, and maybe it will even be hard to tell
 which of the sections here have a component of this philosophy!
 
-\item[Try to arrange software or algorithms or protocols that will  
-remain relevant despite future changes in the computer landscape.]
+\item[Future-proofing]
 
 The landscape of computers has changed dramatically, and today there are 
 still big new developments in prospect. Perhaps the two most visible are
@@ -249,7 +307,7 @@ before. So we provide a few case studies that note both exciting ideas
 whose time seems to have passes and projects that against the odds have 
 been kept alive.
 
-\item[Face up to what must not happen as much as what will.]
+\item[Face up to what must not happen as much as what will]
 
 When specifying what a computer system will be for it is normal to 
 describe what it will achieve. However the reality of things is that
@@ -265,8 +323,7 @@ counterpart to designing and building secure system is defeating same -
 and there is an amazing history of purportedly safe schemes being cracked 
 open!
 
-\item[Cope with the inevitability of human error when software is  
-designed or built.]
+\item[Coping with the inevitability of human error]
 We all know that ``To err is human'', and we are all used to observing that
 computer systems have flaws. If you were concerned with safety critical
 applications (think of control of anti-locking brakes on a car, of
@@ -291,7 +348,7 @@ to create formal proofs that the software ends up correct. We will have
 examples of or introductions to each of these.
 
 
-\item[Understand graphical output.]
+\item[Make sense of abstract graphical presentations]
 Various schemes generate amazingly complicated images from rather 
 simple recipes. Many people have come across the Mandelbrot Set which is 
 one such instance, but we will point at a number more and consider how 
