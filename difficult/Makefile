@@ -7,6 +7,7 @@ chapters =	intro.tex \
 		counters.tex \
 		turing.tex \
 		galactic.tex \
+		practical.tex \
 		lambda.tex \
 		primrecurse.tex \
 		quadratic.tex \

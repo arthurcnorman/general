@@ -196,3 +196,59 @@ to count as galactic.
 The separate chapter here on pattern matching also presents a problem
 that might have seemed tame but is in fact galactic.
 
+\section{Primality checking}
+It is easy to check if a small number $N$ is prime -- just check
+each potential factor up to $\sqrt N$. For larger numbers there are
+fine and practially very sensible methods some of which rely on a supply
+of (genuine) random numbers are deliver a result with arbitrarily small
+probability of error, or that rely on currently unproven results in
+number theory. But a scheme introduces by Agrawal, Kayal and Saxen\cite{AKS}
+runs in time bounded by a polynominal in the number of digits it takes to
+express the number and guarantees a correct response without needing to
+make any qauestionalble assumptions. This is difficult in two senses!
+The mathematics behind explaining and justifying it are somewhat tough,
+and if it was implemented the suggestion is that its cost would would
+be significantly slower than using probabilistic methods for all
+numbers with no more than $10^{1000}$ digits. It is so labotious to
+use that even for numbers of a few thousand bits (as used in many
+cryptographic contexts) is is not really feasible at all as well as it
+being hugely slower than other methods. So here we can report that this
+exists, that it is a fine example of the levels of difficulty you get
+when trying to get the very best solution to a problem, but that those
+who want full details may first need to attend courses on number
+theory!
+
+\section{Minimum Spanning Trees}
+A graph here is a collection of vertices with edges that join some of them.
+A spanning sub-tree is a setset of the edges such that it is possible to
+get from any vertex to any other one only traversing edges in that subgraph.
+A graph may have weights (or costs) associated with each edge, and
+then a minimum spanning tree is a spanning sub-tree such that the sum of the
+weights on all its edges is as small as possible. Often in university courses
+on datastructures and algorithms procedures by Prim and
+Kruskal\cite{PrimKruskal} that find such minimum trees are presented. In
+the more advanced versions of such courses improvements on the basic
+versions of those using forms of priority queues known as Fibonacci
+Heaps\cte{FibHeap} get discussed. If the graph hash $m$ edhes and $m$
+vertices these schemes can guarantee to find a minimum spanning tree
+within time proportioanl to $m + n \log n$ and that is typically good enough
+for practical purposes. However a fancier method by Chazelle\cits{chazelle}
+has a growth rate that scales as $m \alpha{m,n)$ where $\alpha$ is an
+inverse Ackerman function and grows exceptionally slowly such that
+for any conceivably feasible practical graph its value will be no
+greater than 4. So until we are really at or beyond galactic scale the
+costs of this method grow linearly with the number of edges regardless of
+the number of vertices. As with the previous examples in this chapter this
+represents a breakthrough such that for large enough graphs the method
+will beat all the ones that can been developed before. As with other examples
+in this chapter the details of the extreme method defy compact explanation,
+but the overview is that they replace the Fibonacci heaps (which are themselved
+somwhat messy!) with data structures known as ``soft heaps'' that mostly
+provide priorty queue operations in a really cheap way but that
+do not always yield the correct result. However they do offer bounds on
+the frequency with which errors can be introduces, and the Chazelle method
+as a while allows for that by making checks as it goes and where necessary
+back-tracking to correct for mistakes. The presence of the inverse
+Ackermnann function in the eventual cost bound gives clear warning that
+this is all far from straightforward even though right here we are not
+documenting just what that function is or how it arises! 
