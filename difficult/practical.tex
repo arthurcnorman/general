@@ -11,13 +11,35 @@ perfection all other constraints and limitations are ignored. This
 can certainly involve use of significantly messy and elaborate code
 to achieve even small improvements over straightforward implementation.
 
-\section{Perfect data compression}
 
 \section{Abandoning portability}
 
+% Write in machine code. Depend on word=length. Use special features
+% not available on all machines (eg sse, avx etc). 
+% keying data layout to cache structure and disk block sizes.
+
 \section{Special hardware support}
+
+% Examples are that CPU designers have put in support for some encryption
+% related operations, and graphics cards are very much this. In the past
+% there were different styles of comnputer for commercial and scientific
+% use (and floating point hardware was not standard). In the past machines
+% to support particular programming languages (eg Lisp) where built.
 
 \section{Composite methods}
 
+% eg a general purpose sort routinme in a library may use different methods
+% for different size bodies of data, and combine multiple simple algorithms
+% using parts of each at different stages of its work. 
+%
+% test machine characteristics and select the scheme that will work best
+% here.
+
 \section{Dynamic code generation}
+
+% eg just in time compilation aimed at measuring what matters before
+% fixing the code (eg whether branches are typically taken or not).
+%
+% Dynamic translation as part of emulation of one machine architecture
+% by another.
 

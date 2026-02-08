@@ -251,4 +251,126 @@ as a while allows for that by making checks as it goes and where necessary
 back-tracking to correct for mistakes. The presence of the inverse
 Ackermnann function in the eventual cost bound gives clear warning that
 this is all far from straightforward even though right here we are not
-documenting just what that function is or how it arises! 
+documenting just what that function is or how it arises!
+
+\section{Perfect data compression}
+When data of any sort is to be transmitted over a slow network or sored in
+an archive it may well be good to produce a reduced size version of it such
+that when the original data is eventually required it can be reconstructed.
+The case considered here is where the original data must be recovered
+perfectly -- that is in contrast to data compression often used with
+images (\verb@.jpg@) and sound (\verb@.mp3@) where ending up with
+a version that is in some sense ``close enough'' to the original will
+suffice. There are many commonly used schemes for compressing data and
+a numbers of then use the word \verb@zip@ in their names. But none of those
+even pretend to achieve the best possible reduction in size.
+
+There is a scheme that is in a sense optimal, but the big problem with it
+is that it is even worse than the previous galactic algorithms just
+considered, in that it can be shown that it is and will always be impossible
+to write a program to implement it!
+
+This scheme is known as Kolmogorov compression and the idea behind it is
+really simple. A body of data is represented by the most concise program
+that, when run, will regenerate it. Well that definition raises an obvious
+issue: ``what notation should this program expressed in?''. From a
+theoretician's perspective the response is that any notation at all
+may be used. If then one wanted a version of the data to be decoded on
+a different computer or one that provided implementations of different
+languages all you do is construct code in the notation that will
+suit this different computer that will emulate the one the data was
+compressed by. This simulation code will be of some definite finite
+size and so sticking it on the front of your compressed data will
+only alter its simply-measured size by some additive constant.
+
+The unsolvable problem that makes this scheme one only to dream of is
+that there is no way to guarantee to find a shortest program
+to generate some given output. This is a consequence of the fact that
+given a program there is no algorithm that can guarantee even to tell
+if it will terminate in finite time, far less give information
+about its output. But this is only a practical limitation! One might
+expect that something that was impossible to implement would not have many
+uses, but amazingly that is not the case. Here are two that illustrate
+the power of this concept:
+
+\subsection{Testing for randomness}
+A funadamental result is that if data is truly random then the most
+concise why to express it is basically to put it in a simple
+print statement. For instance this shows that a string of digits
+such as those from 10000 to 1000000 within the decimal expansion of
+$\pi$ are not really random, because this very sentence can be
+viewed as a recipe from which they could be reconstructed. And
+if desired the sentence could be preceeded by a program for
+calculating digits of $\pi$. So the fact that the string of digits that
+starts off $85667227966198867\ldots$ which may have no pattern
+discernable to the casual eye could be spotted by Kolmogorov
+compression as being extracted from the list of digits of $\pi$.
+
+So suppose you have a sequence of values that are supposed to be truly
+random -- such as numbers drawn each week in some lottery -- the
+though here is that if somehow you could find a scheme that could
+generate exctly that sequence where the description of your scheme
+is notably shorter tham merely listing the numbers themselves then you
+have good reason to believe that they were not random after all.
+At least in some sense all the techniques used to try to assess
+procedures that generate pseudo-random numbers are modelled on
+this in that they look for patterns that represent traces left by
+the mechanisms actually used to generate the numbers. But Kolmogorov
+compression would uncover the implementation of the generating program
+and in so doing show that the sequences were pseudo-random rather than]
+genuine.
+
+\subsection{How common are primes?}
+The result sketched here uses the fact that almost all data must
+be impossible to compress. This result emerges from counting how
+many different possible byte-sequences of length $N$ exist and
+concluding that any loss-free compression can only possibly map
+that number of longer strings onto them. So all the other longer strings
+can not be squashed. This line of reasoning does not indicate exactly
+just which strigs will end up being mapped onto shorter ones and
+which will not! But good practical compressions methods try to
+arrange that the ones that are allocated short representations are ones
+more liable to arise in practise.
+
+Using this principle that most data is not compressible it is possible to
+derive a result that shows that primes must be reasonably common. This
+result is not going to be anything like as good as the ones that ``proper
+number theory'' comes up with, but the fact that it uses data compression
+as its main tool is perhaps witty!
+
+So consider a really huge number that is written using $N$ digits. The
+principle that most data can not be compressed says that in general
+it will not be possible to find a way to describe it using significanly
+fewer than $N$ digits. Well one alternate way of specifying the
+number would be to list its prime factors, so for instance the
+integer $856672$ would be presented as $2 \times 2 \times 2
+\times 2 \times 2 \times 19 \times 1409$.
+and now we imagine numbering the primes, so 2 is the first, 3 is the second
+and so on, Then this representation of $856672$ might be written
+as $(1,1,1,1,1,8,223)$ because 19 is the 8th prime and 1409 turns out
+to be the 223rd.
+
+Now if you imagine that primes are really very
+uncommon then the index of a prime (eg 233) will be very much less than
+the value of that prime (eg 1409) and so writing out the index will
+use less space. That could potentially give a way of finding a way to
+create a compressed representation of the number, and while that can
+happen occasionally that has to be rare. This establishes that primes can
+not be hugely rare.
+
+Rather that attempting to get the sharpest possible result out of this,
+pretent for a moment that the density of primes was such that the
+$n$th prime had value comparable with $n^2$ which would mean that
+its simply written value used about twice as many digits as were needed
+for writing out its index. Then at least a simplistic reading is that the
+compressed representation of a number a slist of the indices of its
+factors will use half the number of digits plus a number of commas
+based on how many factors are present. for big enough numbers this will
+pretty well always be significantly shorter than the representation that
+memly writes out the number simply, and this being impossible establishes
+that primes must be more common that had been assumed.
+
+This illustrated that even without being able to exhibit perfect compression
+a consideration of it can be used as a basis for reasoning about
+probability distributions and the like. But it remains the fact that
+optimal compression is not merely galacticm it is uncomputable.
