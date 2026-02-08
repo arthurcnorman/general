@@ -87,12 +87,112 @@ be quite sensitive to details of the computer used and just how everything
 was coded. So this not a galactic algorithm.
 
 The next scheme of note may start to be competitive when multiplying
-numbers of magnitude around 10^{4000}.
+numbers of magnitude around 10^{5000}. The exact point where it becomes
+realistic can vary quite a lot and 5000 digits is perhaps better
+characterised as stellar rather than galactic, so this is a method that
+is at least relevent in some slightly specialist cases. It is however
+much harder to explain in elementary terms, and so what will be presented
+here is an overview perhaps uses enough technical language to show
+that it starts to count as ``difficult'' or at the very least ``reasonably
+advanced''. So for those who do not recognise the words used here this
+will just show how much messy technology a simple-seeming task such as
+integer multiplication can involve. For those who then want to follow
+through by re4ading textbooks or scouring the web it may give a broad
+overview so they know how the things they read up on fot together. And
+those who already understand this well can just smugly skip to the next
+section.
 
+Sch\"{o}nhage-Strassen works by first padding its integer inputs so that
+each have a suitable power of two bits. At least as an abstract algorithm
+if expresses its operations in terms of bits not digits so it is kept
+fully honest and does not hide costs within arithmetic on digit-sized
+units. Then if the numbers are of length $N$ it clumps the bits into
+clumps of size around $\sqrt N$ and views each clump as a digit, and so
+there are around $\sqrt N$ digits. Well there can be some pedantry about the
+exact size of digits that is needed but the decomposition as described
+here is close enough for use in this overview.
 
+The next issue is that it views each collection of digits as a vector
+and it takes a Fourier Transform of it. So what is a Fourier Transform?
+Well it amounts to multiplying a vector of length $K$ by a special form
+of matrix where the entries in the matrix are all powers of a value $\omega$
+where $\omega^{K} = 1$ but no lower power of $\omega$ has that value. In
+the normal world one would say that $\omega$ is a complex $K$th root of unity,
+and that it is primitive, so at first it looks as if complex numbers are
+involved. However to avoid them (and any risk of creeping rounding error
+that could hurt if floating point arithmetic was used), Sch\"{o}nhage and
+Strassen used modular arithmeic. In other words they have some number $P$
+so that after any operation on integers they just retain the remainder
+when the natural result is divided by $P$. A big part of their cleverness
+is that by choosing $P = 2^{M}+1$ for a suitable $M$ two wonderful things
+can be achieved. First it becomes possible to use 2 as the value for $\omega$
+and that means that multiplication by powers of $\omega$ can be mechanised
+as simple cheap shift operations. Secondly the remaindering operation
+where a double length integer is to be reduced modulo $P$ can be performed
+by just subtracting the top half of the number from its bottom half.
 
+One interpretation of what a Fourier Transform does is that it views
+its input vector as the corfficients in a polynomial and evaluates that
+polynomial at all the powers of $\omega$. If that is done to two polynomials
+and the resulting values are pairwise multiplied the result will be
+the values of the product polynomial at all those points. An inverse
+Fourier Transformation will act as interpolation and recovers the
+coefficients of the product polynomial. This can be re-interpreted
+as an integer following some simple carry operations. A further key
+feature of Fourier Transforms is that on using vectors of size $K$ can
+be completed using around $K \log K$ arithmetic operations. Of course
+here each of those arithmetic operations is using modular arithmetic
+modulo $P$ where $P$ is a pretty huge multi-digit number -- but because
+of all the powers of 3 involved that is not in fact seriously painful. In
+fact the worst part of all of this is the pairwise multiplication of elements
+of the transformed vectors and that generally needs to recurse into a
+further layer of use of the whole procedure -- at least until things get
+small enough that classical methods will win.
 
+The ``polynomial product'' produced by the Fourier Transform scheme has
+been computed modulo $P$ but we want exact and correct integer results.
+Well provided $P$ was greater than any value that could legitimately
+arise in that product all is well and the calculated values will be
+the perfect integer results as needed.
 
+The above explanation know it is a sketch. It has omitted the need to
+pad various things up to powers of 2 and the proper care about splitting the
+inputs up so that the value of $P$ used is big enough to ensure that
+results are correct. Those details of course matter in a proper formal
+explanation of the algorithm and in any implementation of it, but perhaps
+they repesent details best defered to a second reading about the method.
 
- 
+The Sch\"{o}nhage-Strassen scheme for multiplying $N$ bit numbers has a
+cost that grows proportional to $N \log N \log \log N$. Because it is
+concerned with truly gigantic input numbers (i.e.\ values of $N$) it
+becomes proper to worry that if digits making of numbers are stored
+in computer arrays of length $N$ then index arithmetic used to work out
+which digit to touch next can become beyond th4e scope of single
+computer operations. For instance a modern 64-bit computer will not
+cope trivially with arrays with more than $2^{64}$ elements! So the proper
+analysis of costs here needs to be done in terms of some suitable abstract
+machine that does not have any limita at all on the bulk of data it
+can store and maniplulate. Variations on Turing machines are commonly
+used, and amazingly some of them can deliver the cost growth rate
+noted above.
+
+This scheme, however messy, is still used in some practical applications.
+But it is not the end of the road. A succession of authors have described
+yet more elaborate schemes that reduce the $\log \log N$ term in the
+cost function, culiminating one\citeHarveyvanderHoeven} where the cost
+is precisely proportional to $B \log N$. This is a great theoretical result
+in that it is conjectured (but not yet proved) that this is the best
+growth rate that can be reached. The technology applied is significantly
+higher powered than the scheme covered above and so there is not even an
+attempt to explain it here, but those who really enjoy difficulty can
+read the 45-page paper that introduced it! One of the authors
+say that for this method to be cost competitive the numbers involved
+would need to be rather large: ``Even if each digit was written on a
+hydrogen atom, there would not be nearly enough room available in the
+observable universe to write them down.'' That surely qualifies it
+to count as galactic. 
+
+\section{Regular expressions}
+The separate chapter here on pattern matching also presents a problem
+that might have seemed tame but is in fact galactic.
 
