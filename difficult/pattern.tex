@@ -22,17 +22,19 @@ a sequence that matches P and follows that with one that matches Q. Obviously
 the very easiest use of this is that it means that you can write a sequence
 of individual letters and they form a word to be spotted;
 \item $P | Q$ -- here we accept anything that matches either $P$ or $Q$.
-So \verb@cat|dog|rabbit@ matches strings that name creatures suitable as pets,
-and \verb@p(e|a)t@ illustrates that it is sometimes useful to have
-parentheses to group things. One needs some scheme to distinguish use of
-\verb@(@ as a literal character to be matched or a grouping marker, just
-as care is needed with the vertical bar. This pattern will match either
-\verb@pet@ or how you might treat one, i.e.\ \verb@pat@.
+So for instance \verb@cat|dog|rabbit@ matches strings that name creatures
+suitable as pets, and \verb@p(e|a)t@ illustrates that it is sometimes
+useful to have parentheses to group things.
+This pattern will match either \verb@pet@ or how you might treat one,
+i.e.\ \verb@pat@. If you need one of the characters \verb@(@, \verb@)@
+or \verb@|@ in the alphabet you are matching over some way of distinguishing
+raw characters from punctuation used to build up the pattern will be
+called for.
 \item $P*$ -- This is the big one, It indicates an arbitrary repetition
 of the pattern $P$. So it is in effect equivalent to $(| P | P P | P P P |
 \ldots)$. Note there the initial option of no instances of $P$, i.e.\ of
 this matching the empty string. A really simple instance of this would
-be \verb@B(an)*a@ which matches \verb@ba, Bana, Banana, Bananana@ and so on.
+be \verb@B(an)*a@ which matches \verb@Ba, Bana, Banana, Bananana@ and so on.
 \end{itemize}
 
 There are two viewpoints that can be taken about this. One is a practical
@@ -98,217 +100,271 @@ try to match against input text seems really rather easy despite the
 pessimistic statement above. So here to give some insight into just
 why adding those two last capabilities is so bad let's state what
 problem it turns from tolerable into being solvable in principle and
-theory but utterly dreadfil in practise.
+theory but utterly dreadful in practise.
 
-Consider a regular expression built up as follows and over an alphabet
-that consists of just the two letters \verb@a@ and \verb@b@.
-If one sets up a fairly messy example of such an expression it might
-not be instantly obvious what inputs it will match. The question that gets
-tricky is ``Is there any input at all that it will {\bf not} match?''.
-This may seem a frivolous and artificial question, because what on earth
-would be the point of a pattern that matched absolutely all input? Well
-actually it is not as stupid as it at first sounds. The components used
-to build up the regular expressiion may be modelling the behaviour of
-some machine or the progress through some program as it inspects the
-input. Succeeding in making match could correspond to successful
-processing, and so input that is not matched could amount to input
-data that causes the machine or program to fail. If that sounds a bit
-fanciful it is in fact almost exactly the insight used when considering
-how hard it will be to answer our question. And regular expressions and
-a certain simple class of machines or programs are very closely linked.
+The sections here will next work through showing that it is possible to
+set up a regular expression of reasonable size that such that the
+only strings it can match will be absurdly long. Once that is done
+it becomes possible to argue that while answering various questions
+about them and their relatives is theoretically posisble, the cost of
+doing so will be at least as great as the length of the shortest string
+they match, and hence is beyond all feasiblity now and for ever.
 
-There are two major parts to understanding where the difficulty comes
-from. The first is to show the way in which a regular expression can be
-``compiled'' into a nice program that will check for things that match it.
-The way of doing this in effect builds a sort of flowchart for the
-program, but it is not quite the normal sort. This one consists of
-blobs referred to as states and arrows fromn one to another where the arrows
-are laballed with characters from the input alphabet. One state is
-identified as where one starts, and any of the states can be marked
-with a ``success'' tag. The concept is that from where it starts the arrows
-are followed and when as a result one is positioned in a success state
-that means that the text absorbed to date has been matched. So for instance
-one of the earlier very easy cases ends up as
+The way of doing this will be by using the term ``ruler'' to characterise
+an expression that only matches strings of some given lenght $L$, and
+showing that if you are given a rules for $L$ you can derive one for
+a length of the order of $2^{L}$ such that the new expression is only
+some constant factor lerger than the original one. By iterating this
+process you can obtain rulers of length $2^{2^{\ldots L}}$ for any height
+tower of powers of 2 that you want, and that leads to truly huge values
+rather rapidly.
+
+To illustrate the process we will start with a ruler of length 3, and
+the simple regular expression \verb@x x x@ consisting of just 3 characters
+does the job. The general concept that will be set up is based on
+counting in binary with (in this case) 3 bit numbers, which may be
+presented to start with on two lines as
 \begin{verbatim}
-                   /-a->\ 
-   (start)  -p-> (.)    (.) -t-> (success)
-                   \-e->/
+      #000#001#010#011#100#101#110#111#
+   ...#xxx#xxx#xxx#xxx#xxx#xxx#xxx#xxx#...
 \end{verbatim}
-which should be very easy to follow and to understand how it relates to
-the original regular expression.
-
-Expressions involving the \verb@*@ operator introduce loops in a
-rather straightforward way. The harder issue thart arises in the
-``\verb@Bananananana@'' example is that one ends up with a state where
-two arrows emerge from it each corresponding to the same symbol.
-% B(an)*a. This clearly deserves a proper picture not this dire
-% ascii art!
+Here the upper line can be seen to be counting and it uses the hashes to
+keep the separate binary values neatly apart. The lower line uses our
+ruler and will help to enforce the regular patter of where the hashes
+appear. It can be rendered as the simple expression
+\verb@#(xxx#)*@ which just takes our ruler and sets up repeats of
+it separated by \verb@#@ characters . Well this looks like two strings,
+one for counting and one for ruler. So then we can use the language of
+regular expressions we interleave the two so we have a single string where
+odd characters are from the top line and even from the bottom:
+{\footnotesize
 \begin{verbatim}
-                  /-a-> (success)
-   (start)  -B-> (.)
-                / \-a-> (.) --|
-                ^             v
-                \----<--- n --|
-\end{verbatim}
-This is referred to as being nondeterministic in that there is no
-clear way to know which \verb@a@ arrow to follow. The understanding is
-that the flowchart is deemed to recognise a string if at least one way
-of making those arbitrary-seeming transition leads to it ending up
-in a success node at the end of the input.
+   ##0x0x0x##0x0x1x##0x1x0x##0x1x1x##1x0x0x##1x0x1x##1x1x0x##1x1x1x##  
+\end{verbatim}}
+This may be less easy for a human reader to decode and so in the
+following presentation we will sometimes use the 2-line format, but
+what it will always mean will be the flattene out version. Note
+that with our ruler of length 3 the string we have here is
+of length $2 \times (3+1)\times 2^{3} + 2$ where the $3+1$ and the final
+$_2$ come from counting the hashes and the extra factor of 2 is because
+there were two lines or text merged. Calling this just $2^3$ is something
+of an understatement but that does not alter the main thrust of the
+presentation, which is that this will allow us to build extraordinarily
+long rulers.
 
-There are tricks that arrange that if one has a flowcharts corresponding to
-two regular expressions $P$ and $Q$ that one can construct ones for
-$P Q$, $P | Q$, $P \& Q$ and $P*$. The one for $\sim P$ is especially
-easy since all it has to do is swap which states are or are not
-tagged as success. Along the way these tricks can expand a nondeterministic
-scheme into one where each choice is unambiguous. As before the
-fine details of this are skipped here because none of it is difficult
-enough to match the book's title.
+Initially it might seem that setting up regular expressions that constrain
+text strings to count in binary is going to be hard. The way of doing so is
+is to consider what strings are {\em not} counting sequences. So we will
+establish a set of regular expressions exact of which characterises somenthing
+that we do not want to see, and using negation and the ``and'' operator
+ensure that none of them apply. What remains will only be able to be
+our counting sequence. This of course is the just what Sherlock Holmes
+taught us: ``When you have eliminated all which is impossible, then whatever
+remains, however improbable, must be the truth.''.
 
-An important observation is that the flowchart you end up with has
-a finite number of nodes, and if there is an input that can be presented
-that is not going to be matched that means there must be a non-success
-node present and a path from the starting state to it. Viewing the flowchart
-as a sort of maze and checking for this is very much something that
-will not correspond to a hard program at least provided you are not
-worried too much about performance. So phrased the way we need it
-here we claim that the question as to whether there are any strings
-not matched by a given regular expression is one where it is
-possible to write a program that answers it in a finite amount of
-time. To be specific, the program starts by elaborating the regular
-expression into a flowchart and it then maze-searches that to see if
-a non-succes state can be reached from the start position.
-
-Well the normal language used for this would be to say that the
-question is ``decidable'' and can be resolved by mapping the
-regular expression onto a ``deterministic finite state machine''\footnote{
-Well a non-determistic one might be as good, ane different authors
-us different names such as ``finite state machine'' or they
-abbreviate things to terms such as ``NDA'' for non-deterministic
-accepter. But the concept being discussed is the same whatever language
-is used when discussing it}
-and checking if a ``non-accepting state'' is reachable from the start.
-
-At this stage it may be useful to point out that a deterministic flowchart
-maps onto a really simple computer program that has a simple loop and
-a look-up table:
+To start with it makes sense to enforce the block format of the
+string, which amounts to demanding that hashes in the top line can only
+be in places where they lie above hashes in the bottom line. Well any string
+that violated that rule will have either a hash above a non-hash
+on a non-hash above a hash somewhere. If just deal with the first of those
+it can be desribed using a pattern that carefully uses pairs of
+characters everywhere
 \begin{verbatim}
-   state = start_state
-   while more_input do
-      state = transition_table[state, next_input_character]
-   return result_table[state]
+   (..)*  (# (~#)) (..)*
 \end{verbatim}
-and this fact is part of why this sort of pattern matching is so
-popular in software.
+This little expression and its friend that matches the bottom to top
+will form part of the expression we are building to describe our long
+string. As written above it is only 17 tokens long. If you needed to
+use more primitive regular expressions each wildcard charactter \verb@.@
+might expand into something like \verb@a|b|c|d...0|1|#@ and have a size
+proportional to the number of characters in your alphabet, but that again
+us just a constant.
 
-This has set up a problem that we can guarantee to solve, and despite the fact
-that setting up the \verb@transition_table@ as used above involves a bit
-of effort\footnote{\ldots and that good implementations seek ways of
-representing it in more compact ways than just a simple big rectangular
-block} it really does not look too bad. But now we can lead into the
-pay-off in terms of difficulty. By designing a regular expression
-cunningly and using all the extended notations we have it is possible
-to arrange that if the regular expression is made up of $K$ symbols
-then the size of the flowchart and hence the time and effort needed
-to answer the initial question can end up greater than
-$2^{2^{\ldots 2^2}}$ where the tower of exponentiation has height $K$.
-This easily gets way beyond astronomical, as can be confirmed by reviewing
-the numbers that represent the side of the galaxy or known universe. On
-that basis it is probably fair to declare that obtaining the answer is
-difficult, even though one can have written a program that would
-deliver it if it could ever run to completion. And that it is absolutely
-known that the program would complete if give long enough -- the only
-problem is that ``long enough'' might hugely exceed the expected lifetime
-of the universe.
-
-The assertion that something is that hard deserves some justification, and
-so here is a sketch of how it arises. All sorts of awkward details will
-be skimmed over. But the key idea that is needed is that of a ``ruler''
-that measures out lengths of strings. It is really easy
-to set up a first ruler -- say one that marks out blocks of size 3.
-can be just
+The next consaint can be expressed positively and is that the
+string we are going to match must start at \verb@000@ anmd stop
+at \verb@111@. Again this is easy:
 \begin{verbatim}
-   ruler3    ...
+   #. (0.)* #. (..)* #. (1.)* #.
 \end{verbatim}
-where the core of the ruler is just the string of three unspecified
-characters.
-
-The step on from this is to set up an expression that will match patterns
-that when this ruler is of length $k$ they are of length $2^k$. A path
-towards this is to seek a combination of patterns that will only match things
-that are basically like
+where this version demands that our initial ruler is of length at least 2
+so there are at least two hashes between the first and last segmnents, This
+wors because \verb@# 0* #@ insiats that there are only zeros in that region,
+and similarly for \verb@1@s at the end. And the previous rule has made cartain
+that the \verb@#@ marks all line up and that forces those strings of zeros and
+ones to be the desired length. Note that all the messy things like
+\verb@(0.)*@ and indeed all the dots here are just arranging that we only
+paty attention to top-line (eg odd position) chartacters. because that is
+really just a bit of technicality in future we will present things in
+the form as if they were only applied to the top line and the extra mess
+to ignore the interleaved bottom line will be assumed to be applied:
 \begin{verbatim}
-   $000$001$010$011$100$101$110$111$
+   # 0* # .* # 1* #
 \end{verbatim}
-ib other words a sequnce of ruler-length segments that count in binary, and
-that use some fence charecter to separate them. This is not as terrible
-a challenge as it may at first seem: we set up regular expressions one
-at a time each of which forces some partial constraint on what is allowed
-and combine them all with \verb@&@ until the above is the only possibility
-left. Well actually it is a little more fancy than that. A first step
-is to impose the basic regularity and \verb@($ {ruler3})* $@ is a pattern that
-can generate the upper line in the following.
+
+Looking ahead it will make sense te enesre that we only count through the
+binary sequnce once, so that it is not possible to have a second section
+consisting all of zeros. This is also rather easy if we make it a pattern that
+we will say must not apply that puts two separating hash marks ahead of
+a block of all zeros. It is written here ignoring the issue of the lower
+ruler line... 
 \begin{verbatim}
-   $...$...$...$...$...$...$...$...$
-   $000$001$010$011$100$101$110$111$
+   .* # .* # 0* # .*
 \end{verbatim}
-We can now view pairs of characters that are positioned one above each other
-as single units in a larger alphabet. In running text I will show these
-pairs in angle brackets> and with that it becomes easy to force all the
-\verb@$@ characters in the two lines to match up:
+which is anything then \verb@#@, more anything and then a block like
+\verb@#000#@. By disallowing that we will count just once.
+
+That leaves what may feel like the hard part which is to ensure that
+sequential blocks of digits count. It feels easiest to first explain
+what must happen, but the fragments of pattern we end up using will all
+need to be set up to disallow anything else. To increment a binary
+number one looks for the rightmost \verb@0@ and of course that means
+any digits to the right of if must alll be \verb@1@s. The next number
+up must preserve all bits to the left of that key zero, flip the zero into
+a one, and turn all the trailing ones into zeros. A way of handling this
+is to imagine that corresponding bits in the number and its successor
+(which must be a distance apart set by our ruler) are underline and
+displayed in bold, then four cases apply which are shown a bit
+informally here: \\
+\verb@       ...@\textbf{\underline{0}}\verb@ ... 0 ... # ... @\textbf{\underline{0}}\verb@ ...@\\
+\verb@       ...@\textbf{\underline{1}}\verb@ ... 0 ... # ... @\textbf{\underline{1}}\verb@ ...@\\
+\verb@       ...@\textbf{\underline{0}}\verb@     1*    # ... @\textbf{\underline{1}}\verb@ ...@\\
+\verb@       ...@\textbf{\underline{1}}\verb@     1*    # ... @\textbf{\underline{0}}\verb@ ...@\\
+The first two cases have at least one zero after the particular
+character and insist that the character remains unchanged, while the
+second two are when there are only \verb@1@s to the right in which case the
+bit is flipped. These cases are mutually exclusive but between them cover
+all possibilities.
+
+The key trick is clearly to get the effect of the underlining set up
+in our petterns, and that can be explained in a ``two row'' presentation
+again. where for that first the above four cases what must be avoided is
 \begin{verbatim}
-   (<$$> | <~$~$>)*
+   .* 0 .* 0 .* # .* 1 .*
+   .* #     xxx.     # .*
 \end{verbatim}
-since this is just intended to say that any \verb@$@ in one line must
-match with one on the other.
-Next it is easy to force the start of the text to begin with \verb@$000$@:
+which can be read out as the lower line using the ruler \verb@xxx.@ to insist
+that the two \verb@#@ marks are the length of our ruler plus one (to allow for
+the \verb@#@ in the main pattern) apart. The top line looks for zero which is
+followed by at last one zero before a \verb@#@, and that after the \verb@#@
+there is a one that has been forced to be just the right distance away.
+Matching a \verb@1@ there captures the case that is wrong, so saying that this
+pattern does not match leaves only the good cases. The ruler line used here
+is not the same as the one used before in that it puts in only two markers
+that are properly separated, and the leading and trailing \verb@.*@ parts
+say that it can match and indicate that separation anywhere. Ah well --
+adding this in will mean interleaviung these two patters again, and the
+interleaving with the previous repeating ruler will have to remain in place.
+The result is that characters are going to end up being worked on in
+blocks of 3 or perhaps 4 rather than individually. This just makes
+the big ruler that we are creating with our counting scheme a bit longer
+yet and is not a big cause for worry.
+
+Each of the fragments of regular expression introduced here are rather
+small even when all the interleaving stuff is allowed for, and in the end
+we have shown how to create a pattern whose size is some modest multiple
+of the size of the original ruler, but that will only match strings that
+are exponentially larger.
+
+So why might this be a worthwhile exercise? Apart of course
+from it being a demonstration that pattern matching can do more that
+was first apparent. Well it can be part of the process of showing that
+understanding particular patterns can be hard. Begin with a fundamental
+result about these patterns, which is that any regular expression will
+have a corresponding deterministic finite automaton that can recognise
+exactly the strings that the pattern will match. Well to rephrase that
+in less tecnical language for any pettern there is a really simple program
+that can be used to apply it to input strings. The program is
+basically of the form:
 \begin{verbatim}
-   <$$>(.0)*<$$>.*
+   int state = 0;
+   for each character in the input
+     state = transitionTable[state, character];
+   return isAcceping[state];
 \end{verbatim}
-reads that between the first two fences while anything goes on the top line
-the bottom line is all zeros. The final \verb@.*@ says that as far as this
-little rule is concerned anything goes after that first segment.
+where the transition table is used to adjust the state as each fresh
+character is presented and the \verb@isAccepting@ vector reports
+at the end whether the string matched. It is clear that the work done
+for each input character is rather small -- just accessing the
+array, and so this is liable to be really efficient way of performing
+pattern matching. There are readily available programs\footnote{notably
+lex and flex} that can build the tables and they will tend to be a bit
+cleverer than using a simple 2 dimensional array for the transitions would
+be because many entries in the full rectangular block would never be used.
 
-Now for the bit which is obviously going to be tricky which arranges that
-each segment can be read as the next binary number up from the previous one.
-The process of incrementing a binary number can be achieved using the
-following constraints, only provided that the underlined characters can be
-kept exactly one ruler-length apart:\\
-\verb@       ...@\textbf{\underline{0}}\verb@ ... 0 ... $ ... @\textbf{\underline{0}}\verb@ ...@\\
-\verb@       ...@\textbf{\underline{1}}\verb@ ... 0 ... $ ... @\textbf{\underline{1}}\verb@ ...@\\
-\verb@       ...@\textbf{\underline{0}}\verb@ ... 1*... $ ... @\textbf{\underline{1}}\verb@ ...@\\
-\verb@       ...@\textbf{\underline{1}}\verb@ ... 1*... $ ... @\textbf{\underline{0}}\verb@ ...@\\
-where the first two cases have at least one zero after the particular
-character and the second two do not -- which will mean that any characters
-there will all be ones. Note that these four cases are mutually exclusive but
-also cover every possibility in the part before the \verb@$@ fence mark.
-If we can set up patterns for each then just the ``or'' of all those
-pattens will cover all cases and will force the segment to the right
-of the fence to be represent the next number up. Well that insight is
-not quite right yet because the patterns shown must apply in every bit
-position while simple us of the above patterns do not ensure that. The
-fix is to adjust each of the four patterns to match an incorrect
-bit in the subsequent block, as in\\
-\verb@       ...@\textbf{\underline{0}}\verb@ ... 0 ... $ ... @\textbf{\underline{1}}\verb@ ...@\\
-and in that way set up a pattern that will successfully match any sequence
-that is {\em not} a valid counting sequence. The negation of this will then
-capture just the ones that are correct.
+Both for practical and theoretical purposes it is wothwhile to consider
+how many distinct states will be required to build a program of the above
+form that will correspond to a given pattern. One bound that is pretty
+clear cut is that there must be at last as many states and the shortest
+string that matches the patterm. To see that imagine the sequence of
+states encountered in the process of a succesful match of such a shortest
+string. If tere were to be fewer atates than the length of the string them
+one of the along the way would have to be repeated, as in
+\begin{verbatim}
+   ABCDEFDGHIJ
+\end{verbatim}
+where state \verb@D@ has been entered twice. Well if that happened it
+would be possible to provide input that ran up to that situation and then
+continued ona  home run, omitting all the steps between the first and
+second encouter with the repeating state.
+\begin{verbatim}
+   ABCDGHIJ
+\end{verbatim}
+This is a shorter string that has just been accepted, contradicting the
+assertaion that we had started by looking at the shortest matching
+input.  What we can read off from this observation is that provided we
+allow extended regular expressons with a negation operator there are
+tolerablly concise patterns that would necessarily lead to super-galactically
+large numbers of states. This is a pretty convincing reason not to allow
+negation in practical applications of these patterns!
 
-Arranging that the underlined characters are exactly the correct distance
-apart can use basically the same scheme as had been used to force
-everything into regular blocks -- basically it views the underlining as
-an separable part of the character and uses a ruler-based pattern rather
-like\\
-\verb@    .*@\textbf{\underline{ }}\verb@xxxx@\textbf{\underline{ }}\verb@.*@\\
-to sset up two underscores that are in this case 4 characters apart. But
-the \verb@xxxx@ can be replaced by any longer sequence whose length
-is fixed.
+So next consider a challenge that if it was readily solvable would be
+of great use: given some pattern expressed as a regular expression
+is there another more concise pattern that matches exactly the
+same set of inputs? From the perspective of a theoretician this can
+be addressed by emulerating all possible regular expressions with
+all the ones using $k$ characters before the ones with $k+1$ characters,
+amd with ones that are the same length in alphaberic order. Over any fixed
+alphabet of the characters you are working with this is clear-cut.
+Now for each such you want to test if it happens to match the same
+inputs that your original one did. Well if I have two regular expressions
+$P$ and $Q$ then the language $(P\&~Q | Q\&~P)$ will match any things that $P$
+does but $Q$ does not and vice versa. So if the two expressions do the
+same thing this new one I have just set out will not match anything at all.
+But that is something that there is a clear-cut way of checking for.
+Make the transaition table for this new composite expression and supposing
+it turns out that there are $N$ states then if there is any string that
+it accepts at all there must be one of length at most $N$. This is just
+the flip-side of the previous remark about lengths of matched strings
+and the number of states. If your alphabet if of size $k$ then there
+are only(!) $k^{N}$ strings of length $N$ to check and if none of those
+match then nothing will. The explanation here is a bit needlessly inefficient
+but it demonstrates that in a finite amount of work one can tell of
+two patterns match the same set of strings and that then by exhaustive search
+in a finite amount of time it would be possible to exhibit the most
+concise pattern for any particular behaviour. But although tis shows that the
+challengs is decidable in the sense that one can have a computer program that
+would guarantee to address it and eventually complete its work with a
+correct result, the resources needed to achieve that might well be
+truly ridiculous.
 
+The explanations given here show how huge rulers and hence regular expressions
+that necessarily load to transition tables with huge numbers of states csn
+arise. They do not complete the proof that there can not be some clever way
+of reasoning about e.g.\ equivalence between patters that manages to sidestep
+generating the associated transitionm table. And details of that will be
+left as a futher literature search or research project for the reader, But
+a key step that it may by now be easy to recognise is that the sorts of
+techniques explained here that block a string into segments each representing
+the next binary number on from the previous can be modified so that the
+string is split into blocks such that each represents the next state
+of a fairly arbitrary computer one step on from the previous. It would
+be normal to set this up describing a Turing machine with a tape whose
+length is limited to the size of our ruler. Given that and the large
+amount of theory known about the problem of telling of a Turing machine
+will halt you can imagine that formalising a statement that there can be
+no amazing short cuts and that something very much like building the full
+state transition table for the description is going to be necessary to
+tell if certain messy patterns will match anything at all.
 
-
-Well the above has introduced an idea that it might be possible to
-use to generate absurdly long rulers. Two challenges remain. Just how
-is the step from $N$ to $2^N$ orchestrated, and given a rules like that
-how can that be turned into a regular expression where it is
-hard to tell if it will or will not match everything.
-
+In writing this the authors here want to leave the reader understanding that
+there is always more to be looked into!

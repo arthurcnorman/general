@@ -66,10 +66,14 @@ be expensive -- a.k.a.\ ``difficult''.
 The scheme that somewhat amazingly makes the calculation cheap is to
 stop trying to divide by $2 \pi$ and instead multiply that by $1/(2 \pi)$
 where that value is
-$0.1591549430918953357688837633725143620344596457404564487476\ldots$
+\begin{verbatim}
+ 0.1591549430918953357688837633725143620344596457404564...
+\end{verbatim}
 So now we need to multiply that number by the big integer
-$628300000000000000000000000000000000000000000000000$ which is the
-proper way of viewing the number whose sine we are wanting to find.
+\begin{verbatim}
+628300000000000000000000000000000000000000000000000
+\end{verbatim}
+which is the proper way of viewing the number whose sine we are trying to find.
 Well firstly that is multiplying the 50-digit number by just 4 digits which
 starts to feel not too bad. But better yet the the result is going to
 be of the form $999 \ldots 8728.7867\ldots$ where the bit before the decimal
