@@ -1,1 +1,82 @@
 \chapter{Lambda calculus and Combinators}
+
+Turing machines provide a model for computation that (perhaps unexpectedly)
+can give really good insight into costs. But setting up programs for them
+is not really anything like conventional programming and they do not
+adapt well to day to day use. Minsky or Counter machines have their
+behaviour expressed by flowcharts and come much closer to being amenable
+to casual use, but they exhibit totally absurd run-times that render them
+quite unsuitable for anything other than theoretical purposes. That leaves
+a gap in the market to be filled by a formal model of computation that can
+be reasonably easily adapted for use as a practical programming system. A
+key candidate for this is called ``lambda calculus''.
+
+The fundamental idea here ia that functions should be seen as the basic
+building block for everything else. When first introduced this was accepted
+as a neat theoretical idea and it led to what I will impolitely describe
+as niche programming languages, but over recent years it has been recognised
+as such a good idea that basically all modern programming languages
+incorporate features that are directly derived from it. A {\em lambda
+expression} denotes a function and is seen as freestanding entity. For
+instance in earlier usage one could only introduce a function by a notation
+that gave it a name, as in
+\begin{verbatim}
+     f(x) = 3*x + 1
+\end{verbatim}
+as a definition of a function called \verb@f@. With lambda calculus the
+name f is not needed and we can write just this function as \\
+\verb@    @$\lambda$\verb@ x . 3*x + 1@\\
+where the name just after the $\lambda$ indicates what the formal argument is
+and the section after the dot is the body of the function. About the only
+action that can apply to a lambda expression is that it can be applied to
+an argument, and the consequence of that is just about the same as when the
+previous function called \verb@f@ is applies to an argument. It is almost
+as simple as that!
+
+Well there are two issues that need discussion that arise when several lambda
+expressions arise together. The first rule is just to give a pedantic
+confirmation that things happen the way you would naturally hope, and
+it insists that when the body of a function has a value for the function's
+formal parameter substituted in nothing improper happens. One version of
+it starts by noting that in any lambda expression one could rename the
+variable that is bound to anything else and so the example shown above is to
+be viewed as entirely equivalent to \\
+\verb@    @$\lambda$\verb@ y . 3*y + 1@\\
+and the mapping from one text string to the other is known as alpha conversion.
+Now if you applied out first lambda expression to an argument that was the
+literal symbol \verb@x@ rather than a number there would be a potential
+source of confusion about substituting for \verb@x@ in the body. All
+possibiity of uncertainty can be overcome if one used alpha conversion on the
+function just before applying it to make its formal parameter a new symbol
+that could not conflict with anything. Another part of what is essentially the
+same issue arises when the body of a lambda expression includes further nested
+lambdas and variable names are reused. It is proper to apply scoping rules so
+that inner lambda bindings take priority over outer ones, but even here use
+of enthusiastic alpha conversion can keep all names separate and avoid
+risk.
+
+The second issue is that if one has a reasonably large nest of lambdas (and
+some examples will arise later) it could be that there are several places in
+the whole where a lambda could be applied to an argument. When there are
+several options for the order to do these operations does it matter which
+is selected and if so what is the proper strategy? On this there is some
+divergence of opinion! From a theoretical point of view it is considered
+proper that where their is a choice one should select the leftmost
+outermost application. This is known as normal order reduction and if there is
+any chance at all of continued application of lambda expressions to
+arguments ever terminating with a form where there are not more available
+than this guarantees to reach that state. The alternative is that
+innermost lambdas are processed first. This can sometimes risk
+unnecessary exploding or looping sequnces of operations, but is generally seen
+as easier and cheaper to implement. So many but not all programming
+lamngauges with lambda support follow the second path.
+
+It is perfectly feasible to write out everything that is to be discussed in
+this chapter using loads of $\lambda$ symbols, But for many people it
+will be easier to work with a notation that feels more familiar (but that
+can be expanded directly into the raw lambdas). A paper by P. J.
+Landin\cite{next700} has as its title ``The Next 700 Programming Languages''
+and introduced \verb@ISWIM@ (If You See What I Mean) as a sketch, and
+so rather than latching onto any particular real or modern notation that
+exposition used here will be based on that.
+   
