@@ -15,6 +15,16 @@ chapters =	intro.tex \
 		modpi.tex \
 		ingenious.tex \
 		pattern.tex \
+		parallel.tex \
+		puzzles.tex \
+		floating.tex \
+		formalproof.tex \
+		iteration.tex \
+		hardware.tex \
+		networks.tex \
+		AI.tex \
+		oddlanguage.tex \
+		undecidable.tex \
 		endpart.tex
 
 
