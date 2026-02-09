@@ -36,7 +36,7 @@ in the classical manner aee just $A_{11} B_{11} + A_{12} B_{21}$ and three
 rather similar looking values and a total of 8 multiplications and 4
 additions are used. A paper by Strassen\cite{strassen} instead managed to
 show that using just 7 multiplcations that worked on carefully chosen sums
-and differences (e.g.$($A_{11} + A_{22})(B_{11} + B_{22})$) it was possible
+and differences (e.g.$(A_{11} + A_{22})(B_{11} + B_{22})$) it was possible
 to express all the values needed in the product matrices as sums and
 differences involving these 7 values. Here we leave finding exactly how
 to do that as either a puzzle to work on or a topic to research! A variety
@@ -50,7 +50,7 @@ and coping there by using just 7 multiplications (which are now matrix ones)
 on those half size blocks. An analysis of the growth rate in time spent
 using this scheme fairly clearly suggests that doubling the side of
 the matrices multiplies the amount of work by a factor of 7, hance the
-$n^{\log_{2} 7$ result. This is clever and quite elegant, and not even
+$n^{\log_{2} 7}$ result. This is clever and quite elegant, and not even
 too hard to program. But as against the classical method it struggles
 even to break even until matrices are larger than almost all applications,
 amd it certainly does not deliver truly valuable speedup for some way
@@ -72,22 +72,27 @@ Multiplying integers is a pretty fundamental operation, but here to
 make things harder the emphasis will be on large integers -- typically
 ones with from hundreds to millions of decimal digits. Things start
 off in a style almost parallel to the matrix multiplication one,
-with first the simple ``schoolbook'' methos that will form the
+with first the simple ``schoolbook'' method that will form the
 product of a pair of $N$ digit numbers using around $N^2$ operations.
-The first improvement on this is dus to Karatsuba\cits{karatsuba} and
+The first improvement on this is due to Karatsuba\cite{karatsuba} and
 works by observing that for 2-digit numbers one can form the
-partial products $a_{1}b_{1}, a_{1}b_{2} + a_{2}b_{1} and a_{2}b_{2)
+partial products
+$a_{1}b_{1}$,
+$a_{1}b_{2} + a_{2}b_{1}$
+and $a_{2}b_{2}$
 using 3 rather than the obvious 4 multiplications by calculating
-$a_{1}b_{1}, (a_{1}+a_{2})(b_{1}+b_{2}) and a_{2}b_{2} and doing a couple
+$a_{1}b_{1}$,
+$(a_{1}+a_{2})\times(b_{1}+b_{2})$
+and $a_{2}b_{2}$ and doing a couple
 of subtractions. By taking large numbers are splitting each in half
 this can be applied recursively leading to a method where costs
-grow like $N^{\log_{3} 2$. This scheme can become proper to
-use when numbers exceed say 10^{300}, but the exact break even point will
+grow like $N^{\log_{3} 2}$. This scheme can become proper to
+use when numbers exceed say $10^{300}$, but the exact break even point will
 be quite sensitive to details of the computer used and just how everything
 was coded. So this not a galactic algorithm.
 
 The next scheme of note may start to be competitive when multiplying
-numbers of magnitude around 10^{5000}. The exact point where it becomes
+numbers of magnitude around $10^{5000}$. The exact point where it becomes
 realistic can vary quite a lot and 5000 digits is perhaps better
 characterised as stellar rather than galactic, so this is a method that
 is at least relevent in some slightly specialist cases. It is however
@@ -179,7 +184,7 @@ noted above.
 This scheme, however messy, is still used in some practical applications.
 But it is not the end of the road. A succession of authors have described
 yet more elaborate schemes that reduce the $\log \log N$ term in the
-cost function, culiminating one\citeHarveyvanderHoeven} where the cost
+cost function, culiminating one\cite{HarveyvanderHoeven} where the cost
 is precisely proportional to $B \log N$. This is a great theoretical result
 in that it is conjectured (but not yet proved) that this is the best
 growth rate that can be reached. The technology applied is significantly
@@ -229,11 +234,11 @@ on datastructures and algorithms procedures by Prim and
 Kruskal\cite{PrimKruskal} that find such minimum trees are presented. In
 the more advanced versions of such courses improvements on the basic
 versions of those using forms of priority queues known as Fibonacci
-Heaps\cte{FibHeap} get discussed. If the graph hash $m$ edhes and $m$
+Heaps\cite{FibHeap} get discussed. If the graph hash $m$ edhes and $m$
 vertices these schemes can guarantee to find a minimum spanning tree
 within time proportioanl to $m + n \log n$ and that is typically good enough
-for practical purposes. However a fancier method by Chazelle\cits{chazelle}
-has a growth rate that scales as $m \alpha{m,n)$ where $\alpha$ is an
+for practical purposes. However a fancier method by Chazelle\cite{chazelle}
+has a growth rate that scales as $m \alpha(m,n)$ where $\alpha$ is an
 inverse Ackerman function and grows exceptionally slowly such that
 for any conceivably feasible practical graph its value will be no
 greater than 4. So until we are really at or beyond galactic scale the

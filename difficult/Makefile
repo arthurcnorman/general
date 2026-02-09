@@ -7,6 +7,7 @@ chapters =	intro.tex \
 		counters.tex \
 		turing.tex \
 		galactic.tex \
+		intractable.tex \
 		practical.tex \
 		lambda.tex \
 		primrecurse.tex \
@@ -31,6 +32,10 @@ chapters =	intro.tex \
 full.pdf:	full.tex full.bib full.ind \
 		$(chapters)
 	pdflatex full
+
+chapters.tex:	$(chapters)
+	rm -f chapters.tex
+	for x in $(chapters); do printf "\input $${x%.tex}\n" >> chapters.tex; done
 
 
 # The target might be say 80000 words. As of 9 Jan 2026 things stand at
