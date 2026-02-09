@@ -21,7 +21,7 @@ expression} denotes a function and is seen as freestanding entity. For
 instance in earlier usage one could only introduce a function by a notation
 that gave it a name, as in
 \begin{verbatim}
-     f(x) = 3*x + 1
+    f(x) = 3*x + 1
 \end{verbatim}
 as a definition of a function called \verb@f@. With lambda calculus the
 name f is not needed and we can write just this function as \\
@@ -80,3 +80,188 @@ and introduced \verb@ISWIM@ (If You See What I Mean) as a sketch, and
 so rather than latching onto any particular real or modern notation that
 exposition used here will be based on that.
    
+ISWIM starts by using a keyword \textbf{where} to give names to things.
+To be a little pedantic here are a couple of examples and how
+that would expand onto raw lambda expressions:
+\begin{alltt}
+ 3*x+2 {\bf where} x = a + b       : (\(\lambda\) x . 3*x+2) (a + b)
+ f(a+b) {\bf where} f(x) = 3*x + 2 : (\(\lambda\) f . f(a + b)) (\(\lambda\) x . 3*x+2)
+\end{alltt}
+
+The hope here is obviously that the ISWIM versions are un-threatening
+and so will make things easy to understand. As well as \textbf{where}
+that puts a definition after the use of something it will also be
+possible to use \textbf{let} to put a definition first, and here we will
+often use that with the intent that the definition provided should be
+available to all subsequent input. What is more likely to cause some
+concern to start with is that in this world functions are first class
+citizens with all the rights and privileges entailed. In particular they
+can be passed as arguments and returned as values. A major lesson that
+lambda-calculus teaches is that this is liberating an powerful and
+so it is used a very great deal.
+
+The ISWIM examples above use function definitions and \textbf{where}
+clauses to provide the structure of a program, and then have numbers
+and arithmetic operations. As a prototype for 700 variant languages ISWIM
+can imagine a wide variety of built-in data types and functions that
+can apply to them, so that it can be tuned for particular application areas.
+I will allow for the creation of user-specified data types. But it tends
+to de-emphasise sequential programming, with its documentation noting that
+in Algol 60 it was already possible to avoid that quite a lot by virtue
+of allowing conditionals as expressions as well as statements. It can view
+a sequence of several values as in \verb@A, B, C@ to be viewed as a single
+item, and that item could be returned as the value of a conditional
+expression or passed to provide three arguments for a function that needed
+that many. The variant or variants of it used here will be ones tuned to be
+good for describing things that can be done with lambda expressions!
+
+From the tiny examples shown above it is possible to push explanations either
+up or down in terms of the level of abstraction involved. Here we will first
+show that lambda calculus using nothing more than function definitions and
+even restricting those to the one-argument case is in fact capable of
+modelling all computation. And that amazingly the steps it needs to take to
+do this are all remarkably concise and may even not be terribly inefficient.
+After that it will be explained how lambda expressions can act as a
+convenient and well defined intermediate stage to be used by compilers while
+mapping from source code down to some machine-specific level. And When that
+has been done it is easy to observe that any programs in the languages that
+those compilers support can be rendered as lambda expressions. A final
+section will comment on a somewhat archaic but thoroughtly practical
+language that was explicitly built to illustrate this but that has been
+used to build large and complicated programs.
+
+To build up an understanding of computation from lambda calculus we
+start by noting that a lambda expression only has a single argument. In
+much of what follows it is going to be convenient to think in terms of
+functions with two or more arguments. These can be rendered using a
+technique called ``currying'' after H. B. Curry\cite{curry} who popularised
+it. We will write function definitions as if they used several arguments
+as in
+\begin{alltt}
+   {\bf let} f a b c = a+b+c+2
+\end{alltt}
+using spaces between the multiple parameters rather than enclosing the
+collection of them in parentheses.
+We write in parentheses to show how we intend or expect to view this
+as grouped. In this case both the description of the pattern for the
+function (i.e.\ the bit to the left of the \verb@=@) and the additions in
+the body associate to the left.
+Then there is a bit of rather dubious renaming and a use of \textbf(where)
+and tha name \verb@F@ that is really not quite proper but that turns the
+main definition into one with a single argument which is then easy to
+transform into a lambda.
+\begin{alltt}
+   {\bf let} ((f a) b) c = ((a+b)+c)+2
+\(\Longrightarrow\)
+   {\bf let} F c = a+b+c+2
+   {\bf where} F = (f a) b
+\(\Longrightarrow\)
+   {\bf let} (f a) b = \(\lambda\) c . a+b+c+2
+\(\Longrightarrow\)
+   {\bf let} f = \(\lambda\) a . \(\lambda\) b . \(\lambda\) c . a+c+c+2
+\end{alltt}
+Even if the last line might look slightly awkward to start with it
+shows that the ISWIM-style notation that defines a function that in a
+certain sense has three arguments does correspond to respecable
+lambda calculus.
+
+Given that the first thing to be done is to show how easy it is to
+provide truth values (i.e.\ {\em true} annd {\em false}) and a
+conditional that tests them. Annd instantly from that {\bf and},
+{\bf or} and {\bf not}:
+\begin{alltt}
+   let true a b = a
+   let false a b = b
+   let if p X Y = p X Y
+   let and a b = a b false
+   let or a b = a true b
+   let not a = a false true
+\end{alltt}
+These can also look a bit strange to start with, but observe how very
+concise they all are and then just verify them by writing down
+combinations of them and using the funcction definitions as rules to
+check how things behave. However there is one big caveat in all this --
+it only works nicely provided you use normal order reduction, because
+that manages to arrange that for instance when you write \verb@if p X Y@
+that the evaluation of \verb@X@ and \verb@Y@ gets deferred until it can
+be determined that only one actually needs to be processed. With
+the evaluation strategy that deals with innermost expressions first
+both \verb@X@ and \verb@Y@ would get expanded there and often that
+would lead to a loop or other disaster.
+
+Note that for the above to behave the value \verb@p@ tested by \verb@if@
+must evaluate to either \verb@true@ or \verb@false@. In a bit there will
+be a discussion about how that might be enforced.
+
+Given truth values and conditionals the next feature of ``real programming''
+to consider will be data structures.  A useful building block from which
+pretty well anything else can be constructed will be the ``ordered pair'',
+where we will have a function \verb@pair@ that creates on and then
+\verb@left@ and \verb@right@ that retrieve one or other of the
+two included items. Again the lambda forms that implement this are
+amazingly concise and you just have to try following through what
+happens when you use them to convince yourself that for instance
+\verb@left (pair A B)@ will recover \verb@A@:
+\begin{alltt}
+   let pair A B f = f A B
+   let left P = P true
+   let right P = P false
+\end{alltt}
+
+There are two things that can be done instantly once you have pairs. The
+first is to use clusters of them to build triples, 4-tuples and
+larger structures with any fixed number of components. The second is
+to pair an object with a tag (which might be a truth value) so that
+as a while it can have two (or more) possible shapes. As an
+illustration of this consider a way of handling lists that can have
+and number of elements (including zero):
+\begin{alltt}
+   let emptylist = pair false <anything>
+   let node A B = pair true (pair A B)
+   let isempty L = not left P
+   let first L = if (isempty L) <error case> (left (right L))
+   let rest L = if (isempty L) <error case> (right (right L))
+\end{alltt}
+which exposes the fact that dynamic structures like this have
+to carry extra information so that it is possible to detect when
+the end of a list is reached. A similar scheme could describe trees.
+The sections in the above that are written in angle brackets are
+parts that ought never to be used so anybody confident that their
+code would not contain any errors could use absolutely anything
+to fill those gaps.
+
+Next comes a representation of numbers and arithmetic. Well one
+scheme that could handle positive integers tolerably well would be to
+express them all in binary and use a list of the bits, with \verb@true@
+used for \verb@1@ and \verb@false@ for \verb@0@. With that representation
+arithmetic operations would have costs driven by the bit-length of
+the numbers, and really that is a proper cost even though we tand to
+be used to thinking of arithmetric as having unit cost per operation. This
+modelling comes much closer to revealing how many electronic components
+will be activated in performing an operation.
+
+But coding up binary arithmetic is a bit tedious, so it is fun to show that
+it is seriously easy to make pure lambda calculus explain the behaviour
+of integer arithmetic\footnote{To be more pedantic natural number
+arithmetic, i.e.\ only using positive values} really neatly.
+Rather than thinking in terms of zero, one, two, three and so on it
+is good here to thing in terms of never, once, twice, thrice and the like,
+and a ``number'' can then be a function that applies a second function
+multiple times:
+\begin{alltt}
+   let never f a = a
+   let once f a = f a
+   let twice f a = f (f a)
+   let thrice f a = f (f (f x))
+\end{alltt}
+and this pettern allws you to have a function corresponding to any
+number of copies of \verb@f@ you could want to set up. With this
+representation of numbers a scheme to do basic arithmetic is almost
+frightendingly simple!
+\begin{alltt}
+   let increment n f a = f (n f a)
+   let add m n f a = m f (n f a)
+   let multiply m n f a = m (n f) a
+   let power m n f a = n m f a
+\end{alltt}
+

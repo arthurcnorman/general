@@ -15,6 +15,7 @@ chapters =	intro.tex \
 		turtle.tex \
 		modpi.tex \
 		ingenious.tex \
+		images.tex \
 		pattern.tex \
 		parallel.tex \
 		puzzles.tex \
