@@ -259,9 +259,132 @@ number of copies of \verb@f@ you could want to set up. With this
 representation of numbers a scheme to do basic arithmetic is almost
 frightendingly simple!
 \begin{alltt}
-   let increment n f a = f (n f a)
+   let increment n f a = n f (f a)
    let add m n f a = m f (n f a)
    let multiply m n f a = m (n f) a
    let power m n f a = n m f a
 \end{alltt}
+and also a test for zero is remarkably easy to arrange
+\begin{alltt}
+   let iszero n = n f true where f x = false
+\end{alltt}
 
+Again one can appreciate how compact all the above are even without (at first)
+understanding how they work. And to get insight into the working it is
+possible to start with simple expressions such as \verb@power twice thrice f x@
+and follow through the definitions to observe it expanding until it ends up
+as (in this case) \verb@f(f(f(f(f(f(f(f(a))))))))@ which used \verb@f@
+$8 = 2^{2}$ times. Or \verb@iszero twice = twice f true = f(f true) = false@
+
+There is one thing to be done here that is slightly more tricky, and one
+issue that has so far been swept under the carpet. The tricky issue is
+a function \verb@decrement@ to find the predecessor of a n. It should be
+expected that this will not be quite so straightforward because \verb@never@
+does not have a proper predecessor. There are however several ways of
+managing this. The one shown here is not the standard one but is perhaps the
+most compact -- but it relies on the precise way in which \verb@increment@
+has been coded and it achieves its result by handing that an argument that
+is rather improperly not a number but that has been chosen so that the
+resuly returned is \verb@never@. See how that can be done, starting with
+a letter X standing for what we will invent:
+\begin{alltt}
+  increment X f a = never
+  increment X f a = X f (f a) = never
+  let X a b = never
+\end{alltt}
+and the three lines above that intoduce a function \verb@X@ that
+in just this one contexe serves as $-1$ we end up with an implementation
+\begin{alltt}
+  let decrement n f a = n f X a where X a b = never 
+\end{alltt}
+Concise it possibly confusing\footnote{
+A scheme that does not cheat by passing things to the increment function that
+are not numbers works by having a function that accepts an ordered pair as
+its argument: \texttt{let inc (a,b) = (a+1,a)}. If this is applied $n$ times
+to a starting value (0,0) the result is ($n$,$n-1$) so the second component is
+the predecessor of $n$}
+
+Any reasonable programmer will see that given decrement it will now be
+pretty trivial to code up subtraction and then division. If negative numbers
+are needed that can be handled using a sign-and magnitude representation
+by using \verb@pair@ to glue an explicit sign only every number.
+
+Now for the issue that had been avoided that far (but when you look back
+at all the fragments of code to date it does not impact them). In raw
+lambda calculus the functions do not have names. That means there is no
+obvious way for the definition of a function to refer back to the function
+itself. In ISWIM you could have felt tempted to write things rather like
+\begin{alltt}
+  let factorial n = if n=1 then 1 else n*factorial(n-1)
+\end{alltt}
+as a simple recursive definition. On expanding that to lambda
+calculus the use of the word \verb@factorial@ within the body
+of the function will be improper and it certainly has no simple
+way to relate to the name you happen to be using for the function.
+So it looks as if recursion is going to be a problem! Happily this
+can be resolved. Often the way of sorting it is thought of as a bit
+strange. The presentation here is based on thinking of recursive
+definitions as just a notation for programs of infinite length
+that unwind it:
+\begin{alltt}
+  let f1 n = if n=1 then 1 else n*f2(n-1)
+    where f2 n = if n=1 then 1 else n*f3(n-1)
+      where f3 n = if n=1 then 1 else n*f4(n-1)
+        where f4 n = if n=1 then 1 else n*f5(n-1)
+          ...
+\end{alltt}
+and provided that chain of nested definitions is continued to
+a depth that is at least as great as the value of an argument $n$ we are
+about to use this will do just what is needed. This sort of expansion
+can be applied to any recursively defined function\footnote{
+ISWIM insists on the use of \texttt{let rec} when a recursive function is
+being defined to highlight that something special is going on.}.
+
+The magic that makes it possible to create unboundedly nested things in
+raw lambda calculus is a function traditionally called \verb@Y@. Its
+behaviour can be characterised with the identity
+\begin{alltt}
+   Y f = f (Y f) = f(f(f(...
+\end{alltt}
+but because this is an explicitly recursive presentation it can not be
+used directly. However there are many ways in which ISWIM or lambda
+calculus can provide a \verb@Y@ function without needing recursion,
+and the simplest is
+\begin{alltt}
+  let Y f = g g where g h = f (h h)
+\end{alltt}
+In ISWIM notation this is really concise and rather easy to understand!
+Just simply following the steps we have \verb@Y f = g g = f (g g) = f (Y f)@.
+ands the ISWIM definition did not mention \verb@Y@ within the right hand
+size of its definition so it translated into 100\% valid lambda calculus.
+
+The general use of \verb@Y@ is that recursive function definitions can be
+expanded using the following rule:
+\begin{alltt}
+  let f x = ... f x' ...
+\(\Longrightarrow\)
+  let f = Y G
+    where G f =
+      F where F x = ... f x' ...
+\end{alltt}
+and the key thing here is that the recursive reference to \verb@f@ now
+has a meaning because it is talking about the argument to G, and if you
+trace through expanding the definitions out a few times you can see that
+this ends up being exactly what \verb@f@ was to end up as.
+
+We now have boolean logic, data structures, arithmetic and recursion and
+with those it is pretty easy to code up anything else that can be
+imagined\footnote{Well interactive input and output, file-system access and
+the like are not parts of the world of concern just here!}. And the
+mapppings from them down onto the extraordinarily simple basic rules
+of lambda calculus are concise and in general not too unpleasant to work with,
+so if anybody {\em really} wants to reason about the behaviour of code
+starting from first principles it can be reasonable to select lambda
+expressions and their behaviour as those fundamental principles. But
+now numbers and all the rest can (when necessary) be explained in this
+rather gory manner it is perhaps reasonable to consider a version of
+ISWIM that has all such features as built in primitives that can be
+implemented using traditional computer hardware and reasoned about at their
+own leval of abstraction. The fundamentalist view of lambda calculus then
+just sits in the background providing assurance that the foundations for
+all that is built are really secure.
