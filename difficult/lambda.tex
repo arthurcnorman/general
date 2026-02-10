@@ -1,4 +1,4 @@
-\chapter{Lambda calculus and Combinators}
+\chapter{If you See What I Mean}
 
 Turing machines provide a model for computation that (perhaps unexpectedly)
 can give really good insight into costs. But setting up programs for them
@@ -372,6 +372,25 @@ has a meaning because it is talking about the argument to G, and if you
 trace through expanding the definitions out a few times you can see that
 this ends up being exactly what \verb@f@ was to end up as.
 
+There really only one further issue that needs to be addressed -- having
+multiple functions which are mutually recursive. In fact this is
+rather easy to cope with. It will be sufficiant to explain what to do
+with just two such, since larger numbers can just use the same technology
+``written large''.
+
+If there are a two functions say \verb@f@ and \verb@g@ echo of which
+depends on the other one just considers putting them as the
+two components of a \verb@pair@. Then the definition in ISWIM form
+might look something like
+\begin{alltt}
+  let P = (pair F G) where f = first P and g = second P
+\end{alltt}
+where \verb@F@ and \verb@G@ are the two definitions written as
+lambda expressions so that there are no indications of arguments on the
+left hand side. This is now merely a definition of P in terms of itself
+and the expansion to use \verb@Y@ shown before can be used to turn it
+into a respactable lambda form. 
+
 We now have boolean logic, data structures, arithmetic and recursion and
 with those it is pretty easy to code up anything else that can be
 imagined\footnote{Well interactive input and output, file-system access and
@@ -388,3 +407,131 @@ implemented using traditional computer hardware and reasoned about at their
 own leval of abstraction. The fundamentalist view of lambda calculus then
 just sits in the background providing assurance that the foundations for
 all that is built are really secure.
+
+Even if some of the code fragments above look unusual it will be easy to
+see that all are rather concise and none hide particularly terrible
+costs. Well modelling the integers in this simple way will make them slow
+but for reasoning about things and proofs that is not a real concern, while
+for realistic execution of code one could either use lists that provided
+binary arithmetic or more plausibly build in genuine integers as a primitive
+type. But the gap between a really fundamental and primitive model
+(i.e.\ lambda calculus with nothiing beyond functions to work with) and
+a world in which computing could be realistic is rather small.
+
+Well having looked downwards from practical computing to see how it maps
+onto a nice theoretical model the next thing to do is to look sideways. This
+will be a consideration of the use of lambda expressions as part of
+a compiler. Specifically the idea is to use lambda expressions or at least
+something very much like them as an intermediate code that the user's
+original programs are coverted into before things get mapped down as
+far as machine code. Having a clean intermediate form is generally valuable
+because it is liable to be simpler to analyse then the original
+complicated language things started off in, and transformations and
+optimisations done there can be independent of the precise machine that
+will eventually be targetted.
+
+For the discussion here it will again be convenient to use a version
+of ISWIM notation to show the lambda-calculus stuff. It will not make
+sense to cover every single part of the expansion from C++ or any other
+high level language\footnote{Some people would object to calling C++
+high level.} but representative important challenges can be covered.
+
+The first thing to note is that this far ISWIM has not included assignment
+statments or \verb@while@ loops -- far less \verb@goto@ statements. But
+a ``real'' programming language might! A feature of such a language will
+be that programs are made up of sequences of statements that are usually
+obeyed one after the other. If one is using the lambda calculus as an
+intermediate representation for code within a compiler than it will not
+matter too much of that version looks a bit ugly! Given that attitude
+we can take each line of the original user code and make it into
+a function all on its own. All the variables the user has will be passed
+as arguments to this. The function we have just invokes the one
+that corresponds to the following line with arguments adjusted to
+capture changes made to the values of variable.
+Suppose we had some C++ code that read
+\begin{alltt}
+  <start here>
+  int r = 0;
+  for (i=0; i<10; i++)
+    r = r + i;
+  <end here>
+\end{alltt}
+this might expand into something along the lines of
+\begin{alltt}
+  let start () = f1 0   % call f1 with r=0
+  let f1 r = f2 r 0     % introduce i starting at 0
+  let f2 r i = if i < 10 then f3 r i else f4 r
+  let f3 r i = f2 (r+i) (i+1) % the loop body
+  let f4 r = ...  
+\end{alltt}
+This is perhaps suprisingly not that dramatically bulkier that the
+code that it started with, but being in lambda calculus is in a form
+where reasoning about it and transforming it is liable to be safer than
+trying to work with the original.
+
+Variations on the above cope (fairly) gracefully with many local features
+of programs. Function calls (and perhaps especially the interaction between
+them and exception handling raise further challenges. Before explaining how
+lambda calculus can help it will be useful to review how compilers tend to
+map procedure calls onto sequences machine code instructions.
+
+I many cases arguments to a procedure will be passed in machine registers,
+so to call a function the compiler will arrange to have argument
+values loaded into the registers that they will belong in. It then needs
+to do the procedure call itself. That involves saving a return address
+somewhere and then jumping to the procedure entrypoint. The code for the
+procedure they knows where to find its arguments. It does what it needs to
+and puts its result into another agreed register. It then recovers the
+return address that it had been provided with and jumps to the instruction
+that is identified. This explanation has skipped discussion of stacks and
+of arranging that the procedure does not corrupt registers or data that
+the caller needed to have preserved, but that needs to be arranged as well.
+
+Well an insight that emerged from lambda-calculus enthusiasts was that the
+return address could be viewed as nothing different from just an additional
+argument. It is a value put in a register before the procedure is entered.
+And similary the return step looks very much the same as the process of
+viewing that return value as the entry point of a function and calling
+it giving it an argument that was your ``return value''. Thiw view
+feels fairly natural if you are ready to accept functions as first class
+objects rather than as something seriously different from numbers and
+arrays. So now we explain the code by saying that to call a function
+you enter it having placed in agreed locations all of its arguments
+together with a function that you call a ``continuation'' (and that
+you used to call a ``return address'' and view as something much more special).
+Then when the function has done its stuff it just invokes its continuation.
+Well an odd consequence of this is that nothing ever truly returns --
+all code works by chaining from one continuation to another, but given that
+this is merely a semantically clean way of describing what was going
+to happen anyway there is not need for it to be expensive. And because
+it means that argument registers and return address ones are not now
+treated as separate sorts of thing it may simplify optimisation.
+
+A further great joy of this is that it provides a way to explain
+exceptions and \verb@catch/throw@ behaviour. A \verb@catch@ just sets
+up a continuation that would proceed into the part of its code that
+responds to an exception. This is put somewhere same or passed along
+to functions that are called. If a \verb@thow@ has to be performed all
+that happens is that this alternative continuation is triggered and the
+one that would normally have applied just gets ignored. What a neat and
+elegant way to explain something that previously might have seemed
+a bit messy!
+
+The final section in this chapter is an explanation that the
+roots and the legacy of ISWIM and of lambda calculus permeate
+quite a lot of the world of computers at the practical level.
+Historically the language LISP\cite{lisp} had lambda calculus as one
+of its explicit inspirations, and over the years many serious bodies of
+code were implemented in it. Those includes the operating systems for
+special purpose computers that were in their day prime ones for development
+of artificial intelligence code and packages that can perform symbolic
+algebra in ways that can help students, scientists and engineers. More
+recently SML\cite{SML} (used to develop heavy duty theorem provers),
+Haskell\cite{Haskell} (a language that features normal order reduction)
+and OCaml\cite{and ``industrial-strength'' variant on the concept} can
+all be seen as having lambda calculus at their core and as being
+among the 700 languages that the ISWIM paper talked about. So this is
+an topic that spans from foundational theory all the way up to
+large scale practical application, but with the gulf between those two
+much less than is observed with other theoretical models.
+
