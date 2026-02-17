@@ -1,8 +1,253 @@
 \chapter{Hardware}
 
-% Mechanical computation
-% Electromechanical with relays
-% Early elecronics - Williams tube, mercury delay lines
-% Microcode concept
-% FPGAs
-% Peripherals up to robot dogs
+\section{USB}
+There are some things related to computers that seem so commonplace and
+straightforward that it is hard to imagine that anything is at all complicated,
+far less difficult. A good example of this is using USB cables to charge
+phones and other devices and to transfer data. What could possibly be
+a problem with that? There are basically a few pairs of wires and either
+power or data can be shipped along them with little fuss.
+
+Well actually there is quite a lot of fuss at a number of different
+levels. Three issues in particular make this messy:
+\begin{description}
+\item[Sharing one cable between several uses]
+A naive view is that when you plug in a cable it connects between two
+separate devices that then can exchange information. But a moment's
+thought reveals that your computer might end up connected to a hub that
+that supports several separate peripherals that each wish to interact with
+it, and these days that same USB cable might be being used to provide
+power to the computer. And when you plug in a new device ...
+
+\item[What should be permitted when you plug a cable in]
+There are some very simple cables that are plugged into
+wall warts or power banks that deliver a fixed voltage but are
+utterly uninterested in data. There are other setups where the power
+to be provided will be at a higher voltage and with a higher current
+capability -- but when used those ought not to overload and damage
+simple devices. Some devices will only be capable of running at low
+speed, but others can and should be used for the fastest possible
+data transfer.
+
+To cope with all this the USB standards mandate that when a link is first
+made there has to be a negotiation phase where each end indicates
+what is wants and what it is capable of accepting. As part of the
+full process of establishing a link a device should be ready to identify
+itself to an extent that if the other end is a computer it will be able
+to select drivers -- either generic to the device type or as provided
+by the device manufacturer.
+
+\item[Supporting the speeds and power levels]
+\item[etc etc]
+\end{description}
+
+\section{Computers built from scratch}
+Obviously these days most people buy their computer in a ready-to-run state.
+But abybody really concerned about how things work ought to like to
+understand (at least in principle) how they could build one for themselves.
+While a substantial undertaking it may be that until there is concern for
+ultimate performance and lowest cost this is more feasible than it would at
+first seem. A way to underatand this is to look at the sequence of
+developments that led to modern machines:
+
+\subsection{Mechanical arithmetic}
+Arithmetic has of course been around for a long time, and for both scientific
+and commercial purposes it coudl get laborious. So in the mid 1600s
+Pascal\cite{pascaline} created a machine using gearwheels that could
+add and subtract (coping with carry operations) and which could assist
+with multiplication. So machanisation of the logic behind arithmetic has
+a long history and is really well understood. To took around 200 years until
+calculating devices became reliable, commercialised and widely used,
+but over time the designs were improved so that multiiplication and division
+were easily performed and electric motors sometimes replaces the handles
+that were at first used to wind the gears. The message from all this is
+that by the time anobody even started to think about computers as a whole
+the machanisation of arithmetic was well understood.
+\subsection{The start of programmability}
+In the 1820s Babbage\cite{babbage} started work on a ``difference engine``
+which had it been completed would have consisted of around 25000 component
+parts. This amounted to a number od adding units cascaded such that between
+them they could calculate values of a polynomial. This was of huge interest
+for the generation of tables of mathematical functions. A key part of
+Babbage's work there was integrating both direct printing on paper and
+the creation of type that could be used for subsequent large scale
+reproduction of the results -- this all mattering because once the machine
+was set up it could avoid human error noth on the calculations an in
+transcription of results to the versions of the results that would be
+distributed. All this showed how multiple arithmetic steps could be
+combined to good effect. Later Babbage ideas considered controlling
+a (mechanical) arithmetic engine using the punched cards that had been
+developed to mechanise the weaving of complex patterns on Jacquard looms,
+and while at the time it was not feasible to build all he designed this
+showed at least in principle jow much might be achieved with no electronics
+at all. But with quite a lot of steam power. Anyone wanting to build
+their own computer can look back at all this early work and see how
+everything really can be mechanised with enough gear-wheels and levers!
+\subsection{Electromechanical calculation}
+An electomagnet is made by winding a coil of wire around a soft iron core
+that becomed a magnet when current flows. If this magnet is caused to
+attract another piece of iron and thereby throw some switches what one has
+is a relay. Wiring switches in series or on parallel give \textbf{and} and
+\textbf{or} operations and it then becomes almost straightforward to
+transliterate the design of a fully mechanical calculator into one
+built out of relays. While it is possible to do this and keep on using
+decimal arithmetic one can note that a relay has two states -- energised and
+not energised. This leads to an insight that performing arithmetic in binary
+will be easier than using decimal. In the 1930s Konrad Zuse\cite{zuse} had
+built a fully mechanical calculating machine where punched tape was read to
+indicate each step that it was to take. The Z1 was built in Zuse's home
+and was privately funded. It had 16 words of memory which were of course
+just for its working date since the program was on the punched tape.
+A little later a succesor, the Z2, was built using the mechanical
+memory scheme from the Z1 but around 600 relays for arithmetic and
+contol. This now took under a second to perform a 16-bit fixed point
+addition. This was succeeded by a Z3 and Z4 which improved speed and
+reliability and very much demonstrated that electromechanical computation
+was realistic. And probably that building and maintaining it was less
+stressful than having a fully machanical design, since Zuse's machines
+were an order of magnitude less heavy and bulky than the Babbage designs.
+\subsection{Memory as a key technology}
+The systems considered so far can be fairly general purpose but they
+take their instructions from punched tape or cards. The concept of
+putting instructions and data in the same or similar sorts of storage
+existed, but building suitable memory was not easy. So early calculating
+machines either used cards or punched tape, or had their operations set up
+on  hand-rewired units that beeded very laborious re-work for each
+new task. So anybody considering building their ownb computer needs
+to worry about implementing memory! Two competing schemes were used in
+the earliest fully programmable general purpose machines. One used
+a steerable electon beam to record information as a pattern of dots
+on the screen of a cathode raw tubs\cite{williamstube}. The electric
+charge in the dots could be sensed, although it faded fairly rapidly
+and so the information had to be read and re-written constantly. The
+alternative was to send pulses of sound through a medium long enough
+to give a useful delay, and listen for the pulses at the other end and
+recyle them. The use of tanks of mercury for this was technology that
+built on work done to declutter radar images by avoiding display of
+reflections from static objects, so in essence it was not invented just
+for use in computers. With mercury delay lines it was quite delicate --
+the mercury was kept at a constant temperature and use at
+40\degree C to get a good accoustic match between it and the
+transducers at each end.
+And of course mercury is heavy, expensive and poisonous! Both of these
+technologies could store of the order of 1000 bits.
+
+A subsequent variant on delay lines used torsional waves in steel wires,
+and the waves generated by applying small twists to the end of the wire
+were reasonably robust and the wire did not need to be kept laid out
+in a straight line so the unit could be kept compact. So while this did not
+improve speed or capacity much it did simplify construction and move
+towards compact and reliable designs. It seems reasonable to imagine
+constructing a version of it for a personal project!
+
+Perhaps the big breakthrough for computers was the development of
+core memory. That is based on little torroids of magnetic material
+with wires threaded. By pulsing current through the wires the torroids can
+ve magnetised and re-magnetised either clockwise or counter-clockwise and
+it is possible to sense when they change. This scheme made it feasible to
+build memories of sizes that grew from kilobytes of a megabyte or so.
+While conceptually simple, the practucal construction involves threading
+wires through all the cores involved with one core for each bit to be stored,
+and of couse it is necessary to source suitable magnatic material. That all
+seems like a quite substantial project!
+
+\subsection{Vacuum tube to Transistors and beyond}
+The earliest fully electonic computing devices were built using vacuum
+tubes otherwise known as valves. These are conceptually simple! A heated
+cathode will emit electrons. A anode reasonably close to it and collected
+to a positive voltage will collect those so a current will flow even though
+there is no direct physical collection. A fine wire mesh (or just spiral)
+placed between the rwo electodes is called the grid. If that is much closer to
+the cathode than the anode is and if a negative voltage is put on it
+that cuts off the current flow. And the voltage changes on the grid to achieve
+this can be much smaller than those used on the anode. To make all this
+behave it has to be in a vacuum (and quite a good one at that!) so that there
+is no gas present that could ionise and confuse matters. As well as all their
+uses in radio receivers and the like, valves cen be used to create switch
+circuits and hence implement logic. For that everything that had been done
+by way of mechanical and then electromechanical calculation can be replicated
+but it can run a lot faster. However with all those red-hot cathodes
+and the need to preserve the high vacuum by the times a computer had
+been built using several thousand valves the run-time between failures could
+be fairly short, and for a number of years relay based hardware was
+more reliable even if it was slower.
+
+After a while transistors were invented. Again the early versions worked
+really well and made the transistor radio a household staple, but in the
+numbers needed to build computers the big challenge was to boost reliability.
+But still the reduction in size and power consumption that they enabled
+was a big step forward. For a while the issues of cost and reliability
+meanst that a scheme called the parametron\cite{gotoparametron} based on
+pumping energy into resonant nonlinear circuits by stimulating them at twice
+their natural frequency provided a practical if somewhat slower solution, and
+a significant number of computers based on that technology were built. Just
+as building a model showing how core memory to store just one bit is
+a jolly home project, building circuitry that shows how a parametron can
+act as a majority-of-three gate (and given that as \textbf{and} or
+\textbf{or}) is thoroughtly deasible.
+
+With the development of integrated circuits including ones that provided
+kilobytes of memory it suddently again became feasible for amateures as well
+as smaller companies to design and build their own computers from scratch,
+although soon after the ready built mictoprocessors would be the more
+attractive option for many.
+
+Soldering many integrated circuits onto a prototyping board may be fun, but
+a more modern way of conducting experiments in computer design (apart from
+using simulation which could be seen as cheating!) is to use a
+field-programmable gate array. These tend to come with a sea of basic
+gates of various sorts and a scheme whereby the connections between those
+can be set up electronically in very much the way that the information stored
+in a memory card can be written and re-written. Fairly cheap teaching,
+hobbyist and developer boards for these are available and those can be
+perfecatly capable of making it possible to re-create all the early
+steps in caclulator and computer development. Is it difficult? Well there
+are quite a few skills to learn and technologies to master but it is
+utterly feasible.
+
+One might look at current computers and fear that the only ones of any
+interest are going to be mind-numbingly complicated and so a personal
+design will not be of great relevance. Well there was a time (in the 1980s)
+when each newly announced computer model had more bells and whistles that
+its predecessor -- this generally with a view to making it easier to build
+programs for them. Their internal complication was such that very often
+design flaws meant that they did not do what they were intended to. A
+fine example of that was that as late as the 1990s Intel issued a processor
+where certain divisions of floating point numbers returned incorrect
+answers\cite{fdiv_bug}. This was particularly high profile, but other
+manufactrurers also issues hardware with odd and behaviours, which could
+often by masked by having compilers avoid certain combinmations of
+instructions. Performance was also sometimes strange, with cases where
+sequences of several primitive instructions ending up executing faster than
+a specialised instruction presumably intended for use as an optimisation.
+The RISC\cite{risc} movement pushed the idea that having a really simple
+design would make it possible to build a computer that executed each of its
+somewhat primive instructions fast, and that the more complicated and
+``powerful'' instructions and operations that were commonplace elsewhere
+were in reality used somewhat infrequently. As a result doing the simple
+stuff really fast and accepting the fact that some uncommon steps might
+be a bit inconvenient could lead to an overall improvement. And of
+course having a simple basic design for an instruction set meant that
+either the computer built on it would end up smaller and cheaper then
+the competitation, with fewer errata in its manual and brought to market
+sooner. Or that the simple fundamentals could then be implemented using every
+single clever technique that had emerged through the history of computer
+to make it especially fast -- and that applying all those techniqes would be
+a lot more feasible when building on a simple model than when starting
+from a state of complexity. So there has been a time when a fresh design
+emphasising simplicity could be a winner.
+
+So if you want to be the one that makes the next breakthrough you need
+to spot what is broken (and then have quite a lot of good luck!). Perhaps
+it will be related to security because with existing computers it is
+clear that it is horribly easy for even carefully constructed systems to
+end up compromised. Or maybe some alternative to the tendancy of those
+pusing the limits of artificial intelligence to wan to use more
+silicon and more electricity that many nation states.
+
+The message that this section wants to convey is that while designing and
+even constructiog your own computer from the very base upwards is a bit
+challenging and is certainly a lot of work, it is in the end something that
+an individual or small group can achieve. So it counts as difficult
+rather than impossible.
+
