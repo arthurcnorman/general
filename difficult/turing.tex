@@ -87,10 +87,11 @@ ask just how much mechanism it needs to have before it can actually
 perform any useful calculations. The LEGO version has 8 states and
 handles an alphabet of 4 symbols on its tape and that feels as if it might be
 quite limiting, however the astounding thing is that if you had a long
-enough tape (and seeing how to make the tape a bit longer is surely not
-a terribly tricky technical challenge) this is enough to allow the
-machine to perform {\bf any} computation that any other computer can.
-To be more specific it will be possible to set up initial contents on the
+enough tape (and seeing how to make the tape a {\em bit} longer is surely not
+a terribly tricky technical challenge even if giving it a capacity of
+thousands or millions of cells starts to seem absurd) this is enough to
+allow the machine to perform {\bf any} computation that any other computer
+can. To be more specific it will be possible to set up initial contents on the
 tape where the first part amounts to ``program'' that documents what is
 to be done and the rest is the ``input data''. A very special case of this
 is that the program part can explain how to behave as if the rest of the
@@ -98,22 +99,49 @@ tape is being used by a Turing machine with a larger number of states
 and a bigger alphabet. For instance if one wanted to have 8-bit
 characters on the tape the machine that would be emulated would
 systematically use the contents of four consecutive cells on the physical
-tape to represent a single byte on the bigger system. Designing,
-understanding and using Turing machines that are really close to being
-mimimal can be huge fun however they can sometimes demand really ugly
-ways of encoding the data on their tape or suffer from needing
-unreasonably large numbers of steps to reach results.
+tape to represent a single byte on the bigger system. The details of
+making one Turing Machine emulate another even if the latter is
+large really amount to nothing more than messy programming. If necessary
+multiple cells on the real tape will be grouped together so they can be
+treated as if they were single cells using a larger range of symbols. Some
+part of the tape will be used to record the current state of the emulated
+machine, and a significant part of the fixed data on the tape will be
+dedicated to a table recording how transitions happen. To orchestrate
+all this the head of the baseline Turing Machine will be very busy
+zooming backwards and forwards between the location of the active point on
+the simulated tape, the record of the state of the simulated machine and the
+transition table. It will be possible for it to find each of those by
+marking their locations with special symbols that are not used elsewhere.
+Details are not given here because setting it up it is closer to boring
+details programming work than to anything especially exciting.
 
-A variant using just 2 states and 3 symbols exists and is characterised
-as ``weakly universal''. It will not even halt when it has
+However designing, understanding and using Turing machines that are
+really close to being mimimal can be huge fun. The sort of fun that
+there so often can be in seeking the most compact way to achieve a
+task! But really small universal Turing Machines can sometimes demand
+ugly ways of encoding the data on their tape or suffer from needing
+unreasonably large numbers of steps to reach results. Subject to that
+issue it is amazing how small a machine can be while still being capable
+of emulating larger machines and hence solving any problems that those
+larger ones could.
+
+A machine using just 2 states and 3 symbols exists and is characterised
+as ``almost weakly universal''. It will not even halt when it has
 completed its work and it also needs its tape initialised to
-a particular pattern in all regions beyond the input data, while standard
-machines will not read from the tape beyong the region that is
+a particular but non-repeating  pattern in all regions beyond the input data,
+while standard machines will not read from the tape beyond the region that is
 explicitly data - it also tends to take a great many steps to get
-anywhere, while modestly larger machines are actually quite efficient.
+anywhere, while modestly larger machines can actually be quite efficient.
+As benchmarks for what is possible it is known that with just 2 states but
+an alphabet of 18 symbols universality can be attained, and similarly
+fpor just 2 symbols and 19 states. Between those 5 symbolc and 5 states
+is also sufficient -- much work has gone into charting the boundary and
+discussing exactly what rules should apply.
+
+
 
 Once one has demonstrated that a basic and fairly small Turing Machine
-can be use dto emulate a machine with more states or a larger alphabet
+can be used to emulate a machine with more states or a larger alphabet
 it can be reasonable for subsequent work to feel free to relax those
 constraints to make machine design simpler. and in particular at least
 from a theoretical perspective it is acceptable to imagine that the
@@ -140,13 +168,24 @@ device wither with more than one tape or with just one tape but more than
 one read/write head.  As a concrete example of how this makes things easier,
 Merge Sort was a solid solution to sorting vast amounts of data
 when computer memory was small and the data has to live on magnetic tapes.
+One version of it worked by starting with the unsorted data split
+between two tapes and at each step it compared the two items next visible
+on those tapes and transferred the larger to an output tape. By the end of
+the pass the data originally on the two tapes had been merged. Well a proper
+version would handle not just a pair of items at once but as much as
+it could reasonably fit into its memory. With that sort of scheme if
+the total amount of data was about $N$ times larger than the computer's
+memory capacity the sorting could be completes after only $K \log N$ passes
+for some fairly small value of the constant $K$. 
 The treatment of those tapes and those in a multi-tape Turing machine
-are closely analagous to one another, so that sort of TM provides a
-really solid model for analysing that sort of algorithm while avoiding
-the need to worry about detailed chatacteristics of any physical
-computer.
+are closely analagous to one another, so a multi-tape TM provides a
+really solid model for analysing that particular algorithm while avoiding
+the need to worry about detailed characteristics of any physical
+computer. Similar reasoning applies to enough other tasks that Turing
+machines pretty much set the gold standard for properly pedantic
+discussion of assymptotic growth rates in cost.
 
-The overall message here is that if you really want toa make things
+The overall message here is that if you really want to make things
 hard for yourself try to design the most compact Turing Machine
 that can do the calculation you are interested in, seeing how you
 can make trade-offs between the number of states, the size of the
@@ -165,9 +204,49 @@ can have extraordinarily complex behaviour and is systems as small
 as these can behave in such extraordinary ways the detailed understanding of
 larger and less artifial ones will be difficult in the extreme.
 
+Perhaps the most important resully regarding Turing Machines is that if you
+are given one there is no systematic procedure you could ever have that
+would guarantee to tell you if it was going to terminate. This result
+emerges from the techniques that allow one machine to emulate another
+in that thet task starts by representaing the second machine in the
+form of data that cen be processed by the first. It imagines there was
+a ``systematic procedure'' that could take such a description and judge
+whether it represented a machine that woudl terminate or not. It is
+pretty obvious that it could just emulate the machine and if that led
+to a termination state it has an answer. The problem will be that it has
+no bound on how long it might need to run the simulation for and as a
+result it is really hard for it to be certain that the emulated machine
+is never going to terminate rather than it just having a very long run-time.
+
+One big trick is used! Given the imagined ``will this machine terminate''
+machine (it is perhaps useful to think of it as a program and the
+patterns on the tape that describe it as its source code) one
+makes a trick version. This (if it worked) would decide if its input
+was a terminating program and in that case it would go into a boring
+infinite loop. If on the other hand it determined that its input was a
+machine that was going to run for ever it reports that fact by halting.
+You give a description of this new machine to inself as its input data.
+Now because of the trickery upi have something that will terminate
+only if it does not, and vice versa. Ooops that is impossible! And the
+only assumption that had been made was that there existed a Turing Machine
+that could determine if another one was going to halt. The inescapable
+conclusion is that such a machine can not exist. Phrased in the way
+this is normally spoken on ``The Halting Problem is Undecidable''. Given
+this result it is possible to deduce that many other questions about
+programs can not always be answered. That does not mean that in particular
+instances it may not be possible to resolve them -- just that no
+effective procedure that canm cope with every case can exist. Well if
+(in general) one can not tell if a Turing Machine (or program) is ever going
+to terminate it is going to be impossible to tell if two programs
+always compute the same output (in particular one might sometimes halt
+when the other does not). In turn that means that guaranteeing to find
+that smallest program that achieves just what a reference one would can
+not be done automatically. These results pretty well leave resolving those
+sorts of questions in particular cases as begin ``difficult''.
+
 To finish this chapter it is proper to mention another variation on
 these machines that has enough witty consequences that it will form the
-basis of a whole sepatate chapter. Ordinary Turing machines are very
+basis of a whole separate chapter. Ordinary Turing machines are very
 much mechanical and deterministic devices that always behave in unambiguous
 and predictable ways. An entertaining variation will be the class
 of machines where the state transition is not quite deterministic. In

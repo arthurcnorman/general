@@ -22,6 +22,7 @@ chapters =	intro.tex \
 		floating.tex \
 		formalproof.tex \
 		iteration.tex \
+		nondeterministic.tex \
 		hardware.tex \
 		networks.tex \
 		AI.tex \
