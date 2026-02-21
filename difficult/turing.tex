@@ -1,4 +1,19 @@
 \chapter{Turing Machines}
+\begin{quotation}\textit{
+One of the biggest difference between a calculator and a computer is that
+the computer has a serious amount of memory. When one talks about using a
+computer to solve some problem -- say sorting -- implicitly that should
+mean that you consider not just sorting a set of 10 values but that
+you look at processing as many as anybody could ever provide. This
+sets an agenda that the key thing that a model for computation must
+provide is memory. Turing machines do this by having as their most
+important feature a ``tape'' where data lives on it as a sequence of
+symbols. The tape is assumed to be long enough for whatever task is to
+be performed. This is one of the most important basic abtractions
+of what computers are and hence a model in which it is possible to
+explore what they can and can not do and how much time or space
+they may need to do it.
+}\end{quotation}
 There have been two or three big reasons for looking for minimal
 schemes that are able -- in some sense -- to compute.
 \begin{enumerate}
@@ -64,6 +79,12 @@ you can read off the symbol to be written, the tape movement to apply and
 the identify of the next state that the machine should be in.  A reasonable
 expectation is that designing tables like that to perform even modestly
 elaborate computations will be a bit painful.
+
+One compelling reason that theoreticians like Turing Machines is that
+any such machines has its entire behaviour defined by this table, and it
+is easy to write out such tables on paper, set them up in computer
+programs for simulation and to set them out as sequences of symbols
+written on a tape.
 
 One way to prove that it is really worthwhile setting up this fairly
 clumsy looking model of computation is a proof by construction that it
