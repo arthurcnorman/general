@@ -1,9 +1,92 @@
 \chapter{Iteration}
-\begin{quotation}\textit{
-Wolves and rabbits and the onset of chaos.
-Mandlebrot and friends.
-Pseudo-random sequence generation.
-Collatz 3n+1.
-Random walks.
+\begin{quotation}\textit{One thing that computers are really good at
+expressing is repeating some simple action. One might have hoped that
+when that action really is simple that the consequences of doing it over
+and over again would hold few surprizes. However that is very much not the
+case, and repetition or iteration can lead to all sorts of complications
+and difficulties. This chapter starts with a couple of famous examples.
 }\end{quotation}
+\section{Collatz}
+Perhaps the best known illustration of the fact that repeating a small
+calculation can have tricky consequences is due to Collatz\cite{collats}.
+Given a positive integer the step taken in to halve it if it ie even or
+to multiply by 3 and add 1 it it is odd. This step should be repeated
+until the number 1 is reached, or until it can be shown that this
+will never happen. So for instance if you start with 27 you get the
+sequence
+\begin{verbatim}
+  27 82 41 124 62 31 94 47 142 71 214 107 322 161
+  484 242 121 364 182 91 274 137 412 206 103 310
+  155 466 233 700 350 175 526 263 790 395 1186 593
+  1780 890 445 1336 668 334 167 502 251 754 377
+  1132 566 283 850 425 1276 638 319 958 479 1438
+  719 2158 1079 3238 1619 4858 2429 7288 3644
+  1822 911 2734 1367 4102 2051 6154 3077 9232 4616
+  2308 1154 577 1732 866 433 1300 650 325 976 488
+  244 122 61 184 92 46 23 70 35 106 53 160 80 40
+  20 10 5 16 8 4 2 1    4 2 1 4 2 1 4 2 1 4 2 1...
+\end{verbatim}
+If you do reach 1 then after that the pattern would repeat
+\verb@4 2 1@ from there onwards. The Collatz conjecture is that
+for all initial numbers the sequence eventually falls down into
+the little \verb@1 4 2 1@ loop. I.e.\ there are neither any other
+cycles involving larger numbers nor any starting points from which
+the values increase without limit. As of 2026 it seems that
+compouter tests have checked ever starting number uf to $2^71$ which
+is around $2.36 10^{21}$ and shown that all those sequence terminate
+at \verb@1@. This challenge has been addresed my many mathematicians
+with computers being used to provide emirical background and sometimes
+to assist in formaizing proofs of sub-results, but to date while
+it is generally believed thet the conjecture holds no full proof
+of it has been found. Variations and generalizations of the simple
+rule (for instance to allow negative as well as positive numbers or
+to extent it to real or complex arithmetic) have been tried. For
+such a very simple statement it is a really hard problem! 
+\section{Adding up}
+For a complete change of theme consider the following obviously
+trivial little program (so simple that it does not need to be
+given in any particular real programming language):
+\begin{verbatim}
+  r = 0.0;
+  for i := 1:10000000
+    r := r + 0.0000001;
+  print r;
+\end{verbatim}
+This adds up 10 million copies of the reciprocal of 10 million, and
+so the result printed at the end should obviously be just 1.0.
+
+\section{Wolves, Rabbits and Chaos}
+\section{Intentional random-like behaviour}
+\section{Life}
+John Conway's Game of Life\cite{life} runs on grid where each position
+is either filled on blank. These states may be described as the
+call there being alive or dead. At each clock tick the following rules
+are folowed:
+\begin{itemize}
+\item Any live cell with fewer than two live neigbours and any with
+four or more live neighbours dies (isolation or overcrowding);
+\item Any dead cell with exactly three live neighbours comes alive.
+\item In other cases cells retain their state.
+\end{itemize}
+The neighbours here refer to the eight positions surrounding a cell. Even
+though these rules are not at all complicated, the evolution of the
+patterns of live cells can be quite elaborate. It would be possible to
+give many examples of witty behaviour, and in fact with suitable initial
+configurations running the rules of Life can act as a rather slow
+computer. But about as amazing illustration of how difficult it is
+going to be to predict just how a population evolves as can be
+imagined is shown in
+\verb@https://www.youtube.com/watch?v=xP5-iIeKXE8ON@ where an
+initial population has been set up so that from a distance the
+pattern looks like a grid with some of the squares shared in.
+When it is set to run it evolves in a way where after a number of steps
+it again shows a grid with filled in squares, but the new choice of
+which squared are shaded follows the rules of Life itself on the
+big board. The really simple original set of rules have been coaxed
+into modelling their own behaviour! There had been several previous
+designs for this sort of self-simulation, but this one has the visual
+advantage that it is really easy to discern which of the moddeled
+cells are alive and which dead. Hmmm I think that setting yourself the
+challenge to recreate that pattern or better it with a smaller or
+faster emulation would count as difficult!
 
