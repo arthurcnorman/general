@@ -1,69 +1,105 @@
 \chapter{Lessons that have been learned}
 \begin{quotation}\textit{
-Write this after everything else...
+Each of the chapters here has presented a challenge or a way of viewing things
+that reveals a level of difficulty. But in each case the informal
+introduction here at best provides an introduction to the topics covered.
+If you seek real ``difficulty'' you can take almost any of the
+issues raised here and dive into the serious literature on it, where the
+results will be derived in detail, results properly proved and often
+many more astonishing facts get presented. So really this has been at
+best and introduction to why computing is not always easy. 
 }\end{quotation}
+COnsider the simplest uses of computers and technology and observe that
+beneath the surface there is a great deal of rather elaborate technology
+in play:
+\begin{description}
+\item[Send a text message]
+Encoding your message as a radio signal. Ensuring that your radio waves do
+not unduly interfere with those of all the others in your neighbourgood.
+Finding a route -- potentially well acound the world -- for your message
+to be sent to the recipient. Checking that the destination phone is
+switched on and available among the millions of other phones. Playing
+a nice user-selected sound to indicate that it has arrived. Keeping track
+so that you can have this charged against the allocation for your account.
+\item[Word process a letter] First an operating system that lets you open
+your word processor, with that using the hardware of your computer,
+screen, keyboard and all the rest. The major software of the word processor
+positioning characters on the screen and in the document, spacing everything
+nicely. Spelling and syntax checking with ``helpful'' suggestions about what
+you might have meant to write. The detailed design of the shapes of characters.
+Support where relevant for international lettering, mathematical notation,
+diagrams and pictures. A scheme able to capture all you have done in a
+format that can be stored on a file or transmitted over networks.
+\item[Create a web-site]
+Most websites will be created not by direct manual laying out of HTML but
+by use of some helpful package which may be either local or online. This
+should consider all the things that word processor does, but beyond that
+it ought to take into account the fact that the generated site may be viewed
+on everything from small-screen phones to large monitors. Ideally the
+site should still make sense on a monochrome monitor ot for those who
+are vidually impaired. Certainly for commercial use navigation and
+accessibility need to allow for disabilities, so even colour schemes
+must be designed with red/green ambiguity avoided. Different browsers may
+not all behave the same way, so coping with that will also be important.
+Sometimes security of access will be important, so integration with
+some robust underpinning authentication will be important. Maintaining
+counts, logs, histories of hoe particular individuals use the site can
+also add to the work!
+\end{description}
+
+Observe that in each case the simple-feeling activity only feels simple
+because it is able to rely on a great deal of technology. Somebody has
+had to invent and build that technology, today there need to be teams
+who understand it in detail and can maintain it, while tomorrow it could
+be you working on the ``next big thing'' which will undoubtedly similarly
+built on top of all that exists today.
+
+Beneath the technology lies some science and mathematics. Directing
+internet traffic through the network where that network will constantly
+change as links fail and are restored, and parts of it become swamped
+and over-busy and as satellites move in and out of range will involve
+large scale use of techniques that the ``find a path through this maze''
+style question poses in fairly elementary algorithms courses. Proper
+encryption often depends on rather high powered results from number
+theory. Building faster computer chips involves a lot of device physics.
+
+One of the most challenging practical challenges in software development is
+getting things correct. Any scheme that tries to help with that must start
+with a really careful understanding of exactly what the underlying computer
+will do and the consequences of that. A whole field of study has grown
+up around program verification. It is also very natural to want to get
+computers to deliver their results as rapidly as possible, and that leads
+to a tower of challenges where looking at the ultimate limits is important
+since it sets a target for practical work and makes it possible to avoid
+trying to achieve the impossible. So even the most extreme impractical
+work towards the very best can inform the real world in useful ways!
+
+Steven Wolfram in his book ``A New Kind of Science''\cite{ANKoS} goes
+to great lengths to show that very very simple sets of rules can lead to
+astonishingly complicated behaviour. He particularly emphasises this
+with studies of cellular automata, but Chaos Theory\cite{chaos} also
+tells us that arithmetic can, when iterated, behave in ways that are not
+at all obvious. From those two background one can read off a result that
+might be viewed as terrifying: the end results of running even rather
+short programs may be really hard to predict in detail.
+
+Large programs are of course made up from a collection of smaller
+components, and if it is hard to tell what those building blocks might
+do it will be yet harder to understand the whole. Well natutally
+one hopes that all the modules going into a big application have clear
+and sensible intentions and that these have all been designed to
+cooperate to a useful end. But above some not terribly large threshold
+the reality is going to be that typos and mental slips to say nothing
+of misunderstandnings and over-optimism mean that the world is not quite
+that tidy. This means that full-scale computing will for the foreseeable
+future have awkward rough edges.
+
+The lesson that emerges is that even when computing looks easy and
+even when it behaves well a lot of the time, getting a full and proper
+understanding ot it is difficult, but that difficult can be fascinatind
+and fun.
 
 
-{\em
-The comments here are just ACN rambling a bit more
-
-I have just picked up a copy of Wolfram's New Kind of Science for not
-a huge amount on eBay. That is a much bulkier volume than I had expected,
-not having checked it before. But what is maybe more terrifing is that
-Wolfram now has a ``20 years on'' book that he explains basically as
-``When I write ANKoS I thought it was a real breakthrough for the world,
-but 20 years on I see it is way better than even the extreme level of
-importance I saw in it back them''.
-
-I have only just started reading it and the main think that comes across
-is how utterly Wolfram wants to make a point that everybody from before
-the ancient Greeks has just skipped past the motherload of overwhelmingly
-important stuff that he and he alone has discovered. He is asserting that
-what he has discerned upends every scientific and many other disciplines
-totally and provides a way to discern the true nature of everything.
-Gosh it is amazing in that way. Wow -- what a guy.
-
-However for the purposes of what this book wants to do it is perhaps
-rather nice in that I think a major point he is wanting to hammer on is
-that something that follows very simple rules can have astonishingly
-complicated behaviour, and that this applies not to just one sort
-of ``simple thing'' but rather generally.
-
-It is less clear to me (as yet) whether he can them do anything interesting
-with the complexity apart from show it off in loads of pictures. And some
-of us sort of believed that the not-too-bad equations of fluid dynamics
-could lead to very messy turbulence and not just smooth flow, that
-looking at multiplication and division dumped one into the quasi
-regularity of the distribution of prime numbers and great depth, and
-that the investigation simple problems like "boolean satisfiability" could
-tell you about all the other NP-complete problems. But that some of these are
-discrete and some continuous so he will have to do a really merry dance to
-convince me that they are all the same even if all show complicated
-behaviours.  But still reviewing all he has to say is liable to reveal
-a range of very find examples of things where the starting point is
-simple and the end-point really is not.
-
-A lot of what he talks about is cellular automata.
-
-A different thnk to consider is ``solve your problem by first designing and
-building your computer, then the software stack\ldots''. This is of course
-just what people had to do in the 1940s. And indeed Babbage/Lovelace
-had a go there, and there was Konrad Zuse and his relay-based computer
-where one can even at least imagine constructing the relays\ldots.
-
-In yet a different direction I think of steam engines. The pistons must slide
-nicely into their cylinders so they have to move in straight lines, but if
-you support them with sliding supports that migh introduce friction you do not
-like. So how do you make a pin-jointed linkage so that the end-point moves
-in exactly a straight line? One answer is Hart's Inversor. Now having
-invented that if you are a massochist you set up all the simultaneous
-equations that characterise the way that the other end of a rod that has
-a fixed pivot at one end lies on a circle, and so on. You then see if you
-can simplify and solve all those quations to prove that the key endpoint
-lies on a straight line. This is a horrid thing to try Groebner Bases on.
-
-} 
- 
 
 
 \bibliographystyle{plain}
