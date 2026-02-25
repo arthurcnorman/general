@@ -48,15 +48,263 @@ trivial little program (so simple that it does not need to be
 given in any particular real programming language):
 \begin{verbatim}
   r = 0.0;
-  for i := 1:10000000
-    r := r + 0.0000001;
+  for i := 1:100000000
+    r := r + 0.000001;
   print r;
 \end{verbatim}
-This adds up 10 million copies of the reciprocal of 10 million, and
-so the result printed at the end should obviously be just 1.0.
+This adds up a hundred million copies of a  millionth, and
+so the result printed at the end should obviously be just 100.0.
+Well of course this is computer (floating point) arithmetic and
+so if we should expect rounding errors to intrude so that the
+final result is not quite correct. If we use single precision
+(i.e.\ 32-bit) arithemtic we expect each arithmetic step to introduce
+a little bit of error, keeping around 7 decimal places correct. Taking
+a pessimistic view maybe each addition introduces and error that is about
+$10^{-7}$ and we have just done that 100 million times, so it will not be
+too astonishing if our final result is wrong by about the product
+of these two numbers, in other words 10. That was of course an informal
+(and incorrect!) estimate. What in fact happens is that the result
+printed is 32.0 rather than the ideal 100.0 so it is grossly wrong.
+And things get worse because if you change the code to add up a thousand
+million numbers (so the ideal answer would be 1000.0) the calculated one
+remains unchanges at 32.0!
 
-\section{Wolves, Rabbits and Chaos}
+When this is explained it makes very good sense, and furthermore it becomes
+possible to understand in rather fine detail just how rounding errors will
+build up all through the calculation. Although the actual sume here will
+be being done by the computer using binary arithmetic much of it can be
+explained by working in decimal with numbers stored to 7 siognificant
+figures. Suppose then that you have done that as far as the value in
+\verb@r@ having reached the value 10. Adding in the next copy of a millionth
+will look rather like
+\begin{verbatim}
+       10.00000
+     +  0.000001 
+\end{verbatim}
+and you can now see that the value a millionth has been shifted beyond
+the 7 digits we will be prepared to work with whe it is aligned ready to
+be added in. So in this decimal case the result will get stuck at 10 and
+it happens that with standard single precision floating point the
+stopping point is 32.
+
+A futher point is that the number ``a millionth'' looks really nice in
+decimal but in binary it is \verb@10000110001101111011110...@ with a suitable
+exponent. So now let's consider what adding that to 1 is going to
+look like\ldots
+\begin{verbatim}
+        1.00000000000000000000000
+     +                       10000110001101111011110...
+\end{verbatim}
+and this shows that many of the low bits of the increment are going to
+be discarded. Well a reasonable approximation to the story of this
+calculation is that for the very first addition all bits of the
+small number will be taken account of. For the next two all one bit
+will be lost from the end. For the next four there will be two discarded
+bits and so on until after what would be just $2^24$ (apart for the
+consequences of these truncation errors) \textbf{all} the bits are lost.
+That all means that anybody who wanted to be really careful could
+analyse just what happened over each power of 2 range and predict
+just what the partial results were going to be basaed on knowledge
+of the binary representation of a millionth!
+
+It is reasonable to ask if this matters or if anything like it ever
+arises in sensible rather than utterly artificial calculations. Well
+it can happen. A natural way to obtain numerical solutions to
+differential equations involves taking small steps in time (or whatever
+the independent variable happens to be) and based on that
+adding a small adjustment into values. The simplest case is Euler's
+method for a single simple equation $y' = f(t, y)$ and to
+take a step of length $h$ it will use $y_{t+h} = y_{t} + h f(t, y_{t})$
+and it will keep doing that to creep along from the starting value
+of $t$ as far as it needs to go. To keep accuracy high a small
+value of $h$ may be needed, so this may involve rather a lot of steps.
+Pretty well all the more sophisticated schemes end up with the same
+tendancy to obtain a final answer by adding a lot of small adjustments to
+some starting values. So the bad things that can happen can apply!
+Of course using double rather than single precision is liable to do
+rather a lot to sweep the issue under the carpet, but even there the
+results from adding up many small values may not be as accurate as
+anybody would naively expect.
+
+Is it possble to add up very many numbers and not suffer loss of precision
+in this manner? Well if you have all the numbers avaible from the start
+the answer is yes and a good technique is easy to explain if not
+obviously cheap. If you start with $N$ numbers begin by identifying the
+pair of them whose sum is smallest. Pick them out, add them together and
+put the result back so you now have only $N-1$ to work on. Keep doing that
+until you eventually end up with only a single value, in other words your
+result. If that feels too expensive and if there is some reason to
+believe that all your numbers are about the same size it can be good
+to take a pass over all $N$ numbers replacing each consecutive pair by their
+sum, so you now have $N/2$ remainining. Again repeat this process until
+you have just one number left.
+
+So something as straightforward as merely getting the computer to
+add up a bunch of floating point values can be messier than might
+at first be apparent. 
+\section{Population dynamics and Chaos}
+Collatz sequences show that a simple transformation on integers can lead
+to deep questions. The above discussion about the consquences of rounding
+in floating point arithmetic show that that can be a bit messy, but what
+about real-number arithmetic if one pretends that computer-based finite
+precision does not intrude? Well start with some parameter $r$\footnote{
+It will be normal to restrict \texttt{r} to the range 0 to 4} and
+a starting value $x_{0}$ strictly between 0 and 1, and investigate the
+iteration
+\begin{verbatim}
+  x := r*x*(1-x);
+\end{verbatim}
+This might be interpreted as a rule for judging the size of a population
+from generation to generation, where at each step \verb@x@ is the number
+of individuals scaled so it lies on the range from 0 to 1. If \verb@x@ is
+small the \verb@(1-x)@ term hardly makes a difference and \verb@r@ sets
+a reporoduction-based growth rate. However as \verb@x@ grows it starts to
+reach a limit set perhaps by limited on the food supply or by overcrowding,
+and as it gets close to 1 it will eventually start to decrease even if
+\verb@r@ is sunstantial. Thus exploring this iteration provides a simple
+model of many ecologies, including economic ones where some product is
+really attractive when rare (so many fresh customers buy it) but when
+the market saturates it becomes uninteresting. Pleasingly although this model
+is pretty simplistic the sorts of behaviours that emerge from it are observed
+in the real world. And these behaviours are a curious mixture between
+understandable and plain weird.
+
+The behaviours depend on \verb@r@ as follows:
+\begin{description}
+\item[r is less than 1] Here things are simple - the population, wherever it
+starts, dies away towards zero.
+\item[1 to 2] The behavior is again simple, even if slightly less obvious.
+Regardless of its starting value \verb@x@ tends ta a stable fixed
+value. The mathematics that shows what this value is and that explains
+how rapidly the fixed point is approached is not hard, but since this
+book is about computation not mathematics it is skipped here!
+\item[2 to 3] In the long term here the behaviour is similar and the
+population stablises, but before doing so it jumps around above and
+below its final value for a significant time.
+\item[3 to $1+\sqrt 6 = 3.449...$] This is where things start to become
+messier, as parhaps indicated by the fact that the upper limit set for
+\verb@r@ is not a number that would have been obvious to guess. So the
+existence of that limit helps justify this as starting to get difficult!
+Here the trajectory taken by values of \verb@x@ ends up in alternation
+between two values and those values are given by
+$(r + 1 \pm \sqrt{{r-3}(r+1)})/{2 r}$!
+The population enthusiastically reproduces and grows beyond suatainability
+and then has to collapse, but things end up with a stable pattern of that
+behaviour. Amazingly something of this sort of behaviour can be observed in
+the United States market for hogs. In years when pork-raising is profitable
+formers expand production. Eventually that saturates the market and prices
+drop leading to farmers withdrawing from the market. Over a many decades the
+records show cyclic behaviour with repetitions of the change in pricing
+happening over on average around 3 years. The exact behaviour is not quite
+as neat as the simple iteration we are looking at, but it is pretty clear
+that it is related.
+\item[3.448 to 3.544 end eventually 3.57]. The number shown as 3.544 there is
+more precisely
+3.54409035955192285361596598660480454058\ldots  which is
+the root of a certain 12th degree polynomial. And up to there the values
+of \verb@x@ end up bounding between 4 rather then 2 values. Just
+beyond there it will be 8, values then 16, 32 and so on. If this seems
+bad things get worse when you reach the end point
+3.56994567187094490184200515138649893676\ldots because by there the
+repeating pattern has run through cycles of all power of 2.
+\item[3.56994 and up] Here the behaviour of the iteration descends into
+chaos. Minute changes in the initial value of \verb@x@ lead to wildly
+different sequences which do not repeat values at all. Well that statement
+is not quite true -- there are some special (small) ranges of values
+of \verb@r@ that still lead to cyclic behaviour even beyond the critical
+point where chaos is the general effect. In general the behaviour is
+truly complicated with traces of pattern visible nestling within the
+otherwise semingly random behaviour. 
+\end{description}
+There are plenty of adjustments to the iteration considered here. For
+inatance a version extended to complex numbers uses just
+\begin{verbatim}
+  x := x^2 + c
+\end{verbatim}
+for some complex constant \verb@c@ and asks the simple question
+``If you start with \verb@x@=0 what values of $C$ lead to $x$ eventually
+becoming var large''. Plotting a map of of the answer to this question as
+\verb@c@ ranges over the complex plane leads to the well-known but
+rather decorative Mandelbrot Set\cite{mendelbrot}. 
 \section{Intentional random-like behaviour}
+The chaotic behavour of the above process, which is known as the
+Logistic Map, might seem pretty randomish, but it has just enough
+residual regulatrity that relying on it as a sort of randomness is not
+safe. There has been a huge amount of study of methods that can used to
+judge if sequences of values will count as ``random''. For many years
+it was commonplace for the library functions provided with computer
+systems to claim to generate random sequences but to fail many of
+these tests. Sometimes one would like a ``random'' sequence of
+characters, sometimes integers in a specified but larger range and
+sometimes floating point values. And for practical reasons it
+will be desirable that the values are generated rapidly. That means
+thay must emerge from iterating some simple calculation.
+The ones noted here are not going to be the best known. They are instead
+presented to show how concise fragments of code can behave in manners
+hard to predict and somethimes difficult to analyse.
+\subsection{RC4}
+This scheme generates a sequence of 8-bit bytes and for many years was
+a heavily used component of many security schemes, based on a hope that
+adversaries would not be able to predict which byte values it would generate.
+These days it is not considered secure, but it is still fast and concise
+and illustrated that iterating something that is easy to describe can have
+hard to understand consequences.
+Start with an byte array called \verb@v@ of length 256 filled with some
+permutation of the values 0 to 255. If unpredictable values are required
+this needs to be an unpredictable permutation, but for now pretend that
+that issue is solved.
+The code used to generate a sequence of bytes is just
+\begin{verbatim}
+  i := 0;
+  j := 0;
+  repeat
+    i = i+1 mod 256;
+    j = j+v[i] mod 256;
+    swap v[i] with v[j] in the array;
+    emit v[v[i] + v[j] mod 256]
+\end{verbatim}
+All the mention og \verb@mod 256@ merely indicates keeping only the low
+8 nits from the arithmetic -- it is not anything very sophisticated. The
+verb \verb@emit@ indicates a value which will be the next pseudo-random byte
+that is to be provided for use. It is perhaps astonishing that something
+so compact and that does not do any particularly tricky steps generates
+sequences that for some years were viewed as unpredictable enough te
+secure wirelss networks and be useful for file encryption. So if you want to
+delve into difficulty do some research into the ways in which it was in the
+end shown to be insecure!
+\subsection{Pseudo-random numbers}
+If a sequence of numbers is generated by a program it will be improper
+to call then ``random'' since the program that generates them of itself
+specifies a pattern that they follow. But for many computational purposes
+it is reasonable to use pseudo-random sequences generated by algorithm
+provided they they do not have serious bias. One of today's winners based
+on a combination of unpredictability and low cost is the Mersenne
+Twister\cite{merseenetwister}. The version of this normally used works
+based on the fact that $2^{19937}-1$ is a prime, which when it was
+found in 1971 was for a while the largest known prime. One can hope that
+the fact that this scheme's robustness is based on the primality
+of such a large value suggests that there is some serious theory undepinning
+it, and its details are a bit too messy to document here. So instead
+here is a scheme that is truly simple to code and that has been widely used.
+It maintains a state \verb@S@ that is a 64-bit integer and at each
+step merely performs
+\begin{verbatim}
+  S := 6364136223846793005*S + 1;
+\end{verbatim}
+where only the low 64-bits of the product are kept. Clearly terms in the
+sequence that this generates alternate between being odd and even, so the
+.last significant bit can hardly be viewed as usefully random, and similar
+issues impact further low bits, so it would be usual to only view about the
+top half of the valies of \verb@S@ as useful. That multiplier is has not
+been picked arbitrarily -- a great deal of study and hard work has gone into
+choosing it so that the sequence of values generated have as few patterns in
+them as is possible. The real difficulty here is thus in understanding
+the analysis that leads to the choice there. A scheme following this
+pattern but with integer state and multiplier using yet more than 64 bits
+could still count as fully respectable. But one should take care not to
+rely on more than $2^32$ successive values from this 64-bit generator, and
+with modern fast computers it is easy to imagine circumstances in which
+random sequences that long might be used.
 \section{Life}
 John Conway's Game of Life\cite{life} runs on grid where each position
 is either filled on blank. These states may be described as the
@@ -89,4 +337,17 @@ advantage that it is really easy to discern which of the moddeled
 cells are alive and which dead. Hmmm I think that setting yourself the
 challenge to recreate that pattern or better it with a smaller or
 faster emulation would count as difficult!
-
+\section{\ldots and so?}
+The examples here show that in a range of ways rather simple fragments
+of code can lead to behaviour that can be remarkably hard to predict or
+reason about. But basically any worthwhile program will have some loops in
+it, and if we know that even trivial loop bodies lead to difficulties the
+same has to be doubly true when the iterated operation geta a little
+messier. Looking at this means that we have to face up to something of
+a contradiction. On the one hand the computer will behave systematically and
+deterministically. It obly does what it has been told to. So the results
+it will generate are totally determinated by inputs and the code itself.
+On the other hand for almost any reasonable program it is going to take
+serious good fortune to be able to predict its eventual behaviour,
+which can be complicated beyond rerasonable imagination and truly hard to
+analyse.
