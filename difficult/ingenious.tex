@@ -154,7 +154,75 @@ to win. But for anybody keen to see how difficult computing
 can be made looking at the them, and at the Brodal Queue and all
 other options for priority queue implementation can provide a fine
 collection of rabbit holes to dive into.
+\section{Continued Fractions}
+Any rational number $P/Q$ will have a decimal representation that
+either terminates or that after some starting digits continues into
+a repeating pattern. In contrast numbers such as $e$ and $\pi$ lead
+to non-repeating patterns of digits. There is another way of expressing
+numbers -- continued fractions. This has the property that rational
+numbers always have a terminating representation, but values that are
+roots of quadratic equations (that have whole number coefficients) end
+up with repeating patterns.
+section{Bit counts}
+Consider the three sequences
+\begin{verbatim}
+ (1)   1 2 4 8 16 32 64 128 256 ...
+ (2)   3 5 6 9 10 12 17 18 20 24 ...
+ (3)   7 11 13 14 19 21 22 25 26 ...
+\end{verbatim}
+where the first sequence is easy to recognize but the next two may
+at first be less obvious. However once there are displayed in binary
+things start to become clear:
+\begin{verbatim}
+ (1)   1 10 100 1000 10000 100000 1000000 ...
+ (2)   11 101 110 1001 1010 1100 10001 10010 ...
+ (3)   111 1011 1101 1110 10011 10101 10110 ...
+\end{verbatim}
+and it is now easy to see that each sequence collects the numbers whose
+binary representations have a certain number of 1 bits. Suppose that
+following one of these sequences (including the follow-on ones that cover
+4, 5 and so on bits) can allow one to enumerate all the ways that $r$
+things can be selected from a set of size $n$. Often in the mathematics
+of combinatorics the greatest concern will be how many ways of
+picking $r$ from $n$ there will be and looking at just what all the
+cases are is not terribly important -- just jowning that a binomial
+coefficient lets us count is enough. But with computers it is entirely
+plausible that it will sometimes be useful to work through all the
+individual cases. This generating the above sequences and their friends
+might be useful.
 
+Implementing code that will step through the values at first looks
+a bit messy, but amazingly if one mixes up oridinary arithmetic
+operations with \verb@&@, \verb@|@ and \verb@^@ for bitwise and, or
+amd exclusive or it can be done an an amazingly concise way,
+as reported in Hakmem\cite{hakmem} and the Hacher's
+Delight\cite{hackersdelight}.
+\begin{verbatim}
+    [start off with a number in n]
+    w1 := n & -n;
+    w2 := n + w1;
+    n := (((w2 ^ n) >> 2) / w1) | w2;
+    [n is now the next value up with the same bit-count]
+\end{verbatim}
+It is also sometimes useful to note that the division (which might
+be a bit slower than other basic arithmetic on some conputers) is
+dividing by a power of 2, and so when the computer provides a way
+to discover the position on the single bit that will be present in
+\verb@w1@ it will be possible to replace the division by a right
+shift (\verb@>>@) of the bits involved. So a first challenge set here is
+to understand exactly why the 3-line program fragment there works! But then
+the real issue is going be to sort out just what else can be achieved
+if arithmetic and logical operations on machine binary numbers are
+combined. The Hacker's Delight has a range of examples where at least
+if remainder calculations are allowed demonstrate how counting the
+bits in a word, reversing them and other things are possible.
 \section{What next?}
-I have not decided yet!
+An INCOMPLETE section...
+\begin{quotation}\textit{
+The idea here is to go all the wey back to HAKMEM and report on
+performing arithmetic on continued fractions. Along the way II want to
+present the fact that many values depending on $e$ have continued fractions
+that interleave an arithmetic progression with other simple patterns.
+Eg $e$ has partial quotients 2,1,2,1,1,4,1,1,6,1,1,8,1,1,8,...
+}\end{quotation}
 
