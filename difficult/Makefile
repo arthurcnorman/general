@@ -31,8 +31,12 @@ chapters =	intro.tex \
 		endpart.tex
 
 
+# I will remake this even if it is already present and seemingly up to date
+.PHONY:	full.pdf
 full.pdf:	full.tex full.bib full.ind \
 		$(chapters)
+	bibtex full
+	pdflatex full
 	pdflatex full
 
 chapters.tex:	$(chapters)
