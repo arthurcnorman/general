@@ -53,6 +53,8 @@ int main()
     working_float(3).reciprocal();;
     working_float::tenth().reciprocal();
 
+    show("hex", 0x0.aaaaaaaaaaaaP0_F128);
+    show("hex", 0x0.aaaaaaaaaaaaP10_F128);
 
     return 0;    
 }

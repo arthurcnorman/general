@@ -391,7 +391,7 @@ public:
 };
 
 static constexpr int digitVal(unsigned char ch)
-{   case (ch)
+{   switch (ch)
     {   default:  return -1;
         case '0': return 0x0;
         case '1': return 0x1;
@@ -419,7 +419,7 @@ static constexpr int digitVal(unsigned char ch)
 }
 
 // Convert a string to a working_float.
-inline constexpr working_float operator "" _F128(const unsigned char* s)
+inline constexpr working_float operator "" _F128(const char* s)
 {   working_float r(0);
 // C++ supports hex floats which are written rather in the style
 //     0xABC.DEFpXXX
@@ -428,10 +428,10 @@ inline constexpr working_float operator "" _F128(const unsigned char* s)
 //    0x1.0P0     1
 //    0x1.8P1     3
 //    0x8.0P-3    1 again
-    if (s[0]=='0' && (s[1]=='x' || s[1]=='X')
+    if (s[0]=='0' && (s[1]=='x' || s[1]=='X'))
     {   s += 2;
         working_float sixteen(16);
-        int x = 0;
+        int x = -1;
         while (std::isxdigit(*s))
         {   working_float d(digitVal(*s));
             r = sixteen*r + d;
