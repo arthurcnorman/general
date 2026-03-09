@@ -73,7 +73,7 @@
 /*	Exponential function	*/
 
 #include <float.h>
-#include "prelude.h"
+#include "float128_t.h"
 #include "my_openlibm_math.h"
 
 #include "my_math_private.h"
@@ -137,7 +137,7 @@ if( x < MINLOGL )
  *   = e**g e**( n loge(2) )
  *   = e**( g + n loge(2) )
  */
-px = floorl( LOG2EL * x + 0.5_F128 ); /* floor() truncates toward -infinity. */
+px = floor128( LOG2EL * x + 0.5_F128 ); /* floor() truncates toward -infinity. */
 n = px;
 x += px * C1;
 x += px * C2;
