@@ -1,0 +1,53 @@
+Adjusted version of part of openlibm for use within CSL...
+
+C++23 introduces a type "float128_t" for a fixed width 128-bit float,
+but as of 2026 first of all not all C++ compilers and libraries support
+it at all, and secondly the provision of maths libraries for that
+precision is even more uncertain. The world is significantly complicated
+by the fact that there is often a type "long float" but it is sometimes
+80 bit and sometimes 128-bit. I want to provide 128-bit float support
+within CSL.
+
+I have code that uses a system-provided float128_t type if available,
+but otherwise implements a class with that name that has overloads for
+all the arithmentic operators. After including the header file for that
+I can code using float128_t as a type and expect basic arithmetic to
+work everywhere - but I/O and elementary functions are another matter.
+
+If I am to use my own class I can not use any input syntax for literals
+that is defined by C++ as supporting a native type. So I introduce a
+user-defined suffix "_F128" and arrange that things written using that
+are turned into either native or my software 129-bit floats.
+
+I have my own reading and printing code which I will be able to
+hook into overloads of the "<<" and ">>" operators on C++ streams.
+
+I am not going to be concerned with support for directed rounding or
+detection of cases when arithmetic is inexact.
+
+I want a full set of elementary functions, including ones for complex
+values. The version of openlibm that is looked after by the Julia project
+provides me with a starting point. However there are a whole number of
+reasons that I do not feel I can just pick it up and use it. Perhaps the
+most important is that it uses a type "long float" and that is not
+universally available and even where it is it is too often not a 128
+bit type. So I need to edit things to use float128_t. That obviously
+involves treating all the code as C++ rather than C and altering the
+suffix on all floating literals. I then find that the header files
+clash with built-in names that some C++ compilers provide, and
+so use of eg the name "acosl" cause me trouble. I rename things to
+eg "acos128" to avoid all ambiguity.
+
+This all involves rather sweeping changes which ideally I would have been
+able to avoid! But to the extent I can make it work it will provide CSL
+with 128-bit floats on all platfroms in a way that in each case identical
+results are delivered for all calculations.
+
+At present I am expecting that I will not use the 64-bit float parts
+of openlibm, but I may eventually want to pick up the complex-double
+code. I will comment out some declatraions relating to 32 and 64-bit floats
+where their inclusion give me trouble.
+
+
+
+Arthur Norman, February 2026
