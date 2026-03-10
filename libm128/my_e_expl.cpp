@@ -24,9 +24,9 @@
  *
  * SYNOPSIS:
  *
- * float128_t x, y, expl();
+ * float128_t x, y, exp128();
  *
- * y = expl( x );
+ * y = exp128( x );
  *
  *
  *
@@ -75,7 +75,6 @@
 #include <float.h>
 #include "float128_t.h"
 #include "my_openlibm_math.h"
-
 #include "my_math_private.h"
 
 /* Pade' coefficients for exp(x) - 1
@@ -105,6 +104,7 @@ static const float128_t LOG2EL = 1.442695040888963407359924681001892137426646_F1
 static const float128_t MAXLOGL = 1.1356523406294143949491931077970764891253E4_F128;
 static const float128_t MINLOGL = -1.143276959615573793352782661133116431383730e4_F128;
 static const float128_t huge = 0x1p10000_F128;
+
 // Use of "volatile" upsets some C++ type checking for me. I somewhat suspect
 // that the idea behind its use here was to ensure that when twom10000 is
 // multiplied by itself (which will underflow) that it does so and
@@ -115,14 +115,14 @@ static const float128_t huge = 0x1p10000_F128;
 // thing - you will just see zero. For my purposes I am not supporting
 // inexact detection (or directed rounding, or any other status settings)
 // and so I do not mind if the multiplication is done early. ACN Feb 2026.
+
 #if 1 /* XXX Prevent gcc from erroneously constant folding this. */
 static const float128_t twom10000 = 0x1p-10000_F128;
 #else
 static volatile float128_t twom10000 = 0x1p-10000_F128;
 #endif
 
-float128_t
-expl(float128_t x)
+float128_t exp128(float128_t x)
 {
 float128_t px, xx;
 int n;
@@ -146,11 +146,11 @@ x += px * C2;
  * e**x =  1 + 2x P(x**2)/( Q(x**2) - P(x**2) )
  */
 xx = x * x;
-px = x * __polevll( xx, P, 4 );
-xx = __polevll( xx, Q, 5 );
+px = x * __polevl128( xx, P, 4 );
+xx = __polevl128( xx, Q, 5 );
 x =  px/( xx - px );
 x = 1.0_F128 + x + x;
 
-x = ldexpl( x, n );
+x = ldexp128( x, n );
 return(x);
 }

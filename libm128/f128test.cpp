@@ -11,15 +11,6 @@
 int main()
 {   std::cout << "Starting\n";
 
-#if 1
-    for (int i=-20; i<=20; i++)
-    {   char label[20];
-        snprintf(label, 20, "%d:", i);
-        show128(label, working_float::power_of_ten(i), false);
-        if (i >= 0) show128(label, working_float(10).power(i), false);
-        else show128(label, working_float::power_of_ten(-1).power(i), false);
-    }
-#else
     show128("0.1", working_float::power_of_ten(-1));
     show128("0.1^10", working_float::power_of_ten(-10));
     working_float one(1);
@@ -44,7 +35,6 @@ int main()
     show128("hex", 0x0.aaaaaaaaaaaaP10_F128);
 
     show128("1.0e100", 1.0e100_F128);
-#endif
     return 0;    
 }
 

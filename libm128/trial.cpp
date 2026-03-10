@@ -1,5 +1,6 @@
 
 #include "float128_t.h"
+
 #include "my_e_expl.cpp"
 
 #include <iostream>
@@ -7,8 +8,7 @@
 
 int main()
 {
-    show("2.0", 2.0_F128);
-    show("expl(2.0)", expl(2.0_F128));
-// Ha ha this will tape a time before it works!
+    show128("2.0", 2.0_F128);
+    show128("exp128(2.0)", exp128(2.0_F128));
     return 0;
 }

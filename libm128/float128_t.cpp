@@ -42,14 +42,6 @@
 // things up from literals for 0.0, 1.0, ... 9.0, 10.0 and 0.1 together
 // with the operations of addition and multiplication.
 
-class working_float;
-
-working_float::working_float(uint128_t mm, int xx):
-    mantissa(mm),
-    x(xx)
-{
-}
-
 bool working_float::zerop() const
 {   return (mantissa==0);
 }
@@ -303,6 +295,11 @@ float128_t float128_t::operator+(const float128_t a) const
         else return (float128_t)(u - v);
     }
     else return (float128_t)(u + v);
+}
+
+float128_t float128_t::operator+=(float128_t a)
+{   v = f2i(*this + a);
+    return *this;
 }
 
 float128_t float128_t::operator+() const
