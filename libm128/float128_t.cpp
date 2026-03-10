@@ -379,20 +379,26 @@ void hexprint(uint128_t a, int n)
     std::cout << std::hex << (int)(a&15) << std::dec;
 }
 
-void show128(const char* s, const working_float& a)
+void show128(const char* s, const working_float& a, bool showf)
 {   std::cout << s << ":  ";
     hexprint(a.mantissa, 32);
-    char b[64];
-    sprint(b, a);
-    std::cout << "(" << a.x << ")\n= " << b << "\n\n";
+    if (showf)
+    {   char b[64];
+        sprint(b, a);
+        std::cout << "(" << a.x << ")\n= " << b << "\n\n";
+    }
+    else std::cout << "(" << a.x << ")\n\n";
 }
 
-void show128(const char* s, const float128_t a)
+void show128(const char* s, const float128_t a, bool showf)
 {   std::cout << s << ":  ";
     hexprint(f2i(a), 32);
-    char b[64];
-    sprint(b, working_float(a));
-    std::cout << "\n= " << b << "\n\n";
+    if (showf)
+    {   char b[64];
+        sprint(b, working_float(a));
+        std::cout << "\n= " << b << "\n\n";
+    }
+    else std::cout << "\n\n";
 }
 
 #endif // _float128_t_cpp

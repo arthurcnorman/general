@@ -6,7 +6,7 @@ share www;
 
 algebraic procedure hex128 n;
   begin
-    scalar x := 0;
+    scalar x := -1;
     while n >= 1 do <<
       n := n/2.0;
       x := x+1 >>;
@@ -20,43 +20,40 @@ algebraic procedure hex128 n;
       n := n - d;
       www := d;
       symbolic prinhex www >>;
-    symbolic princ ", 0x";
+    symbolic princ ",0x";
     for i := 1:16 do <<
       n := 16.0*n;
       d := fix n;
       n := n - d;
       www := d;
       symbolic prinhex www >>;
-    symbolic princ ", 0x";
+    symbolic princ ",0x";
     for i := 1:16 do <<
       n := 16.0*n;
       d := fix n;
       n := n - d;
       www := d;
       symbolic prinhex www >>;
-    symbolic princ "   P";
+    symbolic princ ",";
     symbolic prin x;
-    symbolic printc "},"
+    symbolic printc "),"
   end;
 
-for i := -16:16 do <<
-  www := i;
-  symbolic prin i;
-  symbolic princ "   {";
+for i := -15:15 do <<
+  symbolic princ "working_float(";
   hex128 (10.0^i) >>;
 
-for i := -16:16 do <<
-  www := i;
-  symbolic prin i;
-  symbolic princ "   {";
+for i := -15:15 do <<
+  symbolic princ "working_float(";
   hex128 (10.0^(16*i)) >>;
 
-for i := -20:20 do <<
-  www := i;
-  symbolic prin i;
-  symbolic princ "   {";
+for i := -19:19 do <<
+  symbolic princ "working_float(";
   hex128 (10.0^(16*16*i)) >>;
 
+for i := -1:1 do <<
+  symbolic princ "working_float(";
+  hex128 (10.0^(20*16*16*i)) >>;
 
 quit;
 

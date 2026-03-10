@@ -92,11 +92,6 @@ public:
 // with the operations of addition and multiplication.
 
 class working_float;
-extern working_float Vpowers10[];
-extern working_float Vpowers10P16[];
-extern working_float Vpowers10P256[];
-
-class working_float;
 extern void sprint(char* b, const working_float& aa);
 extern unsigned int add_with_carry(uint128_t& a, uint128_t b);
 extern unsigned int add_with_carry(uint128_t& a, uint128_t b,
@@ -291,10 +286,6 @@ public:
     working_float reciprocal() const;
     working_float operator/(const working_float a) const;
     working_float power(int n) const;
-    static constexpr working_float* powers10 = Vpowers10;
-    static constexpr working_float* powers10P16 = Vpowers10P16;
-    static constexpr working_float* powers10P255 = Vpowers10P256;
-
     static constexpr working_float power_of_ten(int n);
     constexpr operator float128_t() const; 
 };
@@ -302,28 +293,17 @@ public:
 inline constexpr int digitVal(char ch)
 {   switch (ch)
     {   default:  return -1;
-        case '0': return 0x0;
-        case '1': return 0x1;
-        case '2': return 0x2;
-        case '3': return 0x3;
-        case '4': return 0x4;
-        case '5': return 0x5;
-        case '6': return 0x6;
-        case '7': return 0x7;
-        case '8': return 0x8;
-        case '9': return 0x9;
-        case 'a': return 0xa;
-        case 'b': return 0xb;
-        case 'c': return 0xc;
-        case 'd': return 0xd;
-        case 'e': return 0xe;
-        case 'f': return 0xf;
-        case 'A': return 0xA;
-        case 'B': return 0xB;
-        case 'C': return 0xC;
-        case 'D': return 0xD;
-        case 'E': return 0xE;
-        case 'F': return 0xF;
+        case '0': return 0x0; case '1': return 0x1;
+        case '2': return 0x2; case '3': return 0x3;
+        case '4': return 0x4; case '5': return 0x5;
+        case '6': return 0x6; case '7': return 0x7;
+        case '8': return 0x8; case '9': return 0x9;
+        case 'a': return 0xa; case 'b': return 0xb;
+        case 'c': return 0xc; case 'd': return 0xd;
+        case 'e': return 0xe; case 'f': return 0xf;
+        case 'A': return 0xA; case 'B': return 0xB;
+        case 'C': return 0xC; case 'D': return 0xD;
+        case 'E': return 0xE; case 'F': return 0xF;
     }
 }
 
@@ -336,40 +316,42 @@ inline constexpr int digitVal(char ch)
 // of 10 in the range -5000 < N < 5000 I just need to multiply one entry
 // from each of these tables, ie do just two multiplications. This will,
 // I hope, keep accuracy good.
-inline working_float Vpowers10[31] = {
-working_float(0x901d7cf73ab0acd9,0x0f9d37014bf60a10,0x57a6e390ca38f653,-49),
-working_float(0xb424dc35095cd80f,0x538484c19ef38c94,0x6d909c74fcc733e8,-46),
-working_float(0xe12e13424bb40e13,0x2865a5f206b06fb9,0x88f4c3923bf900e2,-43),
-working_float(0x8cbccc096f5088cb,0xf93f87b7442e45d3,0xf598fa3b657ba08d,-39),
-working_float(0xafebff0bcb24aafe,0xf78f69a51539d748,0xf2ff38ca3eda88b0,-36),
-working_float(0xdbe6fecebdedd5be,0xb573440e5a884d1b,0x2fbf06fcce912adc,-33),
-working_float(0x89705f4136b4a597,0x31680a88f8953030,0xfdd7645e011abac9,-29),
-working_float(0xabcc77118461cefc,0xfdc20d2b36ba7c3d,0x3d4d3d758161697c,-26),
-working_float(0xd6bf94d5e57a42bc,0x3d32907604691b4c,0x8ca08cd2e1b9c3db,-23),
-working_float(0x8637bd05af6c69b5,0xa63f9a49c2c1b10f,0xd7e45803cd141a69,-19),
-working_float(0xa7c5ac471b478423,0x0fcf80dc33721d53,0xcddd6e04c0592103,-16),
-working_float(0xd1b71758e219652b,0xd3c36113404ea4a8,0xc154c985f06f6944,-13),
-working_float(0x83126e978d4fdf3b,0x645a1cac083126e9,0x78d4fdf3b645a1ca,-9),
-working_float(0xa3d70a3d70a3d70a,0x3d70a3d70a3d70a3,0xd70a3d70a3d70a3d,-6),
-working_float(0xcccccccccccccccc,0xcccccccccccccccc,0xcccccccccccccccc,-3),
-working_float(0x8000000000000000,0x0000000000000000,0x0000000000000000,1),
-working_float(0xa000000000000000,0x0000000000000000,0x0000000000000000,4),
-working_float(0xc800000000000000,0x0000000000000000,0x0000000000000000,7),
-working_float(0xfa00000000000000,0x0000000000000000,0x0000000000000000,10),
-working_float(0x9c40000000000000,0x0000000000000000,0x0000000000000000,14),
-working_float(0xc350000000000000,0x0000000000000000,0x0000000000000000,17),
-working_float(0xf424000000000000,0x0000000000000000,0x0000000000000000,20),
-working_float(0x9896800000000000,0x0000000000000000,0x0000000000000000,24),
-working_float(0xbebc200000000000,0x0000000000000000,0x0000000000000000,27),
-working_float(0xee6b280000000000,0x0000000000000000,0x0000000000000000,30),
-working_float(0x9502f90000000000,0x0000000000000000,0x0000000000000000,34),
-working_float(0xba43b74000000000,0x0000000000000000,0x0000000000000000,37),
-working_float(0xe8d4a51000000000,0x0000000000000000,0x0000000000000000,40),
-working_float(0x9184e72a00000000,0x0000000000000000,0x0000000000000000,44),
-working_float(0xb5e620f480000000,0x0000000000000000,0x0000000000000000,47),
-working_float(0xe35fa931a0000000,0x0000000000000000,0x0000000000000000,50)
+inline working_float powers10[31] = {
+working_float(0x901d7cf73ab0acd9,0x0f9d37014bf60a10,0x57a6e390ca38f653,-50),
+working_float(0xb424dc35095cd80f,0x538484c19ef38c94,0x6d909c74fcc733e8,-47),
+working_float(0xe12e13424bb40e13,0x2865a5f206b06fb9,0x88f4c3923bf900e2,-44),
+working_float(0x8cbccc096f5088cb,0xf93f87b7442e45d3,0xf598fa3b657ba08d,-40),
+working_float(0xafebff0bcb24aafe,0xf78f69a51539d748,0xf2ff38ca3eda88b0,-37),
+working_float(0xdbe6fecebdedd5be,0xb573440e5a884d1b,0x2fbf06fcce912adc,-34),
+working_float(0x89705f4136b4a597,0x31680a88f8953030,0xfdd7645e011abac9,-30),
+working_float(0xabcc77118461cefc,0xfdc20d2b36ba7c3d,0x3d4d3d758161697c,-27),
+working_float(0xd6bf94d5e57a42bc,0x3d32907604691b4c,0x8ca08cd2e1b9c3db,-24),
+working_float(0x8637bd05af6c69b5,0xa63f9a49c2c1b10f,0xd7e45803cd141a69,-20),
+working_float(0xa7c5ac471b478423,0x0fcf80dc33721d53,0xcddd6e04c0592103,-17),
+working_float(0xd1b71758e219652b,0xd3c36113404ea4a8,0xc154c985f06f6944,-14),
+working_float(0x83126e978d4fdf3b,0x645a1cac083126e9,0x78d4fdf3b645a1ca,-10),
+working_float(0xa3d70a3d70a3d70a,0x3d70a3d70a3d70a3,0xd70a3d70a3d70a3d,-7),
+working_float(0xcccccccccccccccc,0xcccccccccccccccc,0xcccccccccccccccc,-4),
+working_float(0x8000000000000000,0x0000000000000000,0x0000000000000000,0),
+working_float(0xa000000000000000,0x0000000000000000,0x0000000000000000,3),
+working_float(0xc800000000000000,0x0000000000000000,0x0000000000000000,6),
+working_float(0xfa00000000000000,0x0000000000000000,0x0000000000000000,9),
+working_float(0x9c40000000000000,0x0000000000000000,0x0000000000000000,13),
+working_float(0xc350000000000000,0x0000000000000000,0x0000000000000000,16),
+working_float(0xf424000000000000,0x0000000000000000,0x0000000000000000,19),
+working_float(0x9896800000000000,0x0000000000000000,0x0000000000000000,23),
+working_float(0xbebc200000000000,0x0000000000000000,0x0000000000000000,26),
+working_float(0xee6b280000000000,0x0000000000000000,0x0000000000000000,29),
+working_float(0x9502f90000000000,0x0000000000000000,0x0000000000000000,33),
+working_float(0xba43b74000000000,0x0000000000000000,0x0000000000000000,36),
+working_float(0xe8d4a51000000000,0x0000000000000000,0x0000000000000000,39),
+working_float(0x9184e72a00000000,0x0000000000000000,0x0000000000000000,43),
+working_float(0xb5e620f480000000,0x0000000000000000,0x0000000000000000,46),
+working_float(0xe35fa931a0000000,0x0000000000000000,0x0000000000000000,49)
 };
-inline working_float Vpowers10P16[31] = {
+
+//@@@ Fix here down
+inline working_float powers10P16[31] = {
 working_float(0xd5605fcdcf32e1d6,0xfb1e4a9a90880a64,0xeb30854f603da8fc,-797),
 working_float(0xece53cec4a314ebd,0xa4f8bf5635246428,0x4609ac5c7899ca36,-744),
 working_float(0x8380dea93da4bc60,0x4247cb9e59f71e6d,0x78b7ab3af34a60c2,-690),
@@ -402,7 +384,7 @@ working_float(0xf92e0c3537826145,0xa7709a56ccdf8a82,0x866caba98a7e2dab,691),
 working_float(0x8a5296ffe33cc92f,0x82bd6b70d99aaa6f,0xbc10c5c5cda97c8d,745),
 working_float(0x9991a6f3d6bf1765,0xacca6da1e0a8ef29,0x036ee4519d59a838,798)
 };
-inline working_float Vpowers10P256[39] = {
+inline working_float powers10P256[39] = {
 working_float(0x8d36f6971766349c,0xac63454249b771c8,0x2bfb20990dedb270,-16157),
 working_float(0xbc1905f3e898cca2,0x41a8bcd577f7a7d8,0x4a0ad081b987938a,-15307),
 working_float(0xfa8bbf517f29408a,0x31c0368ccb2c5757,0x842dc41b89ca32c7,-14457),
@@ -447,11 +429,19 @@ working_float(0xe80b387fb9146d6c,0xa6a99ee15afede53,0xe72af3faf80453ce,16158)
 
 constexpr working_float working_float::power_of_ten(int n)
 {   if (n == 0) return working_float(1);
-    else if (n > 0) return working_float(10).power(n);
-    else return working_float(0xcccccccccccccccc,
-                              0xcccccccccccccccc,
-                              0xcccccccccccccccc,
-                              -4).power(-n);
+    int n1 = n%16;
+    n = n/16;
+    int n2 = n%16;
+    n = n/16;
+    int n3 = n%20;
+    n = n/2;
+// I hope that n=0 here and will be zero. If not I could cope but I will
+// not just for now!
+    working_float r(1);
+    if (n1 != 0) r = r * powers10[n1+15];
+    if (n2 != 0) r = r * powers10P16[n2+15];
+    if (n3 != 0) r = r * powers10P256[n3+19];
+    return r;
 }
 
 inline constexpr int read_integer(const char* s)
@@ -569,8 +559,8 @@ constexpr working_float::operator float128_t() const
     return i2f(m);
 }
 
-extern void show128(const char* s, const working_float& a);
-extern void show128(const char* s, const float128_t a);
+extern void show128(const char* s, const working_float& a, bool showf=true);
+extern void show128(const char* s, const float128_t a, bool showf=true);
 
 #endif // _float128_t_h
 
