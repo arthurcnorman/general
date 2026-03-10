@@ -29,11 +29,11 @@
 #if __has_include(<stdfloat>)
 #include <stdfloat>
 #if __STDCPP_FLOAT128_T__
-//!!! #pragma message "This commpiler says it supports float128_t directly"
 using std::float128_t;
 using namespace std::literals;
-#define NativeFloat128Available 1
 
+#define NativeFloat128Available 1
+//!!! #pragma message "This commpiler says it supports float128_t directly"
 #endif
 #endif
 
@@ -92,6 +92,11 @@ public:
 // with the operations of addition and multiplication.
 
 class working_float;
+extern working_float Vpowers10[];
+extern working_float Vpowers10P16[];
+extern working_float Vpowers10P256[];
+
+class working_float;
 extern void sprint(char* b, const working_float& aa);
 extern unsigned int add_with_carry(uint128_t& a, uint128_t b);
 extern unsigned int add_with_carry(uint128_t& a, uint128_t b,
@@ -102,13 +107,13 @@ class working_float
 public:
     uint128_t mantissa;
     int x;
-// The number 0.0 is held with an exponent shown as 0. This is a bit strange
+// The number 0.0 is held with an exponent 0. This is a bit strange
 // and means that zero cases have to be handled specially in a bunch of
 // situations.
 
     constexpr working_float(uint128_t n):
         mantissa(n),
-        x(63)
+        x(127)
     {   if (n==0) x = 0;
         else
         {
@@ -142,9 +147,6 @@ public:
     }
 
     working_float(const float128_t& f);
-    static working_float tenth();
-    static working_float tenth_ten();
-    static working_float ten();
     bool zerop() const;
     uint128_t integerPart() const;
     bool equal(working_float a) const;
@@ -164,10 +166,7 @@ public:
         return c + (a < cin);
     }
 
-// The number 0.0 is held with an exponent shown as 0. This is a bit strange
-// and means that zero cases have to be handled specially in a bunch of
-// situations.
-// Also the working_float type only supports positive values. It would not
+// The working_float type only supports positive values. It would not
 // be especially hard to add a sign bit to the representation but then
 // all arithmetic would need to take account of it, and for something that
 // is just intended for internal use that would be more effort that it was
@@ -292,6 +291,11 @@ public:
     working_float reciprocal() const;
     working_float operator/(const working_float a) const;
     working_float power(int n) const;
+    static constexpr working_float* powers10 = Vpowers10;
+    static constexpr working_float* powers10P16 = Vpowers10P16;
+    static constexpr working_float* powers10P255 = Vpowers10P256;
+
+    static constexpr working_float power_of_ten(int n);
     constexpr operator float128_t() const; 
 };
 
@@ -323,21 +327,16 @@ inline constexpr int digitVal(char ch)
     }
 }
 
-// get the working_float representation of a power of 10 in the range
-// 10^-5000 to 10^5000 respectably accuratelely
-
-// Using the values here I can produce a power of 10 with only two
-// multiplications for all powers that are relevant when I am converting
-// between 128-bit floats and character strings.
-
-// Powers of 10 from -15 to +15 with an extra 64 bits of guard. The
-// constructor for working_float that is used here looks at the guard
-// word so it can arrange that the value it ends up with is within 0.5ULP
-// of the perfect value.
-
-// powers of 10.0
-
-inline constexpr working_float powers10[] = {
+// While converting between internal and character representations I need to
+// multiply and divide by various powers of 10. If I just get that power
+// using working_float(10).power(N) there will be rounding during the
+// execution of the power function. To avoid that I have here tables
+// giving powers of 10 - first in the range -15 to 15, then then 10^16
+// to those powers and finally 10^256 to those powers. To get any power
+// of 10 in the range -5000 < N < 5000 I just need to multiply one entry
+// from each of these tables, ie do just two multiplications. This will,
+// I hope, keep accuracy good.
+inline working_float Vpowers10[31] = {
 working_float(0x901d7cf73ab0acd9,0x0f9d37014bf60a10,0x57a6e390ca38f653,-49),
 working_float(0xb424dc35095cd80f,0x538484c19ef38c94,0x6d909c74fcc733e8,-46),
 working_float(0xe12e13424bb40e13,0x2865a5f206b06fb9,0x88f4c3923bf900e2,-43),
@@ -370,10 +369,7 @@ working_float(0x9184e72a00000000,0x0000000000000000,0x0000000000000000,44),
 working_float(0xb5e620f480000000,0x0000000000000000,0x0000000000000000,47),
 working_float(0xe35fa931a0000000,0x0000000000000000,0x0000000000000000,50)
 };
-
-// powers of 10.0^16
-
-inline constexpr working_float powers10P16[] = {
+inline working_float Vpowers10P16[31] = {
 working_float(0xd5605fcdcf32e1d6,0xfb1e4a9a90880a64,0xeb30854f603da8fc,-797),
 working_float(0xece53cec4a314ebd,0xa4f8bf5635246428,0x4609ac5c7899ca36,-744),
 working_float(0x8380dea93da4bc60,0x4247cb9e59f71e6d,0x78b7ab3af34a60c2,-690),
@@ -406,14 +402,7 @@ working_float(0xf92e0c3537826145,0xa7709a56ccdf8a82,0x866caba98a7e2dab,691),
 working_float(0x8a5296ffe33cc92f,0x82bd6b70d99aaa6f,0xbc10c5c5cda97c8d,745),
 working_float(0x9991a6f3d6bf1765,0xacca6da1e0a8ef29,0x036ee4519d59a838,798)
 };
-
-// powers of 10.0^(16*16) = 10.0^256
-// I need a few more of these because the exponent range of float128_t is
-// fixed by having 15 bits of exponent, so I am looking at range of values
-// with binary exponents +/- 16384 which is about 10^+/-4932. So this table
-// just covers that range.
-
-inline constexpr working_float powers10P256[] = {
+inline working_float Vpowers10P256[39] = {
 working_float(0x8d36f6971766349c,0xac63454249b771c8,0x2bfb20990dedb270,-16157),
 working_float(0xbc1905f3e898cca2,0x41a8bcd577f7a7d8,0x4a0ad081b987938a,-15307),
 working_float(0xfa8bbf517f29408a,0x31c0368ccb2c5757,0x842dc41b89ca32c7,-14457),
@@ -455,7 +444,8 @@ working_float(0xae3511626ed559f0,0x7ef5f8c1b3a0771c,0x5a43d43795f92ea2,15308),
 working_float(0xe80b387fb9146d6c,0xa6a99ee15afede53,0xe72af3faf80453ce,16158)
 };
 
-inline constexpr working_float power_of_ten(int n)
+
+constexpr working_float working_float::power_of_ten(int n)
 {   if (n == 0) return working_float(1);
     else if (n > 0) return working_float(10).power(n);
     else return working_float(0xcccccccccccccccc,
@@ -467,7 +457,6 @@ inline constexpr working_float power_of_ten(int n)
 inline constexpr int read_integer(const char* s)
 {   int x = 0;
     bool sign = false;
-    s++;
     if (*s == '+') s++;
     else if (*s == '-')
     {   s++;
@@ -535,7 +524,7 @@ inline constexpr working_float operator "" _F128(const char* s)
         }
 // Now look for an explicit exponent
         if (*s == 'e' || *s == 'E') x += read_integer(s+1);
-        return r*power_of_ten(x);
+        return r*working_float::power_of_ten(x);
     }
 }
 
@@ -579,6 +568,9 @@ constexpr working_float::operator float128_t() const
     m = ((uint128_t)(xx+0x3fff)) | (m & ((((uint128_t)1)<<113)-1));
     return i2f(m);
 }
+
+extern void show128(const char* s, const working_float& a);
+extern void show128(const char* s, const float128_t a);
 
 #endif // _float128_t_h
 

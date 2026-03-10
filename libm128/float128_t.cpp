@@ -43,46 +43,11 @@
 // with the operations of addition and multiplication.
 
 class working_float;
-extern void sprint(char* b, const working_float& aa);
-
-void hexprint(uint128_t a, int n)
-{   if (n == 0) return;
-    hexprint(a>>4, n-1);
-    std::cout << std::hex << (int)(a&15) << std::dec;
-}
-
-void show(const char* s, const working_float& a)
-{   std::cout << s << ":  ";
-    for (int i=0; i<20; i++)
-    {   hexprint(((const char *)&a)[19-i], 2);
-        if (i == 3) std::cout << ":";
-    }
-    std::cout << "\n";
-    char b[64];
-    sprint(b, a);
-    std::cout << "= " << b << "\n";
-}
 
 working_float::working_float(uint128_t mm, int xx):
     mantissa(mm),
     x(xx)
 {
-}
-
-working_float working_float::tenth()  // make 0.1
-{   return working_float(
-        ((uint128_t)0xcccccccccccccccc)<<64 | 0xcccccccccccccccd,
-        -4);
-}
-
-working_float working_float::tenth_ten()  // make 0.1^10
-{   return working_float(
-        ((uint128_t)0xdbe6fecebdedd5be)<<64 | 0xb573440e5a884d1b,
-        -34);
-}
-
-working_float working_float::ten()  // make 10.0
-{   return working_float(10);
 }
 
 bool working_float::zerop() const
@@ -199,6 +164,7 @@ working_float working_float::power(int n) const
 }
 
 // print the working float a into the buffer b, which must be long enough.
+// I think that "long enough" may be 50.
 
 void sprint(char* b, const working_float& aa)
 {   working_float a(aa);
@@ -207,16 +173,18 @@ void sprint(char* b, const working_float& aa)
 // approximated to here by 444/13301.
     int decx = (4004*a.x)/13301;
     working_float scale(1);
-    if (decx < 0) a = a*working_float::ten().power(-decx);
-    else if (decx > 0) a = a*working_float::tenth().power(decx);
+    a = a*working_float::power_of_ten(-decx);
 // Now the value to be converted to decimal should be rather close to 1.
 // Finish that reduction off.
-    while (a.lessp(working_float(1)))
-    {   a = a * working_float::ten();
+    while (a.mantissa!=0 && a.lessp(working_float(1)))
+    {   a = a * working_float(10);
         decx--;
     }
-    while (!a.lessp(working_float::ten()))
-    {   a = a * working_float::tenth();
+    while (!a.lessp(working_float(10)))
+    {   a = a * working_float(0xcccccccccccccccc,
+                              0xcccccccccccccccc,
+                              0xcccccccccccccccc,
+                              -4);
         decx++;
     }
 // Now the number should be in the range [1, 10.0)
@@ -225,7 +193,7 @@ void sprint(char* b, const working_float& aa)
     {                        // of mantissa.
         int digit = a.integerPart();
         a = a - working_float(digit);
-        a = a*working_float::ten();
+        a = a*working_float(10);
         *p++ = '0' + digit;
     }
 // Well I have converted an extra digit so that now I can round things
@@ -250,7 +218,7 @@ void sprint(char* b, const working_float& aa)
     {   *p++ = '-';
         decx = -decx;
     }
-    snprintf(p, 5, "%d", decx);
+    snprintf(p, 11, "%u", decx);
 }
 
 // Convert a float128_t to a working_float. This does not handle infinities
@@ -401,6 +369,31 @@ bool float128_t::operator<=(const float128_t a) const
 }
 
 #endif // NativeFloat128Available
+
+// For debugging these displays the value both in hex and as a floating
+// point value.
+
+void hexprint(uint128_t a, int n)
+{   if (n == 0) return;
+    hexprint(a>>4, n-1);
+    std::cout << std::hex << (int)(a&15) << std::dec;
+}
+
+void show128(const char* s, const working_float& a)
+{   std::cout << s << ":  ";
+    hexprint(a.mantissa, 32);
+    char b[64];
+    sprint(b, a);
+    std::cout << "(" << a.x << ")\n= " << b << "\n\n";
+}
+
+void show128(const char* s, const float128_t a)
+{   std::cout << s << ":  ";
+    hexprint(f2i(a), 32);
+    char b[64];
+    sprint(b, working_float(a));
+    std::cout << "\n= " << b << "\n\n";
+}
 
 #endif // _float128_t_cpp
 
