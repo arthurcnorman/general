@@ -1,4 +1,4 @@
-/*	$OpenBSD: e_expl.c,v 1.3 2013/11/12 20:35:18 martynas Exp $	*/
+#/*	$OpenBSD: e_expl.c,v 1.3 2013/11/12 20:35:18 martynas Exp $	*/
 
 /*
  * Copyright (c) 2008 Stephen L. Moshier <steve@moshier.net>
@@ -82,19 +82,19 @@
    relative peak error spread = 9.2e-38
  */
 static float128_t P[5] = {
- 3.279723985560247033712687707263393506266E-10_F128,
- 6.141506007208645008909088812338454698548E-7_F128,
- 2.708775201978218837374512615596512792224E-4_F128,
- 3.508710990737834361215404761139478627390E-2_F128,
- 9.999999999999999999999999999999999998502E-1_F128
+    3.279723985560247033712687707263393506266E-10_F128,
+    6.141506007208645008909088812338454698548E-7_F128,
+    2.708775201978218837374512615596512792224E-4_F128,
+    3.508710990737834361215404761139478627390E-2_F128,
+    9.999999999999999999999999999999999998502E-1_F128
 };
 static float128_t Q[6] = {
- 2.980756652081995192255342779918052538681E-12_F128,
- 1.771372078166251484503904874657985291164E-8_F128,
- 1.504792651814944826817779302637284053660E-5_F128,
- 3.611828913847589925056132680618007270344E-3_F128,
- 2.368408864814233538909747618894558968880E-1_F128,
- 2.000000000000000000000000000000000000150E0_F128
+    2.980756652081995192255342779918052538681E-12_F128,
+    1.771372078166251484503904874657985291164E-8_F128,
+    1.504792651814944826817779302637284053660E-5_F128,
+    3.611828913847589925056132680618007270344E-3_F128,
+    2.368408864814233538909747618894558968880E-1_F128,
+    2.000000000000000000000000000000000000150E0_F128
 };
 /* C1 + C2 = ln 2 */
 static const float128_t C1 = -6.93145751953125E-1_F128;
@@ -124,33 +124,33 @@ static volatile float128_t twom10000 = 0x1p-10000_F128;
 
 float128_t exp128(float128_t x)
 {
-float128_t px, xx;
-int n;
+    float128_t px, xx;
+    int n;
 
-if( x > MAXLOGL)
-	return (huge*huge);		/* overflow */
+    if( x > MAXLOGL)
+        return (huge*huge);		/* overflow */
 
-if( x < MINLOGL )
-	return (twom10000*twom10000);	/* underflow */
+    if( x < MINLOGL )
+        return (twom10000*twom10000);	/* underflow */
 
-/* Express e**x = e**g 2**n
- *   = e**g e**( n loge(2) )
- *   = e**( g + n loge(2) )
- */
-px = floor128( LOG2EL * x + 0.5_F128 ); /* floor() truncates toward -infinity. */
-n = px;
-x += px * C1;
-x += px * C2;
-/* rational approximation for exponential
- * of the fractional part:
- * e**x =  1 + 2x P(x**2)/( Q(x**2) - P(x**2) )
- */
-xx = x * x;
-px = x * __polevl128( xx, P, 4 );
-xx = __polevl128( xx, Q, 5 );
-x =  px/( xx - px );
-x = 1.0_F128 + x + x;
+    /* Express e**x = e**g 2**n
+     *   = e**g e**( n loge(2) )
+     *   = e**( g + n loge(2) )
+     */
+    px = floor128( LOG2EL * x + 0.5_F128 ); /* floor() truncates toward -infinity. */
+    n = px;
+    x += px * C1;
+    x += px * C2;
+    /* rational approximation for exponential
+     * of the fractional part:
+     * e**x =  1 + 2x P(x**2)/( Q(x**2) - P(x**2) )
+     */
+    xx = x * x;
+    px = x * __polevl128( xx, P, 4 );
+    xx = __polevl128( xx, Q, 5 );
+    x =  px/( xx - px );
+    x = 1.0_F128 + x + x;
 
-x = ldexp128( x, n );
-return(x);
+    x = ldexp128( x, n );
+    return(x);
 }

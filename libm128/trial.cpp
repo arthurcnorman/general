@@ -1,10 +1,10 @@
 
 #include "float128_t.h"
 
-#include "my_e_expl.cpp"
-
 #include <iostream>
 #include <iomanip>
+
+#include "my_openlibm_math.h"
 
 int main()
 {

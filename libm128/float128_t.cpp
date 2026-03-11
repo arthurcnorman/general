@@ -13,9 +13,6 @@
 // syntax 1.2345e6_F128 using my own suffix and when native long floating
 // point is present I will need to map it down.
 
-#ifndef _float128_t_cpp
-#define _float128_t_cpp
-
 #include <cstdint>
 #include <cinttypes>
 #include <iostream>
@@ -243,6 +240,10 @@ working_float::working_float(const float128_t& f) :
 // class of that name. Here are the ones I provide, with some utility
 // methods as well.
 
+float128_t::operator int()
+{   return working_float(*this).integerPart();
+}
+
 bool float128_t::isNaN() const
 {   if (((v>>112) & 0x7fff) != 0x7fff) return false;
     return ((v << 16) != 0);
@@ -365,6 +366,49 @@ bool float128_t::operator<=(const float128_t a) const
     else return f2i(*this) <= f2i(a);
 }
 
+// My implmentation here does not (yet?) handle denormalised numbers
+// either when f starts off as one and so for small x the mantissa
+// me need to be shifted  or for larger x where the denorm must be promoted
+// into a norm. Or for negative x where an initially normalised number may
+// need to be turneed into a denorm. It is actually pretty messy!
+
+extern "C"
+{
+
+float128_t ldexp128(float128_t d, int x)
+{   uint128_t n = f2i(x);
+    x = ((n>>112) & 0x7fff) + x;
+    if (x >= 0x7fff)
+    {   x = 0x7fff;   // Turn into infinity
+        n = 0;
+    }
+    else if (x < 0) x = 0;
+    n = (n & ~(((uint128_t)0x7fff)<<112)) | (((uint128_t)x)<<112);
+    return i2f(n);
+}
+
+float128_t floor128(float128_t d)
+{   std::cout << "floor128\n";
+    return d;
+}
+
+}
+
+#else  // NativeFloat128Available
+
+extern "C"
+{
+
+float128_t ldexp128(float128_t d, int x)
+{   return ldexp(d, x); // C++23 asks for a suitable overload here.
+}
+
+float128_t floor128(float128_t d)
+{   return floor(d);
+}
+
+}
+
 #endif // NativeFloat128Available
 
 // For debugging these displays the value both in hex and as a floating
@@ -397,7 +441,5 @@ void show128(const char* s, const float128_t a, bool showf)
     }
     else std::cout << "\n\n";
 }
-
-#endif // _float128_t_cpp
 
 // end of float128_t_cpp

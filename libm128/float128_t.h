@@ -52,7 +52,6 @@ public:
     {   std::memcpy(this, &a, 16);
     }
     operator int();
-// I will need assignment operators too. And things like frexp and ldexp.
     bool isNaN() const;
     bool isInfinite() const;
     bool isZero() const;
@@ -76,6 +75,14 @@ public:
 };
 
 #endif // NativeFloat128Available
+
+extern "C"
+{
+// These are also declared in one of the other heads I am using but with C
+// linkage, which I had better use here.
+extern float128_t ldexp128(float128_t d, int x);
+extern float128_t floor128(float128_t d);
+}
 
 // I will need code to turn a textual representation into a float128_t.
 // I CERTAINLY need that if the underlying C++ does not support a 128-bit
