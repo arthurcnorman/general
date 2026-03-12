@@ -124,6 +124,9 @@ static volatile float128_t twom10000 = 0x1p-10000_F128;
 
 float128_t exp128(float128_t x)
 {
+
+show128("start exp128", x);
+
     float128_t px, xx;
     int n;
 
@@ -133,24 +136,37 @@ float128_t exp128(float128_t x)
     if( x < MINLOGL )
         return (twom10000*twom10000);	/* underflow */
 
+std::cout << "Neither huge nor tiny\n";
+
     /* Express e**x = e**g 2**n
      *   = e**g e**( n loge(2) )
      *   = e**( g + n loge(2) )
      */
+
+    show128("x*log_{2}e", LOG2EL * x + 0.5_F128);
     px = floor128( LOG2EL * x + 0.5_F128 ); /* floor() truncates toward -infinity. */
+    show128("px = floor of above =", px);
     n = px;
+    std::cout << "n = " << n << "\n";
+    show128("px*C1 = ", px*C1);
     x += px * C1;
+    show128("x + px*-6.93145751953125E-1_F128", x);
     x += px * C2;
+    show128("x + px*-1.4286068203094", x);
     /* rational approximation for exponential
      * of the fractional part:
      * e**x =  1 + 2x P(x**2)/( Q(x**2) - P(x**2) )
      */
     xx = x * x;
+    show128("x^2", xx);
     px = x * __polevl128( xx, P, 4 );
+    show128("A: x*poleval(x^2, P, 4)", px);
     xx = __polevl128( xx, Q, 5 );
+    show128("B: x*poleval(x^2, Q, 5)", xx);
     x =  px/( xx - px );
+    show128("A/(B-A)", x);
     x = 1.0_F128 + x + x;
-
+    show128("result before ldexp", x);
     x = ldexp128( x, n );
     return(x);
 }

@@ -1,6 +1,37 @@
-// Setup for float128_t math library code for CSL
+// float128_t.h                               Copyright Arthur Norman  2026
 
-// The purpose of this header is to arrange that on all targets one
+/**************************************************************************
+ * Copyright (C) 2026, Codemist.                         A C Norman       *
+ *                                                                        *
+ * Redistribution and use in source and binary forms, with or without     *
+ * modification, are permitted provided that the following conditions are *
+ * met:                                                                   *
+ *                                                                        *
+ *     * Redistributions of source code must retain the relevant          *
+ *       copyright notice, this list of conditions and the following      *
+ *       disclaimer.                                                      *
+ *     * Redistributions in binary form must reproduce the above          *
+ *       copyright notice, this list of conditions and the following      *
+ *       disclaimer in the documentation and/or other materials provided  *
+ *       with the distribution.                                           *
+ *                                                                        *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS    *
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT      *
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS      *
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE         *
+ * COPYRIGHT OWNERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,   *
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,   *
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS  *
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND *
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR  *
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF     *
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH   *
+ * DAMAGE.                                                                *
+ *************************************************************************/
+
+
+
+// The purpose of this package is to arrange that on all targets one
 // can use a type "float128_t". With C++23 that is an optionally provided
 // extended floating point type, so on some platforms it will be supported
 // by the system. But in other cases it will not and so I will provide
@@ -10,9 +41,17 @@
 // One of the bigger pains is that in the C++23 literals can be written
 // as e.g. 1.2345e6F128 but when things are to be represented as classes
 // the user-defined suffix has to start with "_". So I will introduce
-// syntax 1.2345e6_F128 using my own suffix and when native long floating
+// syntax 1.2345e6_f128 using my own suffix and when native long floating
 // point is present I will need to map it down.
-// It may also be good to have 0x12.345P6_F128 for hex literals.
+//
+// Note that my suffix uses a lower case "f". If I use an upper case "F"
+// things will parse as "working_floats" which are higher precision but do
+// not support negative numbers. For working floats I support hex literals.
+// as in 0x12.345P6_F128.
+
+// All compilation units wanting to use the float128_t type should
+// #include this header, and the link against float128_t.cpp.
+//
 
 #ifndef _float128_t_h
 #define _float128_t_h
@@ -23,6 +62,11 @@
 #include <cctype>
 #include <cstring>
 #include <bit>
+
+// "int128_t.h" is in many respects in the same spirit as this bit
+// of code, in that it arranges that I can use a type "int128_t" fairly
+// freely - although I can not write literals or use things with C++
+// stream I/O.
 
 #include "int128_t.h"
 
@@ -105,6 +149,29 @@ extern void sprint(char* b, const working_float& aa);
 extern unsigned int add_with_carry(uint128_t& a, uint128_t b);
 extern unsigned int add_with_carry(uint128_t& a, uint128_t b,
                                              unsigned int cin);
+extern void show128(const char* s, const float128_t a, bool showf=true);
+
+inline void hexprint(uint128_t a, int n)
+{   if (n == 0) return;
+    hexprint(a>>4, n-1);
+    std::cout << std::hex << (int)(a&15) << std::dec;
+}
+
+inline const char* hexstring(int128_t a)
+{   char buffer[40];
+    for (int i=0; i<32; i++)
+    {   int dig = (a>>(124-4*i)) & 0xf;
+        buffer[i] = "0123456789abcdef"[dig];
+    }
+    buffer[32] = 0;
+    char* r = new char[40];   // Use of this will typically be a space leak!
+    std::memcpy(r, &buffer[0], 40);
+    return r;
+}
+
+inline void hexprint(uint128_t a)
+{   hexprint(a, 32);
+}
 
 class working_float
 {
@@ -483,7 +550,25 @@ inline constexpr int read_integer(const char* s)
 
 // Convert a string to a working_float.
 
-inline constexpr working_float operator "" _F128(const char* s)
+// Hmm - what I have done here is not as good as it should be.
+// What I want to do is:
+//    Read say up to 30 digits accumulating them as an integer,
+//    and then any further digits also as an integer, just
+//    discarding any digits after the 60th.
+//    Sort out the exponent and on that basis see if the number
+//    is >= 1.0 and < 2^128. If so separate off the integer part
+//    and that can be converted to a float128_t perfectly. There
+//    are two cases left. One is that the input is a value at least
+//    2^128. Take 128 bits of the value and make into a float and
+//    now that just needs its exponent set. Well it should be rounded
+//    based on lower bits. Those cases then give as good a result as is
+//    possible.
+//    Finally we have something that is fractional. Take its top
+//    128 bits (rounded) and multiply by a nicely rounded power of 0.1.
+//    Then in some cases that gets added to the integer part we had
+//    set up earlier. 
+
+inline constexpr working_float operator ""_F128(const char* s)
 {   working_float r(0);
 // C++ supports hex floats which are written rather in the style
 //     0xABC.DEFpXXX
@@ -539,16 +624,26 @@ inline constexpr working_float operator "" _F128(const char* s)
     }
 }
 
+inline constexpr float128_t operator "" _f128(const char* s)
+{   return operator ""_F128(s);
+}
+
 extern void sprint(char* b, const working_float& aa);
 
-inline constexpr float128_t i2f(uint128_t i)
-{   float128_t f = 0.0F128;
+inline float128_t u2f(uint128_t i)
+{   float128_t f = 999.0F128;
     memcpy(&f, &i, 16);
     return f;
 }
 
-inline constexpr uint128_t f2i(float128_t f)
-{   uint128_t i = 0;
+inline uint128_t f2u(float128_t f)
+{   uint128_t i = 999;
+    memcpy(&i, &f, 16);
+    return i;
+}
+
+inline int128_t f2i(float128_t f)
+{   uint128_t i = 999;
     memcpy(&i, &f, 16);
     return i;
 }
@@ -557,31 +652,42 @@ inline constexpr uint128_t f2i(float128_t f)
 // denormalised numbers and infinities and rounding rather than merely
 // truncating.
 
-constexpr working_float::operator float128_t() const
-{   uint128_t m = (mantissa >> (128-113));
+inline constexpr working_float::operator float128_t() const
+{
+// I shift the mantissa right so I only keep 113 bits and then remove
+// the hidden bit.
+    uint128_t m = (mantissa & ~(((uint128_t)1)<<127))>>15;
     int xx = x;
     uint128_t guard = mantissa << (128-113);
+// If shifting things right moved of something with value over 0.5ULP I
+// will round up.
     if ((guard == ((uint128_t)1)<<127 && m&1 != 0) |
         guard > ((uint128_t)1)<<127)
     {   m++;
+// A number that starts off with all 1 bits in working_float mode will
+// overflow when I round up, so I need to handle that bu resetting the
+// mantissa to (1)0000... [where the (1) is the hidden bit] and adjusting
+// the exponent.
         if (m == ((uint128_t)1)<<114)
-        {   m = m >> 1;
+        {   m = 0;
             xx++;
         }
     }
-    if (xx > 0x3fff) return i2f(((uint128_t)0x7fff)<<112); // infinity
-    if (xx < -0x4000)
-    {   int sh = -(xx + 0x4000);
+// overflow cases are mapped onto infinity.
+    if (xx > 0x3fff) return u2f(((uint128_t)0x7fff)<<112); // infinity
+    if (xx < -0x3fff)
+    {
+// Here I need to introduce denormalised numbers.
+        m |= ((uint128_t)1)<<113;  // put back the hidden bit
+        int sh = -(xx + 0x3fff);
         if (xx > 112) return 0;
-        m = m >> sh;
-        xx = -0x4000;
+        else return m >> sh;
     }
-    m = ((uint128_t)(xx+0x3fff)) | (m & ((((uint128_t)1)<<113)-1));
-    return i2f(m);
+    m = ((uint128_t)(xx+0x3fff))<<112 | (m & ((((uint128_t)1)<<113)-1));
+    return u2f(m);
 }
 
 extern void show128(const char* s, const working_float& a, bool showf=true);
-extern void show128(const char* s, const float128_t a, bool showf=true);
 
 #endif // _float128_t_h
 

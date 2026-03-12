@@ -8,7 +8,7 @@
 
 int main()
 {
-    show128("2.0", 2.0_F128);
-    show128("exp128(2.0)", exp128(2.0_F128));
+    show128("2.0",         (float128_t)2.0_F128);
+    show128("exp128(2.0)", exp128((float128_t)2.0_F128));
     return 0;
 }

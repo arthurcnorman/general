@@ -215,9 +215,9 @@ void sprint(char* b, const working_float& aa)
 
 working_float::working_float(const float128_t& f) :
     mantissa(0), x(0)
-{   uint128_t rep = f2i(f);
+{   uint128_t rep = f2u(f);
     int xx = ((rep >> 112) & 0x7fff) - 0x3fff;
-    uint128_t m = (rep << 16)>>16 | ((uint128_t)1)<<113;
+    uint128_t m = (rep << 16)>>16 | ((uint128_t)1)<<112;
     m = m<<15;
 // Deal with zero and denormals.
     if (xx == -0x4000)
@@ -263,15 +263,15 @@ bool float128_t::isNegative() const
 }
 
 float128_t float128_t::NaN() const
-{   return i2f(((uint128_t)0x7fffffff) << 96);
+{   return u2f(((uint128_t)0x7fff8000) << 96);
 }
 
 float128_t float128_t::infinity() const
-{   return i2f(((uint128_t)0x7fff) << 112);
+{   return u2f(((uint128_t)0x7fff) << 112);
 }
 
 float128_t float128_t::minusinfinity() const
-{   return i2f(((uint128_t)0xffff) << 112);
+{   return u2f(((uint128_t)0xffff) << 112);
 }
 
 float128_t float128_t::operator+(const float128_t a) const
@@ -299,7 +299,7 @@ float128_t float128_t::operator+(const float128_t a) const
 }
 
 float128_t float128_t::operator+=(float128_t a)
-{   v = f2i(*this + a);
+{   v = f2u(*this + a);
     return *this;
 }
 
@@ -312,7 +312,7 @@ float128_t float128_t::operator-(const float128_t a) const
 }
 
 float128_t float128_t::operator-() const
-{   return i2f(f2i(*this) ^ (((uint128_t)1)<<127));
+{   return u2f(f2u(*this) ^ (((uint128_t)1)<<127));
 }
 
 float128_t float128_t::operator*(const float128_t a) const
@@ -333,7 +333,9 @@ float128_t float128_t::operator*(const float128_t a) const
 }
 
 float128_t float128_t::operator/(const float128_t a) const
-{   return (float128_t)(working_float(*this) / working_float(a));
+{   float128_t r = (float128_t)(working_float(*this) / working_float(a));
+    if (this->isNegative() != a.isNegative()) return -r;
+    else return r;
 }
 
 bool float128_t::operator==(const float128_t a) const
@@ -348,6 +350,9 @@ bool float128_t::operator!=(const float128_t a) const
 
 bool float128_t::operator>(const float128_t a) const
 {   if (isNaN() || a.isNaN()) return false;
+// An amazing feature of IEEE floating point formats is that apart from
+// the NaN case you can order values by compatring the (signed) integer
+// representation as bits.
     else return f2i(*this) > f2i(a);
 }
 
@@ -384,12 +389,22 @@ float128_t ldexp128(float128_t d, int x)
     }
     else if (x < 0) x = 0;
     n = (n & ~(((uint128_t)0x7fff)<<112)) | (((uint128_t)x)<<112);
-    return i2f(n);
+    return u2f(n);
 }
 
 float128_t floor128(float128_t d)
-{   std::cout << "floor128\n";
-    return d;
+{   uint128_t rep = f2u(d);
+    int x = ((rep>>112) & 0x7fff) - 0x3fff;
+    if (x < 0)    // abs(d) < 1.0;
+    {   if ((int128_t)rep < 0) return -1.0_F128;
+        else return 0.0_F128;
+    }
+// Big enough numbers are exactly integers.
+    if (x >= 112) return d;
+    int sh = x + 17;
+    uint128_t frac = (rep<<sh)>>sh;
+    if ((int128_t)rep < 0 && frac!=0) return u2f(rep-frac) - 1.0_F128;
+    else return u2f(rep-frac);
 }
 
 }
@@ -414,15 +429,9 @@ float128_t floor128(float128_t d)
 // For debugging these displays the value both in hex and as a floating
 // point value.
 
-void hexprint(uint128_t a, int n)
-{   if (n == 0) return;
-    hexprint(a>>4, n-1);
-    std::cout << std::hex << (int)(a&15) << std::dec;
-}
-
 void show128(const char* s, const working_float& a, bool showf)
 {   std::cout << s << ":  ";
-    hexprint(a.mantissa, 32);
+    hexprint(a.mantissa);
     if (showf)
     {   char b[64];
         sprint(b, a);
@@ -433,10 +442,13 @@ void show128(const char* s, const working_float& a, bool showf)
 
 void show128(const char* s, const float128_t a, bool showf)
 {   std::cout << s << ":  ";
-    hexprint(f2i(a), 32);
+    hexprint(f2i(a));
     if (showf)
     {   char b[64];
-        sprint(b, working_float(a));
+        char* bb = &b[0];
+        if (a.isNegative()) *bb++ = '-'; 
+// Beware - conversion to working_fload discards any sign!
+        sprint(bb, working_float(a));
         std::cout << "\n= " << b << "\n\n";
     }
     else std::cout << "\n\n";
