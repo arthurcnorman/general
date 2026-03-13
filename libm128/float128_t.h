@@ -44,10 +44,9 @@
 // syntax 1.2345e6_f128 using my own suffix and when native long floating
 // point is present I will need to map it down.
 //
-// Note that my suffix uses a lower case "f". If I use an upper case "F"
-// things will parse as "working_floats" which are higher precision but do
-// not support negative numbers. For working floats I support hex literals.
-// as in 0x12.345P6_F128.
+// Note that I will support either lower case "f" or upper.
+// And then a siffix of _W128 will give me an object of my "working float"
+// type.
 
 // All compilation units wanting to use the float128_t type should
 // #include this header, and the link against float128_t.cpp.
@@ -145,7 +144,7 @@ extern float128_t floor128(float128_t d);
 // with the operations of addition and multiplication.
 
 class working_float;
-extern void sprint(char* b, const working_float& aa);
+extern void sprint(char* b, const working_float& aa, int digits=38);
 extern unsigned int add_with_carry(uint128_t& a, uint128_t b);
 extern unsigned int add_with_carry(uint128_t& a, uint128_t b,
                                              unsigned int cin);
@@ -550,25 +549,13 @@ inline constexpr int read_integer(const char* s)
 
 // Convert a string to a working_float.
 
-// Hmm - what I have done here is not as good as it should be.
-// What I want to do is:
-//    Read say up to 30 digits accumulating them as an integer,
-//    and then any further digits also as an integer, just
-//    discarding any digits after the 60th.
-//    Sort out the exponent and on that basis see if the number
-//    is >= 1.0 and < 2^128. If so separate off the integer part
-//    and that can be converted to a float128_t perfectly. There
-//    are two cases left. One is that the input is a value at least
-//    2^128. Take 128 bits of the value and make into a float and
-//    now that just needs its exponent set. Well it should be rounded
-//    based on lower bits. Those cases then give as good a result as is
-//    possible.
-//    Finally we have something that is fractional. Take its top
-//    128 bits (rounded) and multiply by a nicely rounded power of 0.1.
-//    Then in some cases that gets added to the integer part we had
-//    set up earlier. 
+// Hmm - what I have done here is not as good as it should be. HOWEVER
+// it is for reading values as working_float and the whole idea is that
+// they have precision in hand, so clumsiness here that leads to the
+// bottom bits of the values returned not being quite ideal is not a
+// serious issue.
 
-inline constexpr working_float operator ""_F128(const char* s)
+inline constexpr working_float operator ""_W128(const char* s)
 {   working_float r(0);
 // C++ supports hex floats which are written rather in the style
 //     0xABC.DEFpXXX
@@ -624,11 +611,25 @@ inline constexpr working_float operator ""_F128(const char* s)
     }
 }
 
-inline constexpr float128_t operator "" _f128(const char* s)
-{   return operator ""_F128(s);
+inline constexpr working_float operator "" _w128(const char* s)
+{   return operator ""_W128(s);
 }
 
-extern void sprint(char* b, const working_float& aa);
+// Convert a string to a_float128.
+// For this I can get good results doing most of the conversion using
+// working floats - and I think this even works for hex input.
+// That is because any leading "-" is not part of the literal, and
+// hex input is not expected to provide a way of specifying intinities
+// or NaNs. Note that as coded here any excess digits are used to
+// round the value to be returned.
+
+inline constexpr float128_t operator ""_F128(const char* s)
+{   return operator ""_W128(s);
+}
+
+inline constexpr float128_t operator "" _f128(const char* s)
+{   return operator ""_W128(s);
+}
 
 inline float128_t u2f(uint128_t i)
 {   float128_t f = 999.0F128;
@@ -654,9 +655,12 @@ inline int128_t f2i(float128_t f)
 
 inline constexpr working_float::operator float128_t() const
 {
+    if (mantissa == 0) return u2f(0);
 // I shift the mantissa right so I only keep 113 bits and then remove
 // the hidden bit.
     uint128_t m = (mantissa & ~(((uint128_t)1)<<127))>>15;
+// m is now the mantiss but with the top bit cleared since that is to be
+// hidden.
     int xx = x;
     uint128_t guard = mantissa << (128-113);
 // If shifting things right moved of something with value over 0.5ULP I
@@ -669,7 +673,7 @@ inline constexpr working_float::operator float128_t() const
 // mantissa to (1)0000... [where the (1) is the hidden bit] and adjusting
 // the exponent.
         if (m == ((uint128_t)1)<<114)
-        {   m = 0;
+        {   m = m>>1;
             xx++;
         }
     }
@@ -680,7 +684,7 @@ inline constexpr working_float::operator float128_t() const
 // Here I need to introduce denormalised numbers.
         m |= ((uint128_t)1)<<113;  // put back the hidden bit
         int sh = -(xx + 0x3fff);
-        if (xx > 112) return 0;
+        if (xx > 112) return u2f(0);
         else return m >> sh;
     }
     m = ((uint128_t)(xx+0x3fff))<<112 | (m & ((((uint128_t)1)<<113)-1));
@@ -692,4 +696,3 @@ extern void show128(const char* s, const working_float& a, bool showf=true);
 #endif // _float128_t_h
 
 // end of float128_t.h
-

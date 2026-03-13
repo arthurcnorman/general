@@ -1,4 +1,4 @@
-// float128_t math library code for CSL
+// float128_t: math library code for CSL
 
 // The purpose of this header is to arrange that on all targets one
 // can use a type "float128_t". With C++23 that is an optionally provided
@@ -77,6 +77,23 @@ working_float working_float::operator+() const
     {   if (a.zerop()) return *this;
         working_float u = *this;
         working_float v = a;
+// If the two exponents match I do not need to do any shifing to line things
+// up, and so there is no issue of guard digits. Phew! But in this case
+// leading bits can cancel (including the case of the result ending up
+// as zero) so in general I will need to re-normalize. The code I will
+// put in to start with will be a bit slow!
+        if (u.x == v.x)
+        {   u.mantissa -= a.mantissa;
+            if (u.mantissa == 0)
+            {   u.x = 0;
+                return u;
+            }
+            while ((u.mantissa>>127) == 0)
+            {   u.mantissa = u.mantissa<<1;
+                u.x--;
+            }
+            return u; 
+        }
         uint128_t guard = 0;
         int shift = u.x - v.x;
 // Shift the smaller number right (incrementing its exponent) until the
@@ -95,12 +112,15 @@ working_float working_float::operator+() const
         else if (shift < 0) abort();
 // Now the two numbers are aligned, so I can just subtract the mantissas
         u.mantissa = u.mantissa - v.mantissa;
-// The result being zero is a special case.
-        if (u.mantissa == 0)
-        {   u.x = 0;
-            return u;
+// Now when I do the above subtraction u had its top bit set but v did not
+// so the worst than can happen is that I have a single leading zero left
+// in u.
+        if ((u.mantissa>>127) == 0)
+        {   u.mantissa = (u.mantissa<<1) | (guard>>127);
+            guard = guard<<1;
+            u.x -= 1;
         }
-// Now mess with the guard bits.
+// Now mess with the guard bits in case rounding is called for.
         if ((guard == ((uint128_t)1)<<127 && u.mantissa&1 != 0) ||
             guard > ((uint128_t)1)<<127)
         {   u.mantissa--;
@@ -155,7 +175,36 @@ working_float working_float::power(int n) const
 // print the working float a into the buffer b, which must be long enough.
 // I think that "long enough" may be 50.
 
-void sprint(char* b, const working_float& aa)
+// For a working_float I may want to generate 38 digits, while for
+// a float128_t 34 will be sufficient.
+
+void roundTo(char* b, int digits, int& decx)
+{   if (b[digits] >= '5')
+    {   int i = digits+1;
+// The mess here tries to arrange that if I have a part that is to be
+// discarded that is exactly (1/2)ULP that I round up only if things start
+// off with the final digit odd.
+        while (b[i]=='0') i++;
+        if (b[digits]>'5' ||
+            std::isdigit(b[i]) ||
+            (b[digits-1] & 1) != 0)
+        {   int i = digits-1;
+            if (b[i]!='9') b[i]++;
+            else
+            {   while (i >= 0 && b[i]=='9')
+                {   b[i] = '0';
+                    i--;
+                }
+                if (i < 0)
+                {   b[0] = '1';
+                    decx--;
+                }
+            }
+        }
+    }
+}
+
+void sprint(char* b, const working_float& aa, int digits)
 {   working_float a(aa);
 // I start by finding a decent approximation to the decimal exponent
 // of this number by multiplying the binary exponent by log10(2) which is
@@ -186,17 +235,8 @@ void sprint(char* b, const working_float& aa)
         *p++ = '0' + digit;
     }
 // Well I have converted an extra digit so that now I can round things
-    if (b[38] >= '5')
-    {   int i = 37;
-        while (i >= 0 && b[i]=='9')
-        {   b[i] = '0';
-            i--;
-        }
-        if (i < 0)
-        {   b[0] = '1';
-            decx--;
-        }
-    }
+    p = &b[digits];
+    roundTo(b, digits, decx);
 // I now want to insert a decimal point after the first digit...
     std::memmove(b+2, b+1, 38);
     b[1] = '.';
@@ -216,6 +256,7 @@ void sprint(char* b, const working_float& aa)
 working_float::working_float(const float128_t& f) :
     mantissa(0), x(0)
 {   uint128_t rep = f2u(f);
+    if (rep == 0) return;
     int xx = ((rep >> 112) & 0x7fff) - 0x3fff;
     uint128_t m = (rep << 16)>>16 | ((uint128_t)1)<<112;
     m = m<<15;
@@ -284,18 +325,41 @@ float128_t float128_t::operator+(const float128_t a) const
         else return *this;
     }
     if (a.isInfinite()) return a;
-    working_float u(*this);
+    working_float u(*this);   // Absolute value of inputs...
     working_float v(a);
+// Cases I need to cover
+//     u   v
+//     >=0 >=0              |u| + |v|             (A)
+//     <0  <0               -(|u| + |v|)          (B)
+//     >=0 <0     |u|<|v|   -(|v| - |u|)          (C.1)
+//                |u|=|v|   0                     (C.2)
+//                |u|>|v|   |u| - |v|             (C.3)
+//     <0  >=0    |u|<|v|   |v| - |u|             (D.1)
+//                |u|=|v|   0                     (D.2)
+//                |u|>|v|   -(|u| - |v|)       (D.3)
+
     if (isNegative())
-    {   if (a.isNegative()) return -(float128_t)(u + v);
-        else if (u.leqp(v)) return (float128_t)(v - u);
-        else return -(float128_t)(u - v);
+    {   if (a.isNegative())
+        {   // (B)
+            return -(float128_t)(u + v);
+        }
+        else
+        {   // (D)
+            if (u.lessp(v)) return (float128_t)(v - u);
+            else if (u.equal(v)) return 0.0_f128;
+            else return -(float128_t)(u - v);
+        }
     }
-    if (a.isNegative())
-    {   if (u.lessp(v)) return -(float128_t)(v - u);
+    else if (a.isNegative())
+    {   // (C)
+        if (u.lessp(v)) return -(float128_t)(v - u);
+        else if (u.equal(v)) return 0.0_f128;
         else return (float128_t)(u - v);
     }
-    else return (float128_t)(u + v);
+    else
+    {   // (A)
+        return (float128_t)(u + v);
+    }
 }
 
 float128_t float128_t::operator+=(float128_t a)
@@ -334,7 +398,7 @@ float128_t float128_t::operator*(const float128_t a) const
 
 float128_t float128_t::operator/(const float128_t a) const
 {   float128_t r = (float128_t)(working_float(*this) / working_float(a));
-    if (this->isNegative() != a.isNegative()) return -r;
+    if (isNegative() != a.isNegative()) return -r;
     else return r;
 }
 
@@ -448,7 +512,7 @@ void show128(const char* s, const float128_t a, bool showf)
         char* bb = &b[0];
         if (a.isNegative()) *bb++ = '-'; 
 // Beware - conversion to working_fload discards any sign!
-        sprint(bb, working_float(a));
+        sprint(bb, working_float(a), 34);
         std::cout << "\n= " << b << "\n\n";
     }
     else std::cout << "\n\n";
