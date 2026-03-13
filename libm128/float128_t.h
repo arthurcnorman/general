@@ -644,7 +644,7 @@ inline uint128_t f2u(float128_t f)
 }
 
 inline int128_t f2i(float128_t f)
-{   uint128_t i = 999;
+{   int128_t i = 999;
     memcpy(&i, &f, 16);
     return i;
 }

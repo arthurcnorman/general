@@ -51,3 +51,11 @@ where their inclusion give me trouble.
 
 
 Arthur Norman, February 2026
+
+
+Status:
+   March 2026. I have adapted the code that computes the exp() function
+to run with float128_t and it calculates exp(2.0_F128) getting a respectable
+result. I think this counts as "proof of concept" that the rest of the code
+here can be got working, and is a great place to stop while I go on a trip.
+

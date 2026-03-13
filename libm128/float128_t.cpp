@@ -445,7 +445,7 @@ extern "C"
 {
 
 float128_t ldexp128(float128_t d, int x)
-{   uint128_t n = f2i(x);
+{   uint128_t n = f2u(d);
     x = ((n>>112) & 0x7fff) + x;
     if (x >= 0x7fff)
     {   x = 0x7fff;   // Turn into infinity
