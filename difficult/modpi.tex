@@ -95,58 +95,48 @@ the fractional part of your input divided by $2 \pi$ doing little more than
 a single length multiplication! The only cost is that youi need to have
 stored rather a lot of digits of the value of $2/\pi$.
 
+But of course it is a little harder than that. You may not need to compute
+just the first four digits of the fraction in this decimal case or the
+first 52 if you are using machine double precision floats, because that
+fractional part may be rather small and its leading zeros mean that you
+need rather more done to get the right number of significant figures there
+rather than just a simple number of digits or bits. How bad can that be?
+Well start with easy illustrations that there is an issue. We know that $22/7$
+is a decent approximation to $\pi$ and that $333/106$ and $355/113$ are
+rather better ones. Well perhaps $333/106$ is not especially well known!
+
+Based on these we know that $2 \times 22$ will be close to $7\times(2 \pi)$
+and $2 \times 355$ will be close to $113 \times (2 \pi)$. In fact
+$710 - 113 \times (2 \pi) = 0.0000602887\ldots$ so for this fairly
+small argument ($710$) to a trig function one needs 4 more decimal places
+calculated in the reduced argument in order toi get the correct number of
+significant figures. This example illustrates that to find just how close
+to an integral multiple of $2 \pi$ a floating point value can be it
+is going to be useful to look at rational number approximations to $\pi$
+such that the numerator is a value exactly representing a machine floating
+point value. In other words it must be an integer with at most 53 bits
+multiplied by some power of 2.
+
+Well a search through such cases (and how that can be done efficiently is
+not explained here but in the end it is not too bad) ends up finding that the
+number $6268741853657986 \times 2^{5740}$ differs from a multiple of
+$2 \pi$ by about $2\times 10^{-20}$ and that is as bad as things get, so
+if allowance is made for up to around 20 leading decimal zeros in the
+fractional part (or 65 bits) it will be possible to preserve enough
+significan digits that results will be as accurate as they posisbly could be.
+
 The above shows that by doing something just slightly tricky it is possible
 to turn something that looked at first as if it would either be impossible,
 or at best that it would be grimly expensive, into a fairly short calculation.
 
-But for perfectionists this is not the end of the difficulty! Note that
-in the imaginary 4-decimal precision arithmetic being used here to
-illustrated what is done\footnote{Using real 52 or 53-bit machine floating
-point does not add any significant extra issues} every floating point
-number bigger than \verb@999.9@ in fact describes a whole number. This is
-in the spirit that for instance $6.233e3$ has the integer value $6283$ and the
-next floating point value up, i.e.\ $6.284e3$ is then $6284$. That is a
-simple observation to make. The challenging question is ``How close to
-an exact multiple of $2 \pi$ can an a non-zero whole number less than
-$10^308$ be?'' The reason this is important is that when we find, for some $x$,
-the fractional part of $x/(2 \pi$ some number of digits immediately after
-the decimal point night be zeros. So in fact it will not be good enough as
-suggested by the previous paragraph to collect just four digits there. It
-is necessary to collect enough that there will be four {\em significant}
-digits following any leading zeros\footnote{\ldots and equivalent cases when
-the fraction has many leading 9 digits}.
+The discussion here has just been limited to taking the argument for a
+sine or cosine (working in radians) and reducing it to the range $0$ to
+$2 \pi$. That is of course only the first step. Then computing
+the function of that reasonablky small value has to be done. Well probably
+it would be best to reduce the original input to the range $-\pi/4 to
+\pi/4$ rather than $0$ to $\pi$. But the calculations on the reduced
+values represent a quite different set of issues to face up to.
+Getting all the bits of the result correct there is also a proper
+challenge!
 
-A useful observation is that $\pi$ is a transcendental number and that means
-that the remainder can never be zero, so we always have a finite number of
-leading zeros there, and if we limit the values of interest to the
-range up to $10^{308}$ (a value picked as an an approximation the the
-range supported by standard computer arithmetic) there must be a worst
-case. For almost all values of $x$ there are no or very few leading zeros,
-but the concern here has to be to get every single case correct and that
-involves seeking the most extreme behaviour.
-
-
-
-% Problem restated concisely:
-%
-% This is a Diophantine approximation problem for the irrational number .
-% Good approximations come from convergents of the continued fraction for .
-% If p/q is a convergent to , then q  p, so the integer multiple m = q
-% gives q close to integer n = p. Best small errors follow from convergents
-% and some near-convergents.
-%     m = 1: |  3| = 0.1415926536
-%     m = 106: |106  333|  0.0000000530 (5.3010^8)
-%     (These numeric magnitudes show 106 gives exceptionally tiny distance;
-% 355/113 is famous for approximating  itself, but when scaled as 113355
-% its absolute is larger than 106s case because the scalings differ.)
-%
-% ... so what you do is you comnpute continued fraction versions of pi
-% (or maybe 2pi) and each one gives you the best rational approximation
-% up the the size of its denominator, and the denominators grow faster than
-% phi^n because the slowest convergomg continued fraction is for phi with
-% all its partial quotients 1. So you expect that to get to 10^308 you only
-% need log_phi(10^308) steps and that is not too bad. Ha ha.  Explaining
-% and justifying that nicely will be "fun"
-%
-% But see it can be done!!!!
 

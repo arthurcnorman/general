@@ -61,6 +61,7 @@
 #include <cctype>
 #include <cstring>
 #include <bit>
+//#include <complex>   // tends to include <cmath>
 
 // "int128_t.h" is in many respects in the same spirit as this bit
 // of code, in that it arranges that I can use a type "int128_t" fairly
@@ -74,6 +75,11 @@
 #if __STDCPP_FLOAT128_T__
 using std::float128_t;
 using namespace std::literals;
+// From C++23 std::complex can cope with 128-bit floats, but up until
+// then it can not, so I will not be able to write complex<float128_t>
+// in code that provides lagacy support. So I introduce my own complex128_t
+// for what I am interested in. 
+using complex128_t = std::complex<std::float128_t>;
 
 #define NativeFloat128Available 1
 //!!! #pragma message "This commpiler says it supports float128_t directly"
@@ -115,6 +121,35 @@ public:
     bool operator>=(const float128_t a) const;
     bool operator<(const float128_t a) const;
     bool operator<=(const float128_t a) const;
+};
+
+class complex128_t
+{
+public:
+    float128_t realpart;
+    float128_t imagpart;
+    complex128_t(float128_t r, float128_t i):
+        realpart(r), imagpart(i)
+    {
+    }
+// This will need operator overloads for arithmetic etc and I will
+// fill in the detauls later.
+    complex128_t operator+();
+    complex128_t operator+(complex128_t);
+    complex128_t operator-();
+    complex128_t operator-(complex128_t);
+    complex128_t operator*(complex128_t);
+    complex128_t operator/(complex128_t);
+    complex128_t operator==(complex128_t);
+    complex128_t operator!=(complex128_t);
+    static float128_t real(complex128_t);
+    static float128_t imag(complex128_t);
+    static float128_t abs(complex128_t);
+    static float128_t arg(complex128_t);
+    static float128_t norm(complex128_t);
+    static complex128_t conj(complex128_t);
+    static complex128_t proj(complex128_t);
+    static complex128_t polar(float128_t r, float128_t thete);    
 };
 
 #endif // NativeFloat128Available

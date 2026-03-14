@@ -14,6 +14,18 @@
  * $FreeBSD: src/lib/msun/src/openlibm.h,v 1.82 2011/11/12 19:55:48 theraven Exp $
  */
 
+// I have a bit of a misery here. I need a customised version of this
+// that forces "long double" to be float128_t, but in general plenty
+// of declarations here can clash with the host <math.h>. So I can not
+// be happy using host <math.h> (aka <cmath>) because that will eg defined
+// HUGE_VALL to the max value of a long float and that is not necessarily
+// the same as float128_t.
+
+// Well what I should do is to trim this down so it includes the host
+// <math.h> and then defines just things relating to float128_t, e.g.
+// HUGE_VAL128.
+
+
 #ifdef OPENLIBM_USE_HOST_MATH_H
 #include <math.h>
 #else /* !OPENLIBM_USE_HOST_MATH_H */
