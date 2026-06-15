@@ -137,10 +137,48 @@ is the one to use and which the one to avoid.
 
 So overall the program that solves a simple quadratic and that does not
 even worry about cases where there is no (real) solution is dramatically
-messier and calla for much more understanding that those novice
+messier and calls for much more understanding that those novice
 programmers will have been ready to deploy. But if you are writing a library
 or application that is to be used by others you have a responsibility to
 cope with all cases, not just the ones you think about first!
 
+Is this particular case the only one where obvious code fails to handle
+edge cases? No not at all. Here are two more operations that are commonly
+provided in computer languages or libraries but that need a degree of care.
 
- 
+\begin{itemize}
+\item[Hypotenuse]
+If you have two points in the plane and their $x$ coordinates differ by $u$
+while their $y$ coordinates differ by $v$ then the distance between them is
+$\sqrt{u^2 + v^2}$. Turning that simple mathematics into code seems
+easy enough. However computer numbers tend to have a restricted range, and
+so it is painfully easy to give cases where $u^2$ or $v^2$ overflows even
+though the square root operation would bring the result back into
+representable range. So to get code that works safely in all cases it
+is liable to be necessary to pre-scale $u$ and $v$ so that their squares are
+not too big, and allow for that at the end. Of course this is not really
+very hard, but recognising that it is necessary might be.
+
+The issue of underflow when $u$ and $v$ are both very small is similarly
+problemetic -- if their squares both underflow to zero then the distance
+beteeen the points could end up reported as zero when it is not. Again
+scaling sorts things out.
+
+\item[Complex multiplication]
+If you have complex numbers $a + i b$ and $c + i d$ then their
+product has real part $a c - b d$ and imaginary part $a d + b c$. Now
+imagine that in your computer you can only represent numbers up to
+10000. Consider $(101 - 2 i) \times (100 - 96 i)$. Using the
+simple formula this  will be calculated as $101 \times 100 - 2 \times 96$
+for the real part and $101 \times (-96) +  (-2) \times 100)$
+which gives $9908 + 9896 i$ which is in range. However the intermediate
+step of $101 \times 100$ overflowed. To set a challenge: find a neater
+example of this bad behaviour! As before the issue can be side-stepped
+by scaling, but the resulting code is then significantly bulkier than
+the obvious but unsafe version.
+\end{itemize}
+
+The overall message to take from this is that just because there is a neat
+mathematical formula for a calculation -- even one that is simple and
+basic -- for fully correct computer implementation issues of accuracy
+and the limits on number range can call for careful treatment. 

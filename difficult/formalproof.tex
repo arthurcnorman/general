@@ -1,9 +1,27 @@
 \chapter{Formal Proofs}
 \begin{quotation}\textit{
-Operational vs. Denotational semantics.
-How are you sure your proof checker is not bug-ridden?
-Looking back to Dijkstras mantra that testing can not demonstrate
-correctness, only incorrectness.
+One of the biggest and deepest challenges in computing is that of
+getting things right. Errors or oversights in code might lead to
+crashed, incorrect behaviour or security loopholes. If some small
+component in a large project has problems these may bubble up and
+impact the whole. A fine example of that arose in 1994 where some
+Intel Pentium processors returned incorrect results for the quotient
+of certain very particular floating point numbers. Of course few people
+would have performed calculations that happened to use the numeric
+values involved, and yet fewer would have noticed anything amiss. But
+despite the issue being of rather low practical relevance it dented
+confidence in every calculation performed in that model of CPU. \\
+Even extensive and careful testing of code tends just to be able to
+reveal bugs but not to certify their absence, and there are many cases
+where flaws that lead to software misbehavior or insecurity have remained
+present in major widely-used code for decades.\\
+One response to this is to consider having formal proofs of code
+correctness. Setting these up first calls for totally precise explanations
+of what would consitute acceptable behaviour, and even when this is
+available it is typically quite challenging.
+%Operational vs. Denotational semantics.
+%Abstract interpretation.
+%How are you sure your proof checker is not bug-ridden?
 }\end{quotation}
 
 

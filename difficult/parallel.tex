@@ -1,8 +1,35 @@
 \chapter{Parallelism and Concurrency}
 \begin{quotation}\textit{
-Gosh this can be difficult with both avoiding deadlock and arranging
-that the overhead of all those semaphores etc does not slow
-things down badly. And for a kicker there are memory access semantics
-such as acquire and release, and all the joy of lock-free methods.
+With many simple computer systems it is natural to expect that the
+computer will simply follow its instructions and that if the same
+input is provided on several occasions exactly the same behaviour will be
+observed. Once parallelism is introduced this tidy situation falls, since
+the precise timing for each of multiple concurrent parts of the activity
+can not be predicted. When you have multiple tasks to perform, they are all
+independent and the order in which thet complete is utterly unimportant all
+is still well, but that very special situation is far from common. \\
+In this chapter three styles of concurrency are considered:
+\begin{enumerate}
+\item Multiple-core CPUs with work spread across them;
+\item ``Single Instruction Multiple Data'' parallelism as often
+implemented using graphics cards;
+\item Work distributed across a network of interconnected systems.
+\end{enumerate}
+Here it is firstly obviously essential that uncertain timing as between
+parts of thw workload must never lead to the whole task getting out of step
+and perhaps locking up. But then maintaining that level of synchronization
+can easily lead to severe overheads, and the standard joke that the
+computation being run has been paralysed as much as parallelised.
 }\end{quotation}
+\section{Multiple Cores}
+\subsection{Software}
+% Atomic variables, semaphores, condition variables, higher level constructs
+\subsection{Hardware}
+% memory models and acquire/release semantics to worry about, especially
+% in lock-free code.
+\section{SIMD}
+% The sequential core of what you do may dominate costs!
+\section{Distributed Computing}
+% Communication costs and balancing are not easy to optimize!
+
 
