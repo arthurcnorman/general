@@ -25,3 +25,50 @@ available it is typically quite challenging.
 }\end{quotation}
 
 
+\section{Correct rounding}
+The discussion here is not going to explain how the results it cites have
+been achieved. But it notes a case where a team has deployed program proof
+techniques to deliver a basic capability used by millions in such a way
+that it is as good and reliable as possible.
+
+Pretty well all computer languages provide functions for computing the
+elementary functions: $\sin$, $\cos$, $\exp$, $\log$ and a bunch more.
+historically in most cases the implementers accepted that the results
+they delivered were really close to the ideal ones -- only the lowest
+bits of the floating point values could deviate from perfection. After
+all an error on one part on $10^17$ is really unlikely to hurt the users.
+Neverthless there is an ideal against which perfection can be judged.
+Any floating point number presented to one of these functions really
+stands for an integer multiplied or divided by some power of 2. For instance
+on a standard computer the number you present as $(1/3)$ is liable
+to be stored as $(1501199875790165/2^{52})$. So one can take a view that
+when ``$(1/3)$'' is presented to some function that ideal answer to be
+returned will be the floating point value closest to the value
+of the function when used on $(1501199875790165/2^{52})$. It should be
+obvious that achieving this risks being seriously complicated and expensive!
+Furthermore if someone has developed code that they claim achieves this,
+checking it is not going to be straightforward since there are $2^64$
+distinct bit-patterns that represent floating point values\footnote{Some
+stand for infinities or for ``not numbers'' rather than being cases that need
+careful checking}. This is way too large a number to make exhaustive checking
+feasible, and it is not at all obvious that if just a few inputs lead to
+very slightly incorrect results that there is a sane way to identify them.
+
+The CORE-MATH project (see \verb+https://core-math.gitlabpages.inria.fr/+
+uses a system called GAPPA to mechanise proofs associated with their
+numeric code, concerning themselves at a really detailed level with every
+rounding operation and every place where errors could creep in. Seting a
+goal of obtaining results where for every input their versions of library
+functions will return precisely correctly rounded results, they show that
+this level of accuracy can be achieved while having code that runs as
+fast (and sometimes faster) than existing elementary functions libraries.
+For some of their code they publish human readable explanations of all the
+cases that their proofs of correctness need to consider, but behind those
+written explanations there will lie significant computational support.
+Some widely-distributed systems are incoporating this work so that all
+users -- most of whom will not even think about least-significant bit
+accuracy -- can benefit from it. The message from this is that formal
+proof can apply to code that is truly widely used, but that using it will
+often be a lot of very specialist work!
+
+ 
