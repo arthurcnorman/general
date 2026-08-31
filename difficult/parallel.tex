@@ -1,4 +1,4 @@
-\chapter{Parallelism and Concurrency}
+\section{Parallelism and Concurrency}
 \begin{quotation}\textit{
 With many simple computer systems it is natural to expect that the
 computer will simply follow its instructions and that if the same
@@ -21,15 +21,14 @@ and perhaps locking up. But then maintaining that level of synchronization
 can easily lead to severe overheads, and the standard joke that the
 computation being run has been paralysed as much as parallelised.
 }\end{quotation}
-\section{Multiple Cores}
 \subsection{Software}
 % Atomic variables, semaphores, condition variables, higher level constructs
 \subsection{Hardware}
 % memory models and acquire/release semantics to worry about, especially
 % in lock-free code.
-\section{SIMD}
+\subsection{SIMD}
 % The sequential core of what you do may dominate costs!
-\section{Distributed Computing}
+\subsection{Distributed Computing}
 % Communication costs and balancing are not easy to optimize!
 
 

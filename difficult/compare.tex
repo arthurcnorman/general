@@ -1,0 +1,133 @@
+\section{Simple comparison is not simple}
+\begin{quotation}\textit{
+Solving a quadratic at least looks as if it enough of a task to be worth
+thinking about, even though at the start it does not appear to need a great
+deal of thought. But there can be yet smaller activities where computer
+arithetic has some subtlety. The one looked at here is just that of
+comparing two numbers to decide which is bigger! By all rights that
+should surely be utterly straightforward\ldots
+}\end{quotation}
+
+Suppose that in a computer program you have two variables. The first is
+an integer \verb+i+ and here the case to be considered is when this
+integer is 64-bits wide. The second variabe \verb+d+ is a double precison
+float, and that too will fill 64-bits. In the past there were multiple
+different ways in which floating point values ended up packed into
+computer memory and much complication handling all the variations, but today
+one can be assured that this floating point value is in a standard
+form defined by the IEEE organization. The task is the trivial one of
+deciding which of these two variables holds the larger numeric value.
+One is tempted to write something as simple and direct as \verb+i > d+ as
+the key test and expect everything to behave sensibly. But it might not!
+
+Both computer integers and floating point values have limitations. So
+first imagine trying to make the comparison by first turning both
+values into integers. Well if it is large the floating point number can easily
+have a value beyond the range of computer integers, and any attempt to
+convert it will necessarily give trouble. In the languages C and C++ this
+issue is expressed by the language standard declaring that an attempt to
+convert an over-large floating value to an integer can lead to
+``undefined behaviour'' and their expensive explanation of that allows
+for absolutely any consequences, not at all limited to ones that lie
+within the bounds of sanity. On the other hand if the floating point number's
+value is more modest there may well be a fractional part and a conversion
+to an integer necessarily loses this.
+
+So perhaps the best scheme will be to start by converting the integer
+to floating point? That can always be done and there are no fractions
+anywhere to cause confusion. However beyond a certain limit the floating
+point reporesentation can represent whole numbers but not all of them. To
+be specific for the IEEE format under consideration here any integer
+with magnitude up to $2^{53}$ can be converted to a double precision number
+with no loss, but from there up to the biggest integers (close to $\pm 2^{63}$)
+there has to be rounding. At the extreme one finds that adjacent double
+precision numbers differ in value by 1024 (=$2^{10}$). Common programming
+languages arrange that when an integer is mapped into floating point and
+there needs to be rounding that works by selecting the nearest value.
+So the double precision value you end up with may be either larger or
+smaller than (or indeed sometimes equal to) the number you started with.
+So you can not follow through to a simple reliable comparison!
+
+Perhaps the reader might like to pause here and see if they can find
+a neat way around all this.
+
+One way to get started would be to handle a succession of straightforward
+cases first. So if \verb+d+ is greater than $2^{63}$ or less than $-2^{63}$ it
+is beyond the range of 64-bit integers and so depenings on its sign it
+is unambiguously larger or smaller than whatever integer we have. It may
+also be proper to check for the double precision value being a NaN (Not a
+Number) because that would be unordered against any other numeric value.
+If the floating point value is somewhat smaller then it might be converted
+to an integer. If it has a fractional part that has numeric value less than
+1.0 and so if the double value exceeds one greater than the integer or
+is less then the integer minus one a result can be declared. Finally
+one can obtain the fractional part of the floating point number by taking
+the full value and subtracting what emerges from a a round trip that
+converts it to an integer and then back. As always in such a detailed sequence
+of steps i t will be necessary to think about edge cases. A particular one
+is that if the floating point value is exactly equal to $2^{63}$ and attempt to
+convert it to an integer would overflow. This write-up does not present a
+full and clean version following this approach because in the following
+paragraph presents an alterative but perhaps less obvious approach.
+
+So for a second attempt the presentation here will be in the form of lines
+of code, using C style annotations to show conversions from one type
+to another. So a first step will be to make a value \verb+w+ by converting
+the integer into a floating point value:
+\begin{verbatim}
+        double w = (double)i;
+\end{verbatim}
+Now we know that for large integers this value \verb+w+ may have to be either
+larger than the accurate value of \verb+i+, but it will bn one of the two
+possible floating point numbers one lower and one larger than the ideal.
+The following picture suggests the scheme where large dots are values
+in the floating point domain and small ones are those that 64-bit integers
+can stand for. Positions on this line corresponding to one possibility
+for \verb+i+ and \verb+w+ are marked. 
+\begin{verbatim}
+              ...O...............O...
+                 ^    ^
+                 w    i
+\end{verbatim}
+Any value of \verb+d+ that is strictly greater than w must be strictly greater
+than \verb+i+ because of the spacing between values representable in
+floating point. Similarly anything strictly less than \verb+w+ is of
+necessity also less than \verb+i+. That means that a continuation of the code
+we need might be
+\begin{verbatim}
+        if d > w then say "greater"
+        if d < w then say "less"
+\end{verbatim}
+and now the only case to worry about will be when \verb+d+ and \verb+w+
+happen to be equal (which may be a tolerably uncommon case).
+Before continuing it may be ueful to consider the case if the only test
+that had to be made is whether \verb+d+ is strictly greater than \verb+i+.
+In that situation if \verb+d+ is a NaN it is proper to report a ``no it
+is not greater''. and this is turns out to be neatly incorporated by
+adjusting the second of the above lines to be
+\begin{verbatim}
+        if d != w then say "less or unordered"
+\end{verbatim}
+
+To continue with the case where \verb+d+ is equal to \verb+w+. A first
+thought is that \verb+w+ came from an integer and so is not badly outside the
+range of integers. Well actually if it has the value $9223372036854775808.0$
+which is exactly $2^{63}$ and can have arisen from converting and hence
+rounding up integer that started off a little less than that. This is the
+{\em only} special case! so it gets handled using 
+\begin{verbatim}
+        if w = 9223372036854775808.0 then say "greater"
+\end{verbatim}
+Because \verb+w+ and \verb+d+ are now known to be equal it would be
+valid to check either of them. Finally it is possible to end up with
+code that is much like one of the very earliest thoughts, because
+now we are assured that the conversion from double to integer will be
+in range and will be exact:
+\begin{verbatim}
+        return what you get from the comparison (integer)d > i
+\end{verbatim}
+
+About the only reasonable response to this is amazement first that such
+a trivial looking task ends up so messy to cope with, but then that there
+is a solution that is concise and liable to be reasonably efficient!
+

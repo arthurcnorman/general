@@ -1,4 +1,4 @@
-\chapter{Iteration}
+\section{Iteration}
 \begin{quotation}\textit{One thing that computers are really good at
 expressing is repeating some simple action. One might have hoped that
 when that action really is simple that the consequences of doing it over
@@ -6,7 +6,7 @@ and over again would hold few surprizes. However that is very much not the
 case, and repetition or iteration can lead to all sorts of complications
 and difficulties. This chapter starts with a couple of famous examples.
 }\end{quotation}
-\section{Collatz}
+\subsection{Collatz}
 Perhaps the best known illustration of the fact that repeating a small
 calculation can have tricky consequences is due to Collatz\cite{collats}.
 Given a positive integer the step taken in to halve it if it ie even or
@@ -42,7 +42,7 @@ of it has been found. Variations and generalizations of the simple
 rule (for instance to allow negative as well as positive numbers or
 to extent it to real or complex arithmetic) have been tried. For
 such a very simple statement it is a really hard problem! 
-\section{Adding up}
+\subsection{Adding up}
 For a complete change of theme consider the following obviously
 trivial little program (so simple that it does not need to be
 given in any particular real programming language):
@@ -142,7 +142,7 @@ you have just one number left.
 So something as straightforward as merely getting the computer to
 add up a bunch of floating point values can be messier than might
 at first be apparent. 
-\section{Population dynamics and Chaos}
+\subsection{Population dynamics and Chaos}
 Collatz sequences show that a simple transformation on integers can lead
 to deep questions. The above discussion about the consquences of rounding
 in floating point arithmetic show that that can be a bit messy, but what
@@ -226,7 +226,7 @@ for some complex constant \verb@c@ and asks the simple question
 becoming var large''. Plotting a map of of the answer to this question as
 \verb@c@ ranges over the complex plane leads to the well-known but
 rather decorative Mandelbrot Set\cite{mandelbrot}. 
-\section{Intentional random-like behaviour}
+\subsection{Intentional random-like behaviour}
 The chaotic behavour of the above process, which is known as the
 Logistic Map, might seem pretty randomish, but it has just enough
 residual regulatrity that relying on it as a sort of randomness is not
@@ -305,7 +305,7 @@ could still count as fully respectable. But one should take care not to
 rely on more than $2^32$ successive values from this 64-bit generator, and
 with modern fast computers it is easy to imagine circumstances in which
 random sequences that long might be used.
-\section{Life}
+\subsection{Life}
 John Conway's Game of Life\cite{life} runs on grid where each position
 is either filled on blank. These states may be described as the
 call there being alive or dead. At each clock tick the following rules

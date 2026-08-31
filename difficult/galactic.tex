@@ -1,4 +1,4 @@
-\chapter{Galactic algorithms}
+\section{Galactic algorithms}
 \begin{quotation}\textit{
 Some procedure are not just difficult to apply: they can have costs that
 dwarf numbers that are merely astronomical. Can such grotesquely infeasible
@@ -30,7 +30,7 @@ despite it giving a theoretical speedup will onlt achieve that in cases
 pushing against the size limits of the biggest available computers, and
 even then its advantage will be slight.
 
-\section{Matrix Multiplication}
+\subsection{Matrix Multiplication}
 The straightforward scheme for multiplying a pair of square matrices of
 size $n \times n$ has cost that grows proportional to $n^{3}$. Our first
 galactic algorithm represented a breakthrough discovery that this
@@ -74,7 +74,7 @@ for solving this problem will be. Most of these improved schemes work
 by splitting large matrices into more then 4 blocks and all of them
 are even further from practicality then the Strassen method.
 
-\section{Integer multiplication}
+\subsection{Integer multiplication}
 Multiplying integers is a pretty fundamental operation, but here to
 make things harder the emphasis will be on large integers -- typically
 ones with from hundreds to millions of decimal digits. Things start
@@ -112,7 +112,7 @@ integer multiplication can involve. For those who then want to follow
 through by re4ading textbooks or scouring the web it may give a broad
 overview so they know how the things they read up on fot together. And
 those who already understand this well can just smugly skip to the next
-section.
+subsection.
 
 Sch\"{o}nhage-Strassen works by first padding its integer inputs so that
 each have a suitable power of two bits. At least as an abstract algorithm
@@ -204,11 +204,11 @@ hydrogen atom, there would not be nearly enough room available in the
 observable universe to write them down.'' That surely qualifies it
 to count as galactic. 
 
-\section{Regular expressions}
+\subsection{Regular expressions}
 The separate chapter here on pattern matching also presents a problem
 that might have seemed tame but is in fact galactic.
 
-\section{Primality checking}
+\subsection{Primality checking}
 It is easy to check if a small number $N$ is prime -- just check
 each potential factor up to $\sqrt N$. For larger numbers there are
 fine and practially very sensible methods some of which rely on a supply
@@ -230,7 +230,7 @@ when trying to get the very best solution to a problem, but that those
 who want full details may first need to attend courses on number
 theory!
 
-\section{Minimum Spanning Trees}
+\subsection{Minimum Spanning Trees}
 A graph here is a collection of vertices with edges that join some of them.
 A spanning sub-tree is a setset of the edges such that it is possible to
 get from any vertex to any other one only traversing edges in that subgraph.
@@ -265,7 +265,7 @@ Ackermnann function in the eventual cost bound gives clear warning that
 this is all far from straightforward even though right here we are not
 documenting just what that function is or how it arises!
 
-\section{Perfect data compression}
+\subsection{Perfect data compression}
 When data of any sort is to be transmitted over a slow network or sored in
 an archive it may well be good to produce a reduced size version of it such
 that when the original data is eventually required it can be reconstructed.
@@ -305,7 +305,7 @@ expect that something that was impossible to implement would not have many
 uses, but amazingly that is not the case. Here are two that illustrate
 the power of this concept:
 
-\subsection{Testing for randomness}
+\subsubsection{Testing for randomness}
 A funadamental result is that if data is truly random then the most
 concise why to express it is basically to put it in a simple
 print statement. For instance this shows that a string of digits
@@ -332,7 +332,7 @@ compression would uncover the implementation of the generating program
 and in so doing show that the sequences were pseudo-random rather than]
 genuine.
 
-\subsection{How common are primes?}
+\subsubsection{How common are primes?}
 The result sketched here uses the fact that almost all data must
 be impossible to compress. This result emerges from counting how
 many different possible byte-sequences of length $N$ exist and

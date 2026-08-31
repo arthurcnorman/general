@@ -1,10 +1,36 @@
-\chapter{Floating Point}
+\section{Errors that build up and up}
 \begin{quotation}\textit{
-Numerical monsters! How to read and print floats accuretely.
-double-double to gain higher precision and the way that relies on
-precise detail of the underlying representation. Directed rounding
-and interval arithmetic -- error estimation!
+Up until perhaps the 1990s it was common to use floating point representations
+that used 32 bits for each number. That corresponded to keeping around 7
+decimal digits of precision. Despite that seeming generous it was fairly
+easy to stumble across calculation schemes where the limited accuracy led
+to errors building up and results ending up compromised. In those early
+days floating point using 64-bit words (giving more like 16 decimal
+digits) existed but their use was more expensive both in time and space.
+When computer capacities had grown so that these limitations were not a
+problem (at least for most users) it become more or less standard to use this
+double precision. Effects of rounding felt a lot more remote with all that
+extra precision in hand and so fewer people even thought about it.
+
+However in the 2020s the pendulum swings back. Many of the most intense
+calculations for both graphics and AI applications and performed not
+using the main parts of a computer but exploiting the capabilities of
+video cards or other special accelerators. These tend to favour low
+precision calculations -- 32 bit floating point is at the high end of
+normal usage and calculations are typically done using 16 bit or even
+lower precisions. Furthermore the hardware is seriously fast so that
+cascades of vast numbers of individual arithmetic operations will be
+used. The effect is that maintaining accuracy comes back into focus.
+Of course most ordinary users will not be coding up all these calculations
+for themselves, and perhaps they do not mind too much if the results are
+not especially accurate. But it may neverthless interest them to understand
+some of the issues. In the coverage here almost all the examples will
+use decimal fractions with three significant digits. This represents
+a level of accuracy very close to that for 16 bit computer floating point
+work, so any unreasonable-seeming results can transfer pretty directly to
+that world.
 }\end{quotation}
 
 
 
+% add up n copies of 1/n

@@ -2,52 +2,16 @@
 
 # I have not put in rules to deal with bibliography and index here.
 
-chapters =	intro.tex \
-		casestudy.tex \
-		counters.tex \
-		turing.tex \
-		galactic.tex \
-		intractable.tex \
-		practical.tex \
-		lambda.tex \
-		primrecurse.tex \
-		quadratic.tex \
-		turtle.tex \
-		modpi.tex \
-		ingenious.tex \
-		images.tex \
-		pattern.tex \
-		parallel.tex \
-		puzzles.tex \
-		floating.tex \
-		formalproof.tex \
-		iteration.tex \
-		nondeterministic.tex \
-		hardware.tex \
-		networks.tex \
-		AI.tex \
-		oddlanguage.tex \
-		undecidable.tex \
-		endpart.tex
-
 
 # I will remake this even if it is already present and seemingly up to date
 .PHONY:	full.pdf
-full.pdf:	full.tex full.bib full.ind \
-		$(chapters)
+full.pdf:
+	pdflatex full
 	bibtex full
 	pdflatex full
-	pdflatex full
 
-chapters.tex:	$(chapters)
-	rm -f chapters.tex
-	for x in $(chapters); do printf "\input $${x%.tex}\n" >> chapters.tex; done
-
-
-# The target might be say 80000 words. As of 9 Jan 2026 things stand at
-# around 11000 which is maybe at the 13% level.
-
+.PHONY:	count
 count:
-	wc full.tex $(chapters)
+	wc *.tex
 
 # end of Makefile
