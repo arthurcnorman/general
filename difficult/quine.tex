@@ -1,0 +1,217 @@
+\section{Puzzles}
+\begin{quotation}\textit{
+There are some computing challenges that exist almost solely because
+their solutions are not immediatly obvious, or as puzzles, jokes,
+tests to set job candidates or purely because a challengs can be fun.
+But some of these can contain lessons that might matter in the real
+world. The first one considered here is a classical challenge that dates
+back to the very early years of computing, but after explaining what is
+called for and how to achieve the effect there is going to be a discussion
+of a few ways in which this has importance way beyond the frivolous joke it
+starts off as.
+}\end{quotation}
+
+\subsection{Quine}
+The absurd seeming challenge is to create a program wuch that when it is run
+it displays exactly itself in the textual source-code form it started in.
+It should instantly be obvious that it can not just consist of one or
+more print statements to generate this, because the full code will of
+necessity be bulkier than the strings that are to be printed. The exact
+programming language to be used here will make a bit of a difference
+to exactly what is to be done, so here a form of pseudo-code that is
+not exactly any existing language will be used -- but conversion to
+a version that could be demonstrated should be easy.
+
+A self-reproducing program like this is referred to as a ``quine'' in
+honour of Willard Van Orman Quine, a philosopher who had much to say
+about the roots of mathematics, including issues relevant to such
+a paradoxical piece of code, but who did not himself promote the
+particular challenge.
+
+The insight needed to solve the challenge comes from the fact that
+to get enought output to be a complete copy of the source text, a
+program must display some of its data (at least) twice. So one
+can give a high level skeleton of a solution as
+\begin{verbatim}
+start here:
+   let d = "some useful text that we will design in a moment";
+   first_display(d);
+   second_display(d);
+   third_display(d);
+   stop
+where
+     first_display(s) = ...
+and  second_display(s) = ...
+and  third_display(s) = ...
+\end{verbatim}
+Where it is now necessary to fill in both the text that is set up in
+the variable \verb+d+ and the details of the two or three functions
+that display it.
+
+Well it is easy to get started because \verb+first_display()+ must
+begin by printing out something along the lines of
+\verb+start here: let d=+ and so if we make the string d start with
+those characters it can just print out the first so many chartacters
+from its argument. What comes next has to be the material that
+forms the totality of \verb+d+. So \verb+second_display+ just pushes
+out the whole of what is in \verb+d+. Well it is liable to have to
+take special action to render quote marks and line breaks and where
+they are to be needed for any reason the string may have to use
+some encoding for them -- bit it can be rather simple encoding.
+Finally \verb+third_display()+ prints out the parts of the entire program
+from the end of the definition of \verb+d+ onwards, in very much the
+same way that \verb+first_display()+ showed the start.
+The effect is that the source code has effectively two versions of everything.
+one as executable code and the second as part of the data that it decodes
+to know what to print. Once you have seen the trick it is not really
+that difficult after all!
+
+However the idea is not merely an abstract puzzle. I can form the
+basis of a way to create a nice form of malicious software, and it
+is central to allowing proof of some results in the theory of computation.
+
+To understand the malicious use consider a compiler for some programming
+language. You can feed it source code and it generates executable
+binaries. Quite often compilers will be written in the language that they
+process. making the compiler self-reliant like this is sometimes referred to
+as ``eating your od dog-food'' or just ``dogfooding'', and it can be
+good policy because it can represent a fair-sized test to check that
+the compiler works. Now imagine that the initially shipped binary includes
+an extra section that inspects the code it is asked to compile and takes
+special action if it matches certain signatures. One part of the special
+action will be to feed the text of this special extra code into the
+source that it works on even if it had not been present in the source
+files that had been offered. This is very much like using a quine. It
+means that even when presented with clean sources of a respectable version
+of itself it will generate an executable containing its cunningly hidden
+trap. As well as using this to hide the fact that it is a ``trick'' version
+of the code, it can also include (in the hidden part) tests that detect
+features it wishes to attack. This could be as simple as making it
+inspect copyright notices and then arranging that executables it builds
+from code owned by some person or company includes extra material (again
+somewhat in the spirit of a quine) that arranges to post the source
+code (which might well be supposed to be confidential) back home.
+This shows that installing the binary of a compiler from anywhere outside
+your direct control could carry risks. And that to mitigate those you
+may need to rebuild it from its source (which is assumed human readable and
+visibly untainted) using some independent set of build tools. Most people
+are not neurotic enough to feel the need to go to this level of trouble,
+but if company or national security is at stake it may need to be considered!
+
+The second use of code that in effect contains a copy of itself is at the
+heart of one of the more important theoretical results about what computers
+can and can not do. This result asserts that it is impossible to have a
+program that guarantees to judge whether some code you show it will
+ever terminate or whether it will run for ever. This is the Halting Problem.
+
+A pedantic presentation of the Halting Problem has to pick some particular
+concrete model of what computation is and what notation the program that is
+to be assessed must be presented in. There needs to be consideration as to
+whether some programming languages or models of computation sidestep the
+problem either when used to code up the termiantion-tester or when the
+code to be tested is expressed using them. The view taken here is that these
+are all important technical issues that must be addressed in a formal proof,
+but that it can help to come to terms with a much more informal explanation
+first, especially since that can be kept quite compact and simple.
+
+So to show that it is not possible to have a program such that if you
+pass it some source code and some data, it will tell you if the
+computation descibed by that source code as applied to the data will
+ever finish. There are of course two caveats here. The first is that
+for many examples of the source code (i.\e.\ all those corresponding to
+``sensible'' programs) it will be possible to analyse what can go on and
+judge termination. The second is that it would of course be possible to
+execute or simulate the behaviour as described by the source code and data
+and if the calculation described terminates the simulation will complete
+and it is possible to report ``yes this one does eventually stop''. The
+problem at the core of the Halting Problem is that it turns out there is
+no way of being certain that you can distinguish bewteen ``it has not
+finished yet'' and ``it is never going to''.
+
+The following example program is {\em not} one that illustrates undecidability
+but is one that suggests that judging termination may be a seriously tough
+challenge: In about 1637 Fermat asserted that there could be no nontrivial
+whole number solutions to the equation $x^N + y^N = z^N$ for $N >= 3$. For
+aound 350 years nobody could show that this was the case, so there might
+have been integers $x$, $y$ and $z$ that satisfied the equation, although over
+time it was established that if they existed at all they would have to be
+gigantic. It was only in 1994-1995 that Andrew Wiles presented a proof
+that Fermat's assertion had been correct. So until then a program
+of the form
+\begin{verbatim}
+    for K = 2, 3, ...
+       for all possible x, y, z, N each in the range 1:K with N>=3
+          if x^N + y^N = z^N stop
+\end{verbatim}
+was one where nobody could be certain as to whether the stop statement would
+ever be activated or whether the program would run for ever. Of course this
+is the sort of program that is aimed at theoreticians -- it supposes that
+there is no limit to the magnitude of the numbers that arise and it is
+happy to look for a counter-example to Fermat's claim using a really crude
+exhaustive search. Howver it is a short and fairly transparent program
+where it took the world's mathematicians 350 years before they could be
+certain that it would never terminate. Programs that can be hard to analyse
+do not have to be unduly long!
+
+Now we will show how to prove the Halting Problem can not be solved in
+general. The key idea is to start by pretend that it could be solved and
+we have the program that solves it. It is then possible to show that the
+very existence of this program leads to an absurdity -- in some manner
+via a quine. Here one wants a sight variation on the idea of applying the
+testing program to its own source code with another copy of its own source
+code as the data that is to be presented to the version under test. The way
+that this is self-referential cab be achieved in very much the way that the
+quine program included enough of a copy of itself in its data string. So it
+is mildly tricky but managable.
+
+Well what is actually needed is a slight variant on code that tests a
+program and prints either ``terminates`` or ``runs for ever''. If
+this adjusted version judges that the program that it is testing it
+will merely go into a simple unending loop, and so it itself will not
+terminated. If on the other hand it concludes that the program under test
+is going to run for ever it just halts. These changes are really rather minor
+and are clearly trivial to implement.
+
+Based on what we now feed the program a copy of itself trying to
+analyse itself. If we really had a program that has solved the Halting Problem
+then the outer version of the code would be able to confirm that the
+version it was testing was going to terminate. But then it goes into
+that infinite loop and does not complete, so it is unable to report
+the success. On the other hand if the version under test would loop
+for ever the outer one would spot that and halt very happily. This situation
+represents an intolerable situation where what we have will halt if it
+does not half, or loop if it does helt. Something along the line has
+gone badly wrong! The only supposition we made was that there was a program
+that solved the Halting Problem, so we have to abandon that hope and conclude
+that there can never be one. It is probably obvious that a fundamental
+limit on what computers can ever do can have a lot of impact.
+
+
+As a third way in which quines or at least the though patterns involved in
+coming to terms with them have remarkably wide relevance is in certain
+data structures. A linked list might be presented in a diagram such as
+\begin{verbatim}
+     ____________      ____________
+     |  A  :  --+----> |  B  :  --+----> ...
+     ------------      ------------
+\end{verbatim}
+where rather small blocks of memory are chained together. Well if you have
+a long list each block uses space, and sometimes you might like a list where
+all the cells hold the same value, or at least where there is a short
+repetition along it. Self-reference may support this nicely!
+\begin{verbatim}
+     ____________
+     |  A  :  --+----
+     ------------   |
+      ^             |
+      L_____________J
+\end{verbatim}
+The example of a re-entrant data structure here is tiny and not really
+very exciting but the general idea has many many real-world applications,
+but describing and reasoning about such can be a lot harder than
+working with data that is not looped up. It may be easy to imagine that
+if it was expressed using a programming system that supported this sort
+of thing that setting up the description of code that works with copies
+of itself as its input is really very much like the reference shown
+here from within a data structure to its start-point.
+     ____________      ____________
