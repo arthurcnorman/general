@@ -121,7 +121,7 @@ its expansion
 and this suggestes that \verb+I+ acts like an identity operator.
 In a while it will be convenient to introduce a collection of additional
 symbols with e.g.\ names like \verb+B+ and \verb+C+ that can be viewed as
-nothing more than shorthand for various mixes of \verv+S+ and \verb+K+ but
+nothing more than shorthand for various mixes of \verb+S+ and \verb+K+ but
 that make everything a lot easier to use. But before that it is good to
 introduce the most basic parts of the programming language that can be
 built on top of this foundation.
@@ -175,13 +175,189 @@ out two simple initial rewrite rules. But at present we have no
 data types or useful control structures. Well that is going to be east to
 fix:
 \begin{verbatim}
-   let true a b = a
-   let false a b = b
-   let if p x y = p x y
+   let true a b = a;
+   let false a b = b;
+   let if p x y = p x y;
 \end{verbatim}
 intoduced the truth values and in ``if'' operator. It is easy to verify that
 for instance \verb+if true A B+ yields \verb+A+. In many programming
 contexts one would worry that in the process \verb+B+ would have been
 inspacted and it it was an expression that could abort (or get stuck in an
 unending computation) there would be trouble. It turns out that the
-``outermost-leftmost'' rule 
+outermost-leftmost'' rule has the effect of arranging that in this case and
+others like it the unwabted value \verb+B+ is not inspected and ithus iti
+can not cause trouble. So for now on we can write code that uses \verb+if+
+although there are not really any tests available to use it with!
+
+The next big trick here will be to incorporate a modelling of numbers.
+This is doneviewing a number $N$ as basically an instruction to
+perform some operation $N$ times. So we will have
+\begin{lstlisting}[mathescape=true]
+   let zero $f$ $x$ = $x$;
+   let one $f$ $x$ = $f$ $x$;
+   let two $f$ $x$ = $f$ ($f$ $x$);
+   let three $f$ $x$ = $f$ ($f$ ($f$ $x$));
+\end{lstlisting}
+and so on. Basically $N f$ denotes the function $f$ composed with itself $N$
+times. Two fundamental things we need are a way of testing of such
+a number is zero and a way of adding one:
+\begin{lstlisting}[mathescape=true]
+   iszero $N$ = $N$ (K false) true;
+   add1 $N$ $f$ $x$ = $f$ ($N$ $f$ $x$);
+\end{lstlisting}
+where each of those definitions are so short and simple that one can just
+;check them by seeing what happens when theya are given representative
+arguments. In manners that may or may not be immediately obvious ;it is
+then easy to write
+\begin{lstlisting}[mathescape=true]
+   let plus $M$ $N$ $f$ $a$ = $M$ $F$ ($N$ $f$ $a$)
+   let times $M$ $N$ $f$ = $M$ ($N$ $f$)
+   let power $M$ $N$ = $N$ $M$;
+\end{lstlisting}
+and even though it may take a few moments and a bit of experimentation to
+become convinced that the code for \verb+power+ will raise one number ti
+a power as specified by the other bobody can dispute how compact it is.
+
+AT this stage it is perhaps useful to step back and think how much has
+been achieved in a really modest number of lines of definitions given
+that raw \verb+S+ and \verb+K+ seem to extrememly unpromising. And
+also to recognize how much each of those definitions looks like a very
+simple fragment of some real program.
+
+The above shows one way to incorporate aritmetic into this world, but
+does not (thus far) illustrate subtraction and division. A different
+track may make those easier to grasp. One of the most basic and hence
+useful buidling blocks for data structures is the {\em pair}. This takes
+two values and glues them together such that at a later stage it will be
+possible to extract eacg component. If you have pairs it will be possible
+to chain them as lists and view the length of the list as an alternate
+denotation of a number. If one can concatenate lists that corresponds
+to addition, and taking the tail of a list subtracts one. But as well as
+using pairs to model numners that can be used to build up vectors and
+trees and all manner of other data-structures. The caveat for now is that
+the structures are read-only so if you though you wanted to overwrite
+some part of one you will in fact need to make an edited copy that
+reflects the desired change. Well this sounds powerful, so is it hard to
+achieve? Well here is a function \verb+pair+ that create a pair
+and functions \verb+left+ and \verb+right+ to extract the two
+components:
+\begin{lstlisting}[mathescape=true]
+   let (pair $a$ $b$) $f$ = $f$ $a$ $b$;
+   let left $p$ = $p$ true;
+   let right $p$ = $p$ false;
+\end{lstlisting}
+where in this presentation there are some extra parentheses in the
+exposition of \verb+pair+ just to stress that it will usually be
+called with only two arguments. In this world calling a function with
+fewer arguments than had been shown in the textual definitio is not a
+problem. All that happens is that one gets left with an object that
+can sit around only partially evaluated awaiting the remaining argument
+or arguments.
+
+The above version of \verb+pair+ is good as far as it goes, but if
+it is to be used to build lists or other structures whose precise shape
+is not known in advance it may be necessary to tag each little buillding
+block with a boolean value marking whether it is a terminator or not:
+\begin{lstlisting}[mathescape=true]
+   let emptylist = pair true anything;
+   let nonemptylist $head$ $tail$ = pair false (pair $head$ $tail$);
+   let isempty $l$ = left $l$
+   let first $l$ = left (right $l$);
+   let rest $l$ = right (right $l$);
+\end{lstlisting}
+and again these code fragments are concise, not that obviously
+terribly inefficient and they still look as if they are written
+for the benefit of humans not just machines.
+
+One final but rather large trick remains. So far the \verb+let+
+definitions can not include forward references and functions can not
+be defined in terms of themselves (i.e.\ recursively). If that limitation
+can be fixed we will really be on the way to writing any program we want
+and being able to reason about it with extreme precision by relating
+it back to the foundations that \verb+S+ and \verb+K+ provide. The
+scheme that achieved this involved inventing a symbol that is traditionally
+called $Y$ such that it behaves as if it had been defined using
+\begin{lstlisting}[mathescape=true]
+   let Y $f$ = $f$ (Y $f$); 
+\end{lstlisting}
+where of course that precise formulatio not acceptable because \verb+Y+
+is defined in terms of itself.
+However almost be magic the following will work except that it now
+uses a qualifier ``where'' to introduce a local definition.
+\begin{lstlisting}[mathescape=true]
+   let Y $f$ = G G
+      where G $x$ = $f$ ($x$ $x$);
+\end{lstlisting}
+but still if you follow that definition through it satisfies the behaviour
+being sought. So here is one further attempt:
+\begin{lstlisting}[mathescape=true]
+   let H $f$ $x$ = $f$ ($x$ $x$);
+   let Y $f$ = (H $f$) (H $f$);
+\end{lstlisting}
+and now \verb+Y+ is defined in ways that do not rely on any form of
+self or forward reference and so what we have would expand into a
+mess of uses of jusr \verb+S+ and \verb+K+ in a perfectly straightforward
+way.
+
+We can then exploit $Y$ by arranging that from now onwards any \verb+let+
+declaration is expanded a little such that
+\begin{lstlisting}[mathescape=true]
+   let something $x$ $y$ = something;
+\end{lstlisting}
+is rewritten as
+\begin{lstlisting}[mathescape=true]
+   let something = Y ([something] ([$x$] ([$y$] something)));
+\end{lstlisting}
+where this goes back to using the abstraction notation used when
+function definitions were first considered here.
+
+Because this book is all about difficulties (and also because this is
+not actuallly terribly messy once one has got into the swing of things!)
+this transformation is just quoted here, and the manner in which
+it lets the function \verb+something+ recurse is left for the reader
+to trace through and become convinced by.
+
+There is a great deal more that could be discussed here showing how
+to handle pairs of mutually recursive functions, how to get behaviours
+that are rather like having assigment statements and arrays that
+can have their elements updates, modelling of the \verb+catch+ and
+\verb+throw+ exception handling facilities of full scale languages and
+almost anything else from the programming world that one can imagine.
+IN most cases the steps needed to accomodate the extra capabilities are
+not much more messy than those used so far -- the problem is more that
+there are quite a few of them and in reality the towers of them tend to
+lead to the \verb+S+ and \verb+K+ level rendition getting very bulky.
+So there is also a great deal more that could be discussed about
+enhancing the undepinning model with new operations of which the first
+would be just
+\begin{lstlisting}[mathescape=true]
+   let B $f$ $g$ $x$ = $f$ ($g$ $x$;
+   let C $f$ $x$ $y$ = $f$ $y$ $x$;
+\end{lstlisting}
+and where the rules for abstraction would spot cases where these could
+profitably be used. At the end of that path and with a modest handful of
+extra primitives it even turns out that the conversion from the
+human-readable source forms of functions to primotive form hardly
+expands it at all. As an (unexplained) illustration of this
+here is a function for computing a factorial and its converted form:
+\begin{verbatim}
+fun fact n =
+   if n = 1 then 1
+   else n * fact(n-1);
+
+Y (B (S (C' if (= 1) 1)) (B (S *) (C B (C - 1))))
+\end{verbatim}
+
+What should have emerged from this section is a recognition that
+just because something looks as simple and harmless as the
+pair of rules
+\begin{lstlisting}[mathescape=true]
+    ((K $x$) $y$) $\Rightarrow$ $x$
+    (((S $f$) $g$) $x$) $\Rightarrow$ (($f$ $x$) ($g$ $x$))
+\end{lstlisting}
+seems to be there is no certainty that the computational behaviour
+described is in any way simple, and in this case pretty well arbitrary
+programs with all the challenges of understanding them can be
+represnted based on the utterly primitive foundation captures in these
+two almost trivial rules.
+.
