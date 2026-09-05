@@ -1,0 +1,187 @@
+\section{Computing as textual re-writes}
+\begin{quotation}\textit{
+To understand computers fully, and especially to reason about what they
+can do and how long it should take, it is important to have a clean model
+of what computation is. UNtil that is in place there is a risk that some
+of the questions that are raised might have different answers depening on
+whether you are thinking in terms in Windows, macOS, Linux or Android or
+whether the computer you intend to use is to be programmed in Python, Rust,
+C++ or its internal machine language. Obviously there are various and rather
+large practical issues that arise because of the above range of choices, but
+there remain things that can be said about computing that do not depend
+on surface presentation. To get to look at those it is useful to start from
+a somewhat impractical and abstract model of computation that starts off
+simple enough that everybody can undersand it is very full detail. There are
+half a dozen such starting points, and several will appear in later chapters,
+but the one followed through on here is based on a couple of textual
+transitions on strings of characters. Amazingly it is possible (in not
+really many pages) to transition from pretty barbarous raw strings to
+use of notations that have recognisable similarity to sensible high
+level programming languages.
+}\end{quotation}
+Back in the 1920s mathematicians were seeking ways of understanding the
+very foundations of their disipline. There was work that tried to build
+everything on the natural numbers 0,1,\ldots. Others focussed on sets.
+A third group started with functions. While this work was all done as
+investigations within pure mathematics, these days parts of it can be
+viewed computationally. The version here was developed my Moses
+Sch\"onfinkel\cite{shonfinkel}.
+It starts with just two simple rewrite rules:
+\begin{lstlisting}[mathescape=true]
+    ((K $x$) $y$) $\Rightarrow$ $x$
+    (((S $f$) $g$) $x$) $\Rightarrow$ (($f$ $x$) ($g$ $x$))
+\end{lstlisting}
+where here the lower case letters are to be viewed as placeholders, so
+for instance \verb+((K rabbit) hat)+ will transform into jusr \verb+rabbit+.
+
+These two rules set up a computational model if you suppose that an input
+``program'' gets presented as just a nicely parenthesized string with only
+\verb+S+ and \verb+K+ present (so no rabbits!). Things proceed by having
+a search to see if either of the patterns match anywahere in this material,
+in which case the indicated transformation is made. The system halts when
+there are no more reductions available to perform, and of course it runs
+for ever if there are always more cases of the left hand sides of the two
+rules however long you go on. There is a technicality that arises because in
+lengthy inputs there may be an opportunity to choose between several uses
+of the two rules. The traditional and proper resolution to this is that the
+leftmost-outermost transition should always be made first. Following that
+guidance in fact arranges that if the calculation has any change of
+terminating then it will.
+
+This pair of rules starts out by looking odd and not really very powerful.
+BUt using a succesion of transformations they can implausibly easily be
+shows to relate to sensible computing using reasonable notation.
+
+The adjustment starts with three bits of minor trickery that render everything
+a lot easier to work with:
+\begin{enumerate}
+\item For the sake of the human reader it is very helpful to avoid the need
+to write in all the parentheses. This ia achieved sith insistence that
+when items are presented one after the other they are to be considered
+as grouped to the left. With this understanding the two rules can be written
+as
+\begin{lstlisting}[mathescape=true]
+    K $x$ $y$ $\Rightarrow$ $x$
+    S $f$ $g$ $x$ $\Rightarrow$ $f$ $x$ ($g$ $x$)
+\end{lstlisting}
+and while with as small a case as this the improvement is not overwhelming,
+for larger cases the clarity end up hugely better.
+\item For writing a program that applies the rules the use of a string
+representation and load of brackets would be clumsy. It is way better
+to represent the transformations as ones of binary trees:
+\begin{lstlisting}[mathescape=true]
+           .
+          / \
+         .   $y$    $\Rightarrow$  $x$
+        / \
+       K   $x$
+
+           o
+          / \
+         .   $x$    $\Rightarrow$                       o
+        / \                            /  \
+       .   $g$                           .    .
+      / \                            / \  / \
+     S   $f$                           $f$   $x$   $g$   $x$
+
+\end{lstlisting}
+where if $x$ is a further tree structure the result from \verb+S+ will
+have two references to it, so that the single copy of it is
+shared.
+It is also reasonable that the node in the tree shown as \verb+o+ gets
+overwritten while creating the result-tree from \verb+S+. If that is sone
+and two higher level part of the tree share references to it then when the
+second one gets there it will find that the required transformation has
+already been done!
+In this tree interpretation of things the ``leftmost outermost'' location
+can generally be found be just scanning down the left spine of the tree
+until either and \verb+S+ or \verb+K+ is found.
+\item Going back to making life easier for the human reader, it is good to
+allow a naming scheme after the style
+\begin{verbatim}
+    let I = S K K;
+\end{verbatim}
+that gives names to various items. These names are not thought of as in any
+way part of the computation model -- before one starts applying tow two
+rules all names can be replaced with what they stand for so that the
+computation really only involves the primitive symbols \verb+S+ and
+\verb+K+. But the names really make explanations a lot smoother!
+\end{enumerate}
+
+Well the above explanation introduced a symbol \verb+I+. So it is
+proper to wonder what its properties are, The folliwing shows the
+how use of it proceeds, starting with simply replacing the symbol with
+its expansion
+\begin{lstlisting}[mathescape=true]
+    I $a$
+    S K K $a$
+    K $a$ (K $a$)
+    $a$
+\end{lstlisting}
+and this suggestes that \verb+I+ acts like an identity operator.
+In a while it will be convenient to introduce a collection of additional
+symbols with e.g.\ names like \verb+B+ and \verb+C+ that can be viewed as
+nothing more than shorthand for various mixes of \verv+S+ and \verb+K+ but
+that make everything a lot easier to use. But before that it is good to
+introduce the most basic parts of the programming language that can be
+built on top of this foundation.
+
+The most important part of it is the function definition, and this
+is really just an extension of the naming scheme already explained.
+For this a function that will take one argument would be written
+as for instance
+\begin{verbatim}
+    let applyToSelf f = f f;
+end{verbatim}
+At the moment we can not use anything other that the formal argument to the
+function and the known names \verb+S+, \verb+K+ \nd \verb+I+ in the body
+of the function, so the example here just says ``treat f as a function and
+give it itself as an argument''. Aha this refers back to the quine section
+which may suggest that although this seems a bit odd there may be
+circumstances in which it could arise and be sort of useful. But kust now
+it is nothing more than an example.
+
+The challenge is to expand this so that there is just a single symbol to
+the left of the equals sign, so it is nothing more frightening than
+than the existing scheme for naming things. This can be done unexpctedly
+easily via a notation (known as ``abstraction'') that just moves the
+format argument over to the right hand side:
+\begin{verbatim}
+    let applyToSelf = [f] (f f);
+end{verbatim}
+and then uses three easy rules to get rid of the square-bracketed prefix:
+\begin{lstlisting}[mathescape=true]
+    [$x$] $x$ $\Rightarrow$ I
+    [$x$] $y$ $\Rightarrow$ K $y$
+    [$x$] $f$ $g$ \$Rightarrow$ S ([$x$] $f$) ([$x$] $g$)
+\end{lstlisting}
+where in this presentation $y$ is an literal value not equal to $x$, and in
+the rules that introduces \verb+S+ it is understodd that the two little
+abstractions (one of $f$ and one on $g$) themselves get expanded out.
+These three little rules are in many respects just the cmplements of the
+ones that defined \verb+S+, \verb+K+ and \verb+I+ so how can anybody
+describe them as ``difficult''.
+
+So what about functions with two or more arguments?
+\begin{lstlisting}[mathescape=true]
+   let f $a$ $b$ $c$ = ...    $\Rightarrow$
+   let f $a$ $b$ = [$c$] ...
+\end{lstlisting}
+and the arguments move over onto the right hand side one at a time. The
+consequence of all this is that it now proper to start writing little
+sequences of function definitions in a fairly human readable form
+safe in the knowledge that their behaviour is fully explanable in terms of
+out two simple initial rewrite rules. But at present we have no
+data types or useful control structures. Well that is going to be east to
+fix:
+\begin{verbatim}
+   let true a b = a
+   let false a b = b
+   let if p x y = p x y
+\end{verbatim}
+intoduced the truth values and in ``if'' operator. It is easy to verify that
+for instance \verb+if true A B+ yields \verb+A+. In many programming
+contexts one would worry that in the process \verb+B+ would have been
+inspacted and it it was an expression that could abort (or get stuck in an
+unending computation) there would be trouble. It turns out that the
+``outermost-leftmost'' rule 
