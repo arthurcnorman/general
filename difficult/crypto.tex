@@ -1,4 +1,4 @@
-\subsection{Historical approaches}
+\section{Cryptography -- make it difficult to read your secret emails}
 \begin{quotation}\textit{
 The art of cryptography is all about trying to make it difficult for
 your adversary to decipher the secret message you have encoded. Going back
@@ -14,9 +14,51 @@ the culmination of what can be characterised as ``historical'' was in
 schemes used during the 1939-45 war where serious energy went into
 proto-computer schemes to break the encryption.
 }\end{quotation}
+\subsection{Historical approaches}
 \subsubsection{The one-time pad}
+There is one way of keeping a message secret that is totally secure. It is
+only used in special cases because it is inconvenient and it raises practical
+challenges! But it is fundamentally a simple extennsion of the idea behind the
+Caesar cipher. It differs from that in that each letter in the message gets its
+own shift amount. If sender and recipient can agree in advance on what those
+shifts will be then both encoding and decoding are rather easy. If the sequence
+of shifts that are used are such that no adversary could possibly work out
+what they were then said adversary has no way of breaking the code. Setting up
+a sequence of shifts using some source of truly unpredictable randomness (and it is
+harder to find hig quality randomness than one might at first imagine) can keep
+things secure. Then the two parties need both to have a copy of the random
+sequence that will be used. This perhaps can be transported under lock, key and
+armed guard, and stored such that nobody other than the two who wish to communicate
+can get any access to it at all. No part of this key-sequence may ever be re-used,
+because comparisons between two messages each encrypted with the same set of offsets
+might leak information. So the two parties must initially have exchanged key sequences
+long enough for everything they will later want to say. The record of this sequence
+is the ``one time pad'', and of course it has to be kept fully secure not just before
+but also after use. The practicalities of key generation, distribution and security
+mean that this scheme is not for casual use, but the certainty of the security it
+offers make it very important for really high risk circumstances.
 \subsubsection{Fish}
-\subsubsection{Enigma}
+It is very tempting to try using a computer generated sequnce of ``random'' numbers
+in place of the truly random keys that a one time pad specifies. If both sender and
+recipient have the same random number generator and start in exactly the
+same configurations they can keep in step as they code and decode messages.
+A concrete example of the use of this idea predated full computers and used
+gear-wheels and levers and switches to scramble things. This was used in wartime
+and the mechanical scheme with rotors some of which clicked round on every
+characters that was processed while others did so irregularly. Various gear
+wheels involved had a range of different prime numbers of teeth in such a way
+that the mechanism would only return to its starting point after a number of
+steps related to the product of all those primes -- and that was a huge number.
+
+The requirement that no part of a one-time pad ever be re-used was illustrated
+here because a German operator send two distinct messages using the same
+initial settings of the electro-mechanical encryption engine, and Bill Tutte
+and others at Bletchley Park were (with extreme ingenuity!) able to deduce
+how everything worked\cite{https://www.tnmoc.org/tunny-heath-robinson}.
+Their work eventually led to the design of Colossus which can be viewed as one
+of the most important landmarks in the development of general purpose electronic
+computers. Thus secret communication was right at the heart of computing from
+the very start.
 
 \subsection{Modern Cryptography}
 \begin{quotation}\textit{
@@ -24,8 +66,77 @@ Once computers started to be used for code-breaking there was an
 obvious need to use them for encoding. Two particular schemes stand out
 as both easy to describe and as widely used.
 }\end{quotation}
-\subsubsection{The alleged RC4 stream cipher}
+\subsubsection{The RC4 stream cipher}
+The idea of having a pseudo-one-time pad continues into the computer age, and
+one way of generating the key stream was widely used for a number of years
+before ways were found to crack its security. This was RC4, an invention of Ron
+Rivest\cite{RC4_on_wikipedia}. The details are included here to illustrate
+that rather short sequences of code can lead to truly complicated behaviours.
+maintains an array of 256 integers, such that the array holds a permutation
+of the numbers from 0 to 255. Setting up an initial permutation from a
+user-provided key is part of the protocol and is has to be done with some
+case: the standard process is not described here. But from tsupposing that the
+state has been properly set up the following C code will scramble test in the input
+array and put the result in output. Even those unfamiliar with the details
+of C will be able to see that it is quite short and that the encryption
+will not take long. Decryption uses exactly the same operation as encryption
+because the exclusive-or operation (\verb+^+) has the property than using it
+twice returns on to the original state. This is perhaps slightly nicer that the
+original Caeser cipher where the sender added an offset but the recipient needed
+to subtract it. Here both end use exclusive or.
+\begin{verbatim}
+unsigned char x=0, y=0, state[256];
+
+void rc4_crypt(const unsigned char *input,
+               unsigned char *output,
+               size_t data_len)
+{   size_t i;
+    for (i = 0; i < data_len; i++)
+    {   x = (x + 1) % 256;
+        y = (y + state[x]) % 256;
+        swap(&state[x], &state[y]);
+        unsigned char xor_index = (state[x] + state[y]) % 256;
+        output[i] = input[i] ^ state[xor_index];
+    }
+}
+\end{verbatim}
+This scheme is one that should no longer be used. It illustrated (as did fish) that
+encryption schemes that seen unbreakable when first introduced can end up overtaken
+by newer and faster techology that can do some brute force searching, and by
+the results of dedicated and skilled mathematicians picking at the mechanism
+to find patterns in behaviour that they can exploit. If computing in general
+is difficult, cryptography is one of the most difficult corners of it.
 \subsubsection{Public key and RSA}
+Another very widely used scheme is known as RSA. This scheme was released into
+the public domain by its owners in September 2000 thereby allowing any individual
+or organisation to use it freely. The scurity of this scheme rests on the
+belief that if you have a large enough number that finding its factors is liable
+to be intolerably costly. To be more specific they start with two large primes $p$
+and $q$ and use their product $n = p q$. They allow $n$ to be published and feel
+confident that by keeping it big no adversaries will ever be able to derive $p$ and
+$q$ (which are kept very secret). For instance $n$ may typically be a value
+with 600 decimal digits. The RSA encryption scheme involved performing arithmetic
+on numbers this big.
+
+Messages are split into blocks such that each block can be represented using
+a number less than $n$. Suppose that number is $P$ (for ``plaintext``).
+Anybody who knows $n$ can then encrypt it using the calculation
+$C = P^e \bmod n$ where $e$ is a number chosen along with $p$ and $q$ such that
+the decryption will be possible. The constraints that have to be applied to make
+this so are not very severe. $C$ is now the cipher text. apart from the fact that
+the arithmetic has to be done on integers much larger than the ones computers
+tend to handle directly, and the ``$\bmod$'' operation that just takes the remainder
+when dividing my $n$ may be a little tedious to apply this is amazingly
+concise and straightforward.
+
+The clever part of RSA is that the person who selected $p$ and $q$ and then derived
+$n$ can undo the encryption by finding a number $e'$ such that $P = C^{e'} \bmod n$
+and that given $p$ and $q$ finding this magic decoding exponent is quite easy,
+while for anyone who does not know the factors of $n$ it is (believed to be)
+extremely hard. Those who wish to follow through the mathematical explanation of
+exactly how this works will easily find full details from a web search, so
+reciting details here is not necessary. But again the coding technique shows that
+remarkably short and sensible fragments of computer code can have extreme depths. 
 
 \subsection{Looking forward to a post-quantum world}
 \begin{quotation}\textit{
@@ -38,11 +149,46 @@ methods to application of these new quantum-resistent techniques. The
 technicalities behind all of this are fairly severe, so the discussion
 here is going to be rather abbreviated!
 }\end{quotation}
+When (and if?) quantum computers come of age it will become fairly easy to
+factorise absurdly large numbers, and so RSA will stop being at all secure.
+There is enough of a prospect (or should I say risk?) of quantum supremacy
+that the world needs to and indeed is migrating to new encryption ideas that
+are expected to remain secure. So what has to be developed is a set of fresh
+problems that will be as hard to solve even using quantum computers as
+factorization is using ordinary deterministic computers. A wide range of
+candidates gas been explored, but basically none seem to have the extreme
+concise elegancy that underpins both RC4 and RSA. Also work to validate them and
+decide which are going to make most sense is ongoing. One problem is that
+for most of them the keys that need to be used are much bulkier than the
+ones that apply for schemes in standard use today.
 
-\subsection{Keeping secrets os hard}
+So rather than give an full explanation of how any of them work I will just
+describe the fundamentals of the key problem one variant is based on.
+We know that if we have a single quadratic equation on one variable that it
+is easy to derive its roots -- for instance by completing the square. If you
+have a number of simultaneous equations in multiple variables things become
+dramatically harder even when no variable appears to a higher power than just 2
+(i.e.\ just squared). However if you happen to know a solution then verifying it
+by just substituting into all the equations is rather easy. Based on the
+assymetry between solving and checking a solution there cen be used in ways
+broadly analagous to exploiting the assymetry between multiplying pairs of
+integers together and the harder challengs of discovering factors of the
+product from scratch to obtain an encryption scheme. Just as in RSA all working
+is done so that when arithmetic is done you just keep the remainder when the
+simple result is divided by some useful number $n$ this challenge of solving
+multivariate quadratics (the MQ problem) involves working relative to a prime.
+And happily it is believed that quantum computation does not make solving the
+problem easier. Clearly moving from this overview sketch to a fully fleshed out
+quantum-resistant encryption scheme is going to involve several more steps and
+a bit of serious mathematics. But yet again the underlying challenge set by ``just''
+having some simultaneous equations that are limited to being no worse than
+quadratic is reasonable to grasp, but the mathematics and then the computation
+that this leads into is without question difficult.
+
+\subsection{Keeping secrets is hard}
 Beyond the details of how to encrypt data in a way that is secure not just
 today but in the future, the protocols for the exchange of secrets can
 be hard to get right. And changes in computer technology (such as first the
 availability of massive parallel computer farms, and perhaps soon
 quantum computers) means that one can not afford to stand still. It is
-a brutally difficult world to work in. 
+a brutally challenging world to work in. 

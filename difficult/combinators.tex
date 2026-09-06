@@ -25,7 +25,7 @@ everything on the natural numbers 0,1,\ldots. Others focussed on sets.
 A third group started with functions. While this work was all done as
 investigations within pure mathematics, these days parts of it can be
 viewed computationally. The version here was developed my Moses
-Sch\"onfinkel\cite{shonfinkel}.
+Sch\"onfinkel\cite{schonfinkel}.
 It starts with just two simple rewrite rules:
 \begin{lstlisting}[mathescape=true]
     ((K $x$) $y$) $\Rightarrow$ $x$
@@ -33,6 +33,7 @@ It starts with just two simple rewrite rules:
 \end{lstlisting}
 where here the lower case letters are to be viewed as placeholders, so
 for instance \verb+((K rabbit) hat)+ will transform into jusr \verb+rabbit+.
+This was of starting off is known as the use of ``combinators''.
 
 These two rules set up a computational model if you suppose that an input
 ``program'' gets presented as just a nicely parenthesized string with only
@@ -218,6 +219,15 @@ and even though it may take a few moments and a bit of experimentation to
 become convinced that the code for \verb+power+ will raise one number ti
 a power as specified by the other bobody can dispute how compact it is.
 
+Those concerned with practicality can now take the view that when they write
+programs that involve these names they might as well use ordinary notation
+such as 0, 1, 2, 3 for the numbers, \verb/+/ and \verb/*/ for addition
+and multiplication (using these as infix operators), and express their
+conditionals using syntax with words \verb+if+, \verb+then+ and \verb+else+.
+When it comes to pedantic reasoning to prove properties of the code they
+write it would be easy to unwind all the way back to express things in terms
+of the ultimate basics.
+
 AT this stage it is perhaps useful to step back and think how much has
 been achieved in a really modest number of lines of definitions given
 that raw \verb+S+ and \verb+K+ seem to extrememly unpromising. And
@@ -225,15 +235,20 @@ also to recognize how much each of those definitions looks like a very
 simple fragment of some real program.
 
 The above shows one way to incorporate aritmetic into this world, but
-does not (thus far) illustrate subtraction and division. A different
-track may make those easier to grasp. One of the most basic and hence
+does not (thus far) illustrate subtraction and division. This is
+possible in not many more lines of definitions, but it will perhaps be more
+interesting here to take a different track.
+One of the most basic and hence
 useful buidling blocks for data structures is the {\em pair}. This takes
 two values and glues them together such that at a later stage it will be
-possible to extract eacg component. If you have pairs it will be possible
-to chain them as lists and view the length of the list as an alternate
+possible to extract each component. If you have pairs it will be possible
+to chain them as lists and view the length of the list as an alternative
 denotation of a number. If one can concatenate lists that corresponds
-to addition, and taking the tail of a list subtracts one. But as well as
-using pairs to model numners that can be used to build up vectors and
+to addition, and taking the tail of a list subtracts one. So in fact by
+looking at data representation we find that a fresh way of modelling arithmetic
+emerges automatically -- one where subtracting 1 is easy to achieve by
+where multiplication is more of a stress. Obviously as well as
+using pairs to model numners they can be used to build up vectors and
 trees and all manner of other data-structures. The caveat for now is that
 the structures are read-only so if you though you wanted to overwrite
 some part of one you will in fact need to make an edited copy that
@@ -246,13 +261,13 @@ components:
    let left $p$ = $p$ true;
    let right $p$ = $p$ false;
 \end{lstlisting}
-where in this presentation there are some extra parentheses in the
+In this presentation there are some extra parentheses in the
 exposition of \verb+pair+ just to stress that it will usually be
 called with only two arguments. In this world calling a function with
-fewer arguments than had been shown in the textual definitio is not a
-problem. All that happens is that one gets left with an object that
-can sit around only partially evaluated awaiting the remaining argument
-or arguments.
+fewer arguments than had been shown in the textual definition is not
+to be seen as a problem. All that happens is that one gets left with an object that
+can sit around only partially evaluated, but that is awaiting the remaining argument
+or arguments to complete its work.
 
 The above version of \verb+pair+ is good as far as it goes, but if
 it is to be used to build lists or other structures whose precise shape
@@ -267,7 +282,11 @@ block with a boolean value marking whether it is a terminator or not:
 \end{lstlisting}
 and again these code fragments are concise, not that obviously
 terribly inefficient and they still look as if they are written
-for the benefit of humans not just machines.
+for the benefit of humans not just machines. Just as once numbers had been
+introduced one could expand the shorthand notation to use 0, 1, 2 and 3 here
+one might well permit some notation such as \verb+(A,B)+ for a raw pair
+and \verb+{A,B,C,D}+ for a list. The level of syntactic sugar makes working
+in this combinator-based world almost attractive!
 
 One final but rather large trick remains. So far the \verb+let+
 definitions can not include forward references and functions can not
@@ -280,8 +299,8 @@ called $Y$ such that it behaves as if it had been defined using
 \begin{lstlisting}[mathescape=true]
    let Y $f$ = $f$ (Y $f$); 
 \end{lstlisting}
-where of course that precise formulatio not acceptable because \verb+Y+
-is defined in terms of itself.
+where of course that precise formulation not acceptable because it
+tries to define \verb+Y+ in terms of itself.
 However almost be magic the following will work except that it now
 uses a qualifier ``where'' to introduce a local definition.
 \begin{lstlisting}[mathescape=true]
@@ -296,20 +315,24 @@ being sought. So here is one further attempt:
 \end{lstlisting}
 and now \verb+Y+ is defined in ways that do not rely on any form of
 self or forward reference and so what we have would expand into a
-mess of uses of jusr \verb+S+ and \verb+K+ in a perfectly straightforward
-way.
+mess of uses of just \verb+S+ and \verb+K+ in a perfectly straightforward
+way. Note that the input form ``\verb+Y+ $f$`` (for any $f$ you like to use) does
+not just generate itself as its output - it generates something that contains
+itself. So if forms a sort of super-quine.
 
-We can then exploit $Y$ by arranging that from now onwards any \verb+let+
-declaration is expanded a little such that
+We can now exploit $Y$ by arranging that going forwards any \verb+let+
+declaration is expanded a little more, with
 \begin{lstlisting}[mathescape=true]
    let something $x$ $y$ = something;
 \end{lstlisting}
-is rewritten as
+getting rewritten as
 \begin{lstlisting}[mathescape=true]
    let something = Y ([something] ([$x$] ([$y$] something)));
 \end{lstlisting}
-where this goes back to using the abstraction notation used when
-function definitions were first considered here.
+where the square brackets denote abstraction as used earlier where the
+treatment of \verb+let+ was introduced. The consequence of this slightly
+more elaborate conversion is that the function \verb+something+ can now
+be a recursive one.
 
 Because this book is all about difficulties (and also because this is
 not actuallly terribly messy once one has got into the swing of things!)
