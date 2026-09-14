@@ -371,6 +371,82 @@ fun fact n =
 Y (B (S (C' if (= 1) 1)) (B (S *) (C B (C - 1))))
 \end{verbatim}
 
+Well what is left of the computational aspects of full-scale programming
+languages? Well floating point numbers and arithmetic can easily be
+provided using software in terms of integer operations, so they are nothing
+fundamental. The real concern will be having blocks of statements that are
+to be obeyed one after another, variables that can have be updates using
+assignment statements and control structures such as \verb+while+ loops
+and various excaption handling schemes. The explanation of how to model all
+these in terms of combinators is going to be sketchy to keep it all concise,
+but actually nothing is too difficult.
+
+Siart with \verb+while+ loops and their allies. All of these can be
+expanded in terms of sequential code with labels attached to some of the lines
+and \verb+goto+ statements that can cause the flow of control to transition
+to particular labels. This is not terribly nice for writing code by hand but
+it is what happens with perfectly ordinary compilation of high level programs
+for all perfectly ordinary computers, so it is not shocking here.
+Now sequential code and assignment statements get modelled all in one
+step! Each line of the sequntial code is mapped onto a function, and the
+name of that function will serve as a label attached to the line. The
+function will take as its argument (or sometimes as an extra argument) a
+list that contains the values of all extant variables. If there are
+arrays some entries in it may be sub-lists holding the values stored in the
+arrays. When the function for a line has done its work it just calls
+the function corresponding to the next line of code to be obeyed. Often the
+one that follows sequentially, but \verb+goto+s are correspond to nothing
+more elaborate than continuing to some non-sequntial line. Anybody
+worried about the \verb+catch+ and \verb+throw+ features present in some
+languages do not nee dto be concerned: \verb+catch+ merely captures the
+identify of the line of code that would be obeyed if an exception was
+raised and the probably state that all variables should have if the
+exceptional exit was taken. \verb+throw+ then just needs to pick up this value
+and call it rather than doing its normal ``move on to the next line''
+function call. When it comes to it these expansions are fairly close relatives
+of what is done every day for all high level languages!
+
+That sounds as if it would all be truly ugly. Here is a (admittedly tiny)
+example showing that it is not as bad as all this. This is code that sets
+up an array and fills some values in it. It is expressed in no particular real
+language:
+\begin{verbatim}
+    int v[5] = {0,0,0,0,0}; // and array nitially all zero
+    for i = 0 to 4 do
+        v[i] = 7*i;
+    whateverFollows...
+\end{verbatim}
+and in the code that would expand into uses of just \verb+S+ and \verb+K+ that
+can be rendered as
+\begin{verbatim}
+    let start = line1 {0,0,0,0,0};   // introduce value for v
+    let line1 v = line2 v 0;         //introduce value for i
+    let line3 v i =
+        if i <= 4 then line3 (replaceElement v i (7*i)) (i++1)
+        else whateverFollows v;
+\end{verbatim}
+where the function replaceElement will be set up so that it returns an exited
+version of a list with the specified entry replaced. Goodness gracious -- this
+is not much longer than the first version and even not much harder to
+make sense of! 
+
+Well the model of computation here does not provide access to a file-system,
+networks, graphical screen or even a keyboard. Well when it comes to it the
+same is true of the CPU chip at the core any laptop. From that perspective
+input devices are little more than sequences of bytes that can be absorbed,
+and that could be modelled by passing in a list of bytes. Output devices
+amount to variables where something happens in the far-off outside world
+when they are written to. The modelling hets a bit tenuous at this stage.
+Also in real computation costs may matter. Much of what has been discussed
+here could be made faster (but messier). For instance the arithmetic as
+presented is cripplingly slow. But for instance 64-bit binary numbers could
+easily be modelled in an alternate way as lists of 64 bits (each 0 or 1)
+and then addition would have a cost proportional to 64 not $2^{64}$.
+Similarly by replacing lists with nice tree structures the cost of
+accessing an item in a vector of length $N$ could be $\log N$ rather than $N$.
+Such adjustments would (if one needed to!) bring things much close to being
+feasible.
+ 
 What should have emerged from this section is a recognition that
 just because something looks as simple and harmless as the
 pair of rules
@@ -383,4 +459,10 @@ described is in any way simple, and in this case pretty well arbitrary
 programs with all the challenges of understanding them can be
 represnted based on the utterly primitive foundation captures in these
 two almost trivial rules.
+
+So even though each step in this section can hardly be characterised as
+difficult, and for what is achieved the number of steps is quite small,
+it may be really quite hard to come to terms with the full journey. And
+truly painful to work through the complete understanding and justification of
+a real program by tracing its behavoiour all the way town to the foundations.
 .
