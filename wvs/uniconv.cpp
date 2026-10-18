@@ -34,6 +34,11 @@
 
 #include <ncurses.h>
 #include <string>
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
+#include <cstdint>
+#include <cwctype>
 
 #include "wvs.h"
 
@@ -44,76 +49,111 @@
 static int digofhex(wchar_t ch)
 {   switch (ch)
     {
-    case '0': return 0;
-    case '1': return 1;
-    case '2': return 2;
-    case '3': return 3;
-    case '4': return 4;
-    case '5': return 5;
-    case '6': return 6;
-    case '7': return 7;
-    case '8': return 8;
-    case '9': return 9;
-    case 'a': return 10;
-    case 'b': return 11;
-    case 'c': return 12;
-    case 'd': return 13;
-    case 'e': return 14;
-    case 'f': return 15;
+    case L'0': return 0;
+    case L'1': return 1;
+    case L'2': return 2;
+    case L'3': return 3;
+    case L'4': return 4;
+    case L'5': return 5;
+    case L'6': return 6;
+    case L'7': return 7;
+    case L'8': return 8;
+    case L'9': return 9;
+    case L'a': case L'A': return 10;
+    case L'b': case L'B': return 11;
+    case L'c': case L'C': return 12;
+    case L'd': case L'D': return 13;
+    case L'e': case L'E': return 14;
+    case L'f': case L'F': return 15;
     default:  return -1;
     }
 }
 
 
-static std::string termed_prompt_string = ">";
-
 std::wstring input_line = L"";
-int prompt_length = 1, prompt_width = 1;
 
-// term_wide_plain_getline() can be called when cursor addressing is not
-// available. It just reads characters into a line-buffer (which it
-// extends as necessary). The data returned includes the newline
-// that terminated the line. If an error is detected (and in particular
-// at end of file) the value L"\x04".
-//
-// Nothing at all is done here to fuss about special characters, so
-// things like ^C, backspace, ^Q etc etc etc are handled, if at all, by
-// the system that underpins "getchar".
+// Encode into buffer b as up to 4 characters (plus a nul). Because I
+// am only concerned with Unicode I only need encode values in the
+// range 0 to 0x10ffff. Returns the number of chars packed (not counting
+// the terminating '\0').
 
-static void term_putchar(int c);
-
-static std::wstring term_wide_plain_getline()
-{   std::fflush(stdout); std::fflush(stderr);
-    for (int i=0; i<prompt_length; i++)
-        term_putchar(termed_prompt_string[i]);
-    std::fflush(stdout);
-    input_line = L"";
-    int n = 0;
-    std::wint_t ch;
-    for (ch=getwcFromThread();
-         ch!=WEOF && ch!='\n' &&
-         ch!=CTRL_C && ch!=CTRL_G &&
-         ch!=CTRL_D;
-         ch=getwcFromThread())
-    {   input_line.push_back(ch);
+int utf_encode(unsigned char *b, int c)
+{   unsigned char *p = b;
+    c &= 0x1fffff;   // limit myself to 21-bit values here
+    if (c <= 0x7f) *p++ = c;
+    else if (c <= 0x7ff)
+    {   *p++ = 0xc0 | (c >> 6);
+        *p++ = 0x80 | (c & 0x3f);
     }
-    if (ch==WEOF || ch==CTRL_D)
-    {   if (n == 0) return L"\x04";
+    else if (c <= 0xffff)
+    {   *p++ = 0xe0 | (c >> 12);
+        *p++ = 0x80 | ((c >> 6) & 0x3f);
+        *p++ = 0x80 | (c & 0x3f);
     }
-    else input_line.push_back('\n');
-    return input_line;
+    else
+    {   *p++ = 0xf0 | (c >> 18);
+        *p++ = 0x80 | ((c >> 12) & 0x3f);
+        *p++ = 0x80 | ((c >> 6) & 0x3f);
+        *p++ = 0x80 | (c & 0x3f);
+    }
+    *p = 0;
+    return static_cast<int>(p - b);
 }
 
-// Before calling term_getline() or its variants use this to set the
-// prompt string that will be displayed.
-// A prompt string longer than the width of the terminal is liable to lead
-// to bad confusion, and anyway prompts as passed are truncated. The
-// character set used with this is 8-bit Unicode... but the stored prompt
-// is in a wide string.
+// decode the giben byte-string to yield a codepoint. Set utf_bytes
+// to be the number of bytes consumed. Return -1 in bas cases.
+// This is not quite careful enough about spotting invalid input
+// sequences. For instance at present it allows redundant ways of
+// delivering small codes.
 
+int utf_bytes = 0;
 
-extern int utf_encode(unsigned char *b, int c);
-
+int utf_decode(const unsigned char *b)
+{   int c = *b++, c1, c2, c3;
+    utf_bytes = 1;
+    switch (c & 0xf0)
+    {
+//  case 0x00:
+//  case 0x10:
+//  case 0x20:
+//  case 0x30:
+//  case 0x40:
+//  case 0x50:
+//  case 0x60:
+//  case 0x70:
+        default:
+            return c;
+        case 0x80:
+        case 0x90:
+        case 0xa0:
+        case 0xb0:
+            return -1;  // out of place continuation marker
+        case 0xc0:
+        case 0xd0:
+            c1 = *b;
+            if ((c1 & 0xc0) != 0x80) return -1; // not continuation
+            utf_bytes += 1;
+            return ((c & 0x1f) << 6) | (c1 & 0x3f);
+        case 0xe0:
+            c1 = *b++;
+            if ((c1 & 0xc0) != 0x80) return -1; // not continuation
+            c2 = *b;
+            if ((c2 & 0xc0) != 0x80) return -1; // not continuation
+            utf_bytes += 2;
+            return ((c & 0x0f) << 12) | ((c1 & 0x3f) << 6) | (c2 & 0x3f);
+        case 0xf0:
+            if ((c & 0x08) != 0) return -1;
+            c1 = *b++;
+            if ((c1 & 0xc0) != 0x80) return -1; // not continuation
+            c2 = *b++;
+            if ((c2 & 0xc0) != 0x80) return -1; // not continuation
+            c3 = *b;
+            if ((c3 & 0xc0) != 0x80) return -1; // not continuation
+            utf_bytes += 3;
+            return ((c & 0x07) << 18) | ((c1 & 0x3f) << 12) |
+                   ((c2 & 0x3f) << 6) | (c3 & 0x3f);
+    }
+}
 
 static int hexval(int c)
 {
@@ -121,9 +161,12 @@ static int hexval(int c)
 // I am only interested in the digits 0-9 and the letters a-f and A-F and
 // if I only accept ones in the most basic form I can use 7-bit codes.
     if (c < 0 || c >= 0x7f) return -1;
-    if (std::isdigit(static_cast<unsigned char>(c))) return c - '0';
-    else if (std::isupper(static_cast<unsigned char>(c))) return c +
-                (10 - 'A');
+    if (std::isdigit(static_cast<unsigned char>(c)))
+        return c - '0';
+// I will in fact allow for G->17, H=>18 and so on, and not fault
+// input characters that are beyond the range of letters!
+    else if (std::isupper(static_cast<unsigned char>(c)))
+        return c + (10 - 'A');
     else return c + (10 - 'a');
 }
 
@@ -157,11 +200,18 @@ static int hexval(int c)
 //
 // Just so you know, there are somewhat over 2000 names here.
 
+typedef struct _uniname
+{
+// Note that the names of special characters will never themselves include
+// any special characters, so using "char*" here rather than "wchar_t*"
+// is reasonable.
+    const char* name;
+    int code;
+} uniname;
+
+
 uniname unicode_names[] =
 {
-// It is really part of the purpose of this table that the names are all in
-// the most basic character set, and so I keep the table using "char *" and
-// regular narrow strings.
     {"AElig",                           198},
     {"AMP",                             38},
     {"Aacute",                          193},
@@ -2234,7 +2284,7 @@ uniname unicode_names[] =
 //  {"NotSucceedsTilde",                8831, 824},
 //  {"NotSuperset",                     8835, 8402},
 //  {"ThickSpace",                      8287, 8202},
-//  {"acE",                             8766, 819},  beware name vs hex
+//  {"ace",                             8766, 819},  beware name vs hex
 //  {"bne",                             61, 8421},
 //  {"bnequiv",                         8801, 8421},
 //  {"caps",                            8745, 65024}
@@ -2319,6 +2369,8 @@ static int compare_strings(const void *a, const void *b)
 static int lookup_name(const char *s)
 {   uniname k, *p;
     k.name = s;
+// I have set up the table of names so that they are in alphabatic order
+// and so bsearch can be used.
     p = (uniname *)std::bsearch(&k, unicode_names,
                                 sizeof(unicode_names)/sizeof(unicode_names[0]) -
                                 sizeof(unicode_names[0]), // allow for the terminator

@@ -31,6 +31,9 @@
 
 // $Id$
 
+#include <cstdint>
+#include <ncurses.h>
+
 #include "wvs.h"
 
 TextEditor::funcMap charAction =
