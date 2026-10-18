@@ -1,8 +1,23 @@
+# Makefile for wvs.
 
-wvs:	wvs.cpp
-	g++ -O0 -g wvs.cpp -o wvs -l ncursesw
+OPT=-O0 -g
+#OPT = -O3
 
-winvs:	wvs.cpp
-	x86_64-w64-mingw32-g++ -O0 -g wvs.cpp -o wvs -l ncursesw
+wvs:	wvs.cpp uniconv.cpp keymap.cpp wvs.h
+	g++ $(OPT) wvs.cpp uniconv.cpp keymap.cpp \
+		-l ncursesw -o wvs
 
+# Not yet tested, and the availability of the wide character version of
+# ncurses is not quite clear yet.
 
+winvs:	wvs.cpp uniconv.cpp keymap.cpp wvs.h
+	x86_64-w64-mingw32-g++ $(OPT) wvs.cpp uniconv.cpp keymap.cpp \
+		-l ncursesw -o wvs.exe
+
+wvs.tgz:	Makefile wvs.h wvs.cpp uniconv.cpp keymap.cpp
+	tar cvfz wvs.tgz Makefile wvs.h wvs.cpp uniconv.cpp keymap.cpp
+
+clean:
+	rm *.o *.exe wvs *.tgz
+
+# end of Makefile
