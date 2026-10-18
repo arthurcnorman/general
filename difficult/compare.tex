@@ -127,6 +127,11 @@ in range and will be exact:
         return what you get from the comparison (integer)d > i
 \end{verbatim}
 
+Having considered all that for a test if one value is strictly greater than
+another one can look back and realise that if given an 64-bit integer and
+a 64 bit float that merely checking if they represent the same value
+will involve most of the same issues. OOOf!!
+
 About the only reasonable response to this is amazement first that such
 a trivial looking task ends up so messy to cope with, but then that there
 is a solution that is concise and liable to be reasonably efficient!
