@@ -68,6 +68,7 @@ void TextEditor::clearLine(int y, int w)
 
 int TextEditor::mygetch8()
 {   int c = getch();
+    fprintf(log, "getch return %x\n", c); fflush(log);
     if (c == WEOF) return c;
     if (c < 0x80) return c;
     if (c > 0xff) return c | TAG_FN;

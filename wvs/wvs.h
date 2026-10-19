@@ -95,6 +95,7 @@ public:
     void loadFile();
     void saveFile();
 
+    void unicodeConvert();
     void renderScreen();
     void makeCursorVisible();
     void displayMenu(const char* menu[]);

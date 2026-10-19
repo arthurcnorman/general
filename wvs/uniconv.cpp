@@ -43,9 +43,6 @@
 #include "wvs.h"
 
 
-
-
-
 static int digofhex(wchar_t ch)
 {   switch (ch)
     {
@@ -69,16 +66,19 @@ static int digofhex(wchar_t ch)
     }
 }
 
+// The line being edited is "line" and the cursor is at position
+// caretpos within it.
 
-std::wstring input_line = L"";
+std::wstring line = L"";
+int caretpos = 0;
 
 // Encode into buffer b as up to 4 characters (plus a nul). Because I
 // am only concerned with Unicode I only need encode values in the
 // range 0 to 0x10ffff. Returns the number of chars packed (not counting
 // the terminating '\0').
 
-int utf_encode(unsigned char *b, int c)
-{   unsigned char *p = b;
+int utf_encode(unsigned char* b, int c)
+{   unsigned char* p = b;
     c &= 0x1fffff;   // limit myself to 21-bit values here
     if (c <= 0x7f) *p++ = c;
     else if (c <= 0x7ff)
@@ -100,15 +100,12 @@ int utf_encode(unsigned char *b, int c)
     return static_cast<int>(p - b);
 }
 
-// decode the giben byte-string to yield a codepoint. Set utf_bytes
-// to be the number of bytes consumed. Return -1 in bas cases.
-// This is not quite careful enough about spotting invalid input
-// sequences. For instance at present it allows redundant ways of
-// delivering small codes.
+// decode the given byte-string to yield a codepoint. Set utf_bytes
+// to be the number of bytes consumed. Return -1 in bad cases.
 
 int utf_bytes = 0;
 
-int utf_decode(const unsigned char *b)
+int utf_decode(const unsigned char* b)
 {   int c = *b++, c1, c2, c3;
     utf_bytes = 1;
     switch (c & 0xf0)
@@ -133,14 +130,18 @@ int utf_decode(const unsigned char *b)
             c1 = *b;
             if ((c1 & 0xc0) != 0x80) return -1; // not continuation
             utf_bytes += 1;
-            return ((c & 0x1f) << 6) | (c1 & 0x3f);
+            c = ((c & 0x1f) << 6) | (c1 & 0x3f);
+            if (c <= 0x7f) return 1;            // redundant representation
+            return c;
         case 0xe0:
             c1 = *b++;
             if ((c1 & 0xc0) != 0x80) return -1; // not continuation
             c2 = *b;
             if ((c2 & 0xc0) != 0x80) return -1; // not continuation
             utf_bytes += 2;
-            return ((c & 0x0f) << 12) | ((c1 & 0x3f) << 6) | (c2 & 0x3f);
+            c = ((c & 0x0f) << 12) | ((c1 & 0x3f) << 6) | (c2 & 0x3f);
+            if (c <= 0x7ff) return -1;
+            return c;
         case 0xf0:
             if ((c & 0x08) != 0) return -1;
             c1 = *b++;
@@ -150,8 +151,10 @@ int utf_decode(const unsigned char *b)
             c3 = *b;
             if ((c3 & 0xc0) != 0x80) return -1; // not continuation
             utf_bytes += 3;
-            return ((c & 0x07) << 18) | ((c1 & 0x3f) << 12) |
+            c = ((c & 0x07) << 18) | ((c1 & 0x3f) << 12) |
                    ((c2 & 0x3f) << 6) | (c3 & 0x3f);
+            if (c <= 0xffff) return -1;
+            return c;
     }
 }
 
@@ -159,12 +162,12 @@ static int hexval(int c)
 {
 // Regardless of the fact that in general I am working in Unicode, here
 // I am only interested in the digits 0-9 and the letters a-f and A-F and
-// if I only accept ones in the most basic form I can use 7-bit codes.
+// if I only accept characters up to 0x7f.
     if (c < 0 || c >= 0x7f) return -1;
     if (std::isdigit(static_cast<unsigned char>(c)))
         return c - '0';
 // I will in fact allow for G->17, H=>18 and so on, and not fault
-// input characters that are beyond the range of letters!
+// input characters that are even beyond the range of letters!
     else if (std::isupper(static_cast<unsigned char>(c)))
         return c + (10 - 'A');
     else return c + (10 - 'a');
@@ -2366,11 +2369,12 @@ static int compare_strings(const void *a, const void *b)
     return std::strcmp(a1->name, b1->name);
 }
 
-static int lookup_name(const char *s)
+// Finding an entry by name is fast because I set the table up sorted.
+// Names are expressed in terns of char* ot wchar_t*.
+
+static int lookup_name(const char* s)
 {   uniname k, *p;
     k.name = s;
-// I have set up the table of names so that they are in alphabatic order
-// and so bsearch can be used.
     p = (uniname *)std::bsearch(&k, unicode_names,
                                 sizeof(unicode_names)/sizeof(unicode_names[0]) -
                                 sizeof(unicode_names[0]), // allow for the terminator
@@ -2379,6 +2383,10 @@ static int lookup_name(const char *s)
     if (p == nullptr) return -1; // not found
     else return p->code;
 }
+
+// There can be times that I start with a wide string and want to
+// search the name table. I deal with that by first reducing things
+// to a narrow string.
 
 static int lookup_wide_name(const wchar_t *s)
 {   char narrow[20];
@@ -2392,21 +2400,28 @@ static int lookup_wide_name(const wchar_t *s)
     return lookup_name(narrow);
 }
 
-const char *lookup_code(int c)
+// The converse search starts with a code and needs to recover the
+// associated name.
+
+const char* lookup_code(int c)
 {   size_t i;
 // I do a simple linear search here. It is cheap-enough given that it is
 // only needed when the user types a special command, ALT-x. It does not
-// matter here that I scan the very final nullptr entry.
+// matter here that I scan the very final nullptr entry. and the equality
+// test in the loop is a very cheap one.
     for (i=0; i<sizeof(unicode_names)/sizeof(unicode_names[0]); i++)
     {   if (unicode_names[i].code == c) return unicode_names[i].name;
     }
     return nullptr;
 }
 
+// I could need to map from a codepoint to the name of the symbol
+// given as a wide string. I use a C not C++ string here.
+
 static wchar_t wide_char_name[20];
 
 const wchar_t *wide_lookup_code(int c)
-{   const char *s = lookup_code(c);
+{   const char* s = lookup_code(c);
     wchar_t *p;
     if (s == nullptr) return nullptr;
     p = wide_char_name;
@@ -2415,23 +2430,31 @@ const wchar_t *wide_lookup_code(int c)
     return wide_char_name;
 }
 
+// 
+
 static void term_replace_chars_backwards(int n, const wchar_t *s)
 {
 // Replace n characters that are before the caret with bytes from the
-// string s. The caret had better not be in the middle of a surrogate pair!
+// C wide string s. 
+    if (n > caretpos) return; // not enough chars to delete - should never happen.
+    caretpos -= n;
+    line.erase(caretpos, n);
     size_t m = std::wcslen(s);
-// Do this by first deleting n characters backwards and then inserting
-// the chars from s.
-    for (int i=0; i<n; i++) term_delete_backwards();
-    for (size_t i=0; i<m; i++)
-    {   input_line.insert(insert_point, 1, s[i]);
-        insert_point++;
-    }
+    line.insert(caretpos, s, m);
+    caretpos += m;
 }
 
 static wchar_t input_word[40];
 static wchar_t output_word[40];
 
+// This next function is a bit horrid. If sizeof(wchar_t)==2 I need to use
+// utf16 packing with surrogate pairs for some things. If that
+// happens the link between positions in the string and columns on the screen
+// goes awry. For now I will ignore that since it only hits if I am on
+// windows and I have characters beyond U+FFFF. But in due course I may
+// want to adjust probably be having functions that I used to map
+// index positions within the string to where full characters start.
+ 
 static void make_wchar(wchar_t *s, int c)
 {   c &= 0x001fffff;
     if (sizeof(wchar_t) == 4 || c <= 0xffff)
@@ -2445,7 +2468,18 @@ static void make_wchar(wchar_t *s, int c)
     }
 }
 
-void term_unicode_convert()
+// Surrogates are used with utf16, and so may appear in native
+// Windows long strings. On Linux etc they should never arise.
+
+bool is_high_surrogate(int c)
+{   return c>=0xd800 && c <= 0xdbff;
+}
+
+bool is_low_surrogate(int c)
+{   return c>=0xdc00 && c <- 0xdfff;
+}
+
+void TextEditor::unicodeConvert()
 {
 // If you position the caret to the right of (up to) 6 hex digits and
 // go ALT-X then the digits are replaced by single Unicode character.
@@ -2470,7 +2504,7 @@ void term_unicode_convert()
 // These are coped with by arranging that successive uses of ALT-X cycle
 // through all possibilities.
 // Here are some particular cases that are a nuisance:
-//    "123456"   The issue here is how many hex digits are to be used. The
+//    "101010"   The issue here is how many hex digits are to be used. The
 //               first choice here will be to use exactly 4, and the
 //               second choice exactly 6. I will only ever process 4 or 6
 //               digits, and I will not accept codes over 10ffff or in the
@@ -2510,7 +2544,7 @@ void term_unicode_convert()
 //    NNNN has a suffix          -> split suffix    (u+203e)   -> oli(u+2260)
 //    NNNN has a prefix          -> hex             oli(u+2260)->oli2260
 // char NNMMMM over 0xffff
-//    MMMM has a name            -> NNname          (u+10203e) ->10oline
+//    MMMM has a name            -> NNname          (u+10203e) -> 10oline
 //    otherwise                  -> 6 hex           (u+102030) -> 102030
 // char <= 0xffff                -> 4 hex           (i+1234)   -> 1234
 // 4 hex of name with prefix     -> hex expanded    oli2260    -> 203e
@@ -2521,33 +2555,38 @@ void term_unicode_convert()
 //   epsilon -> {\epsilon} -> e{\psi} -> e03c8 -> 03b5 -> epsi -> {\epsilon}
 // and the "lon" gets lost when the string "psi" is spotted.
 
+    line = buffer[cy];
+    caretpos = cx;
+
     int i, n, c;
     const wchar_t *p;
-    if (insert_point == prompt_length)
-    {   term_bell();
+    if (caretpos == 0)
+    {   beep();
         return;
     }
 // I will first see if I can find a name, and I will look for long ones first.
 // The "32" here is the length of the longest word in my table of names, and
 // I note that HTML 5 has "CounterClockwiseContourIntegral" has 31 characters.
     for (n=32; n>=2; n--) // word length to seek
-    {   if (prompt_length+n>insert_point) continue; // not this many chars
+    {   if (n>caretpos) continue; // not this many chars before cursor
         for (i=0; i<n; i++)
-            input_word[i] = input_line[insert_point-n+i];
+            input_word[i] = line[caretpos-n+i];
         input_word[n] = 0;           // extract the (potential) word
         c = lookup_wide_name(input_word);
         if (c == -1) continue;    // not a recognised name
 // The code may be over u+ffff and so if sizeof(wchar_t)==2 it needs packing
+// in UTF16
         make_wchar(output_word, c);
         term_replace_chars_backwards(n, output_word);
+        cx = caretpos;
         return;
     }
 // Next check for a 6-digit hex value. Note that the first two digits
 // must be 01, 02, ... 0f, 10. If you had "00" there then there was no
 // point in using a 6-digit format. If you have any value beyond "10" you
 // are outside the Unicode range.
-    if (insert_point - prompt_length >= 6)
-    {   p = &input_line[insert_point-6];
+    if (caretpos >= 6)
+    {   p = &line[caretpos-6];
         if ((p[0] == '0' && std::iswxdigit(p[1]) && p[1] != '0') ||
             (p[0] == '1' && p[1] == '0'))
         {   c = (hexval(p[0]) << 4) | hexval(p[1]);
@@ -2561,6 +2600,7 @@ void term_unicode_convert()
             if (c > 0)
             {   make_wchar(output_word, c);
                 term_replace_chars_backwards(6, output_word);
+                cx = caretpos;
                 return;
             }
         }
@@ -2568,15 +2608,15 @@ void term_unicode_convert()
 // In the next two cases the character before the caret has a name
 // associated with it. Well first I will just extract a Unicode character
 // from before the caret.
-    if (insert_point - prompt_length >= 1)
+    if (caretpos >= 1)
     {   n = 1;
-        c = input_line[insert_point-1];
+        c = line[caretpos-1];
         if (is_low_surrogate(c) &&
-            insert_point - prompt_length >= 2 &&
-            is_high_surrogate(input_line[insert_point-2]))
+            caretpos >= 2 &&
+            is_high_surrogate(line[caretpos-2]))
         {   n = 2;
             c = 0x10000 +
-                ((input_line[insert_point-2] & 0x3ff) << 10) +
+                ((line[caretpos-2] & 0x3ff) << 10) +
                 (c & 0x3ff);
         }
     }
@@ -2607,6 +2647,7 @@ void term_unicode_convert()
         {   std::wcscpy(output_word, p);
             make_wchar(&output_word[p1-p], w);
             term_replace_chars_backwards(n, output_word);
+            cx = caretpos;
             return;
         }
 // Now there is the possible conversion the other way, where (for example)
@@ -2616,8 +2657,8 @@ void term_unicode_convert()
 // So in this case I merely expand the character to 4 hex digits.
         for (i=1; i+std::wcslen(p)<9; i++)
         {   // i is the number of prefix characters to test for
-            if (insert_point - prompt_length >= i+n)
-            {   std::memcpy(input_word, &input_line[insert_point-i-n],
+            if (caretpos >= i+n)
+            {   std::memcpy(input_word, &line[caretpos-i-n],
                             i*sizeof(wchar_t));
                 std::wcscpy(&input_word[i], p);
 // I have now concatenated some stuff from the input buffer with the
@@ -2627,6 +2668,7 @@ void term_unicode_convert()
                 if (lookup_wide_name(input_word) != -1)
                 {   std::swprintf(output_word, 16, L"%.4x", c);
                     term_replace_chars_backwards(n, output_word);
+                    cx = caretpos;
                     return;
                 }
             }
@@ -2639,6 +2681,7 @@ void term_unicode_convert()
     if (c > 0xffff && (p = wide_lookup_code(c & 0xffff)) != nullptr)
     {   std::swprintf(output_word, 16, L"%.2x%ls", (c >> 16) & 0x3f, p);
         term_replace_chars_backwards(n, output_word);
+        cx = caretpos;
         return;
     }
 // Character up to u+ffff turns into hex (except that plain ASCII characters
@@ -2647,19 +2690,20 @@ void term_unicode_convert()
     if (c > 0x7f && c <= 0xffff)
     {   std::swprintf(output_word, 16, L"%.4x", c);
         term_replace_chars_backwards(n, output_word);
+        cx = caretpos;
         return;
     }
 // The case I look at now all have 4 hex digits ahead of the insertion
 // point.
-    if (insert_point - prompt_length >= 4 &&
-        std::iswxdigit(input_line[insert_point-4]) &&
-        std::iswxdigit(input_line[insert_point-3]) &&
-        std::iswxdigit(input_line[insert_point-3]) &&
-        std::iswxdigit(input_line[insert_point-1]))
-    {   c = hexval(input_line[insert_point-4]);
-        c = (c << 4) | hexval(input_line[insert_point-3]);
-        c = (c << 4) | hexval(input_line[insert_point-2]);
-        c = (c << 4) | hexval(input_line[insert_point-1]);
+    if (caretpos >= 4 &&
+        std::iswxdigit(line[caretpos-4]) &&
+        std::iswxdigit(line[caretpos-3]) &&
+        std::iswxdigit(line[caretpos-3]) &&
+        std::iswxdigit(line[caretpos-1]))
+    {   c = hexval(line[caretpos-4]);
+        c = (c << 4) | hexval(line[caretpos-3]);
+        c = (c << 4) | hexval(line[caretpos-2]);
+        c = (c << 4) | hexval(line[caretpos-1]);
 // Now c is the integer corresponding to the 4 hex digits. If it is in the
 // range 0xd800 to 0xdfff it would be a surrogate - in that case I will
 // reject it. I need to see if the code has an associated name.
@@ -2673,8 +2717,8 @@ void term_unicode_convert()
                 for (i=1; i+std::wcslen(p)<9; i++)
                 {   // i is the number of prefix characters to test for
                     int c1;
-                    if (insert_point - prompt_length >= i+4)
-                    {   std::memcpy(input_word, &input_line[insert_point-i-4],
+                    if (caretpos >= i+4)
+                    {   std::memcpy(input_word, &line[caretpos-i-4],
                                     i*sizeof(wchar_t));
                         std::wcscpy(&input_word[i], p);
                         if ((c1 = lookup_wide_name(input_word)) != -1)
@@ -2685,16 +2729,19 @@ void term_unicode_convert()
                     }
                 }
                 term_replace_chars_backwards(4, p);
+                cx = caretpos;
                 return;
             }
             make_wchar(output_word, c);
             term_replace_chars_backwards(4, output_word);
+            cx = caretpos;
             return;
         }
     }
 // If I do not recognise any of the situations I will give an alert and
 // not change the buffer at all.
-    term_bell();
+    beep();
+    cx = caretpos;
 }
 
 // end of uniconv.cpp
