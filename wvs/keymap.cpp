@@ -36,7 +36,7 @@
 
 #include "wvs.h"
 
-TextEditor::funcMap charAction =
+TextEditor::funcMap TextEditor::keymap =
 {
     {WEOF,               &TextEditor::quit_editor},
 
@@ -151,117 +151,117 @@ TextEditor::funcMap charAction =
 // The following is extracted for ncurses.h and is probably a comprehensive
 // list of potential special keys.
 
-    {KEY_CODE_YES|TAG_FN,      &TextEditor::pending},        /* A wchar_t contains a key code */
-    {KEY_MIN|TAG_FN,           &TextEditor::pending},        /* Minimum curses key */
-    {KEY_BREAK|TAG_FN,         &TextEditor::pending},        /* Break key (unreliable) */
-    {KEY_SRESET|TAG_FN,        &TextEditor::pending},        /* Soft (partial) reset (unreliable) */
-    {KEY_RESET|TAG_FN,         &TextEditor::pending},        /* Reset or hard reset (unreliable) */
+    {KEY_CODE_YES | TAG_FN,      &TextEditor::pending},        /* A wchar_t contains a key code */
+    {KEY_MIN | TAG_FN,           &TextEditor::pending},        /* Minimum curses key */
+    {KEY_BREAK | TAG_FN,         &TextEditor::pending},        /* Break key (unreliable) */
+    {KEY_SRESET | TAG_FN,        &TextEditor::pending},        /* Soft (partial) reset (unreliable) */
+    {KEY_RESET | TAG_FN,         &TextEditor::pending},        /* Reset or hard reset (unreliable) */
 
-    {KEY_DOWN|TAG_FN,          &TextEditor::line_down},      /* down-arrow key */
-    {KEY_UP|TAG_FN,            &TextEditor::line_up},        /* up-arrow key */
-    {KEY_LEFT|TAG_FN,          &TextEditor::char_left},      /* left-arrow key */
-    {KEY_RIGHT|TAG_FN,         &TextEditor::char_right},     /* right-arrow key */
-    {KEY_HOME|TAG_FN,          &TextEditor::pending},        /* home key */
-    {KEY_BACKSPACE|TAG_FN,     &TextEditor::pending},        /* backspace key */
-    {KEY_F0|TAG_FN,            &TextEditor::pending},        /* Function keys.  Space for 64 */
-    {KEY_F(1)|TAG_FN,          &TextEditor::pending},
-    {KEY_F(2)|TAG_FN,          &TextEditor::pending},
-    {KEY_F(3)|TAG_FN,          &TextEditor::pending},
-    {KEY_F(4)|TAG_FN,          &TextEditor::pending},
-    {KEY_F(5)|TAG_FN,          &TextEditor::pending},
-    {KEY_F(6)|TAG_FN,          &TextEditor::pending},
-    {KEY_F(7)|TAG_FN,          &TextEditor::pending},
-    {KEY_F(8)|TAG_FN,          &TextEditor::pending},
-    {KEY_F(9)|TAG_FN,          &TextEditor::pending},
-    {KEY_F(10)|TAG_FN,         &TextEditor::pending},
-    {KEY_F(11)|TAG_FN,         &TextEditor::pending},
-    {KEY_F(12)|TAG_FN,         &TextEditor::pending},
-    {KEY_F(13)|TAG_FN,         &TextEditor::pending},
-    {KEY_F(14)|TAG_FN,         &TextEditor::pending},
-    {KEY_F(15)|TAG_FN,         &TextEditor::pending},
-    {KEY_F(16)|TAG_FN,         &TextEditor::pending},
-    {KEY_DL|TAG_FN,            &TextEditor::pending},        /* delete-line key */
-    {KEY_IL|TAG_FN,            &TextEditor::pending},        /* insert-line key */
-    {KEY_DC|TAG_FN,            &TextEditor::pending},        /* delete-character key */
-    {KEY_IC|TAG_FN,            &TextEditor::pending},        /* insert-character key */
-    {KEY_EIC|TAG_FN,           &TextEditor::pending},        /* sent by rmir or smir in insert mode */
-    {KEY_CLEAR|TAG_FN,         &TextEditor::pending},        /* clear-screen or erase key */
-    {KEY_EOS|TAG_FN,           &TextEditor::pending},        /* clear-to-end-of-screen key */
-    {KEY_EOL|TAG_FN,           &TextEditor::pending},        /* clear-to-end-of-line key */
-    {KEY_SF|TAG_FN,            &TextEditor::page_up},        /* scroll-forward key */
-    {KEY_SR|TAG_FN,            &TextEditor::page_down},      /* scroll-backward key */
-    {KEY_NPAGE|TAG_FN,         &TextEditor::page_up},        /* next-page key */
-    {KEY_PPAGE|TAG_FN,         &TextEditor::page_down},      /* previous-page key */
-    {KEY_STAB|TAG_FN,          &TextEditor::pending},        /* set-tab key */
-    {KEY_CTAB|TAG_FN,          &TextEditor::pending},        /* clear-tab key */
-    {KEY_CATAB|TAG_FN,         &TextEditor::pending},        /* clear-all-tabs key */
-    {KEY_ENTER|TAG_FN,         &TextEditor::pending},        /* enter/send key */
-    {KEY_PRINT|TAG_FN,         &TextEditor::pending},        /* print key */
-    {KEY_LL|TAG_FN,            &TextEditor::pending},        /* lower-left key (home down) */
-    {KEY_A1|TAG_FN,            &TextEditor::pending},        /* upper left of keypad */
-    {KEY_A3|TAG_FN,            &TextEditor::pending},        /* upper right of keypad */
-    {KEY_B2|TAG_FN,            &TextEditor::pending},        /* center of keypad */
-    {KEY_C1|TAG_FN,            &TextEditor::pending},        /* lower left of keypad */
-    {KEY_C3|TAG_FN,            &TextEditor::pending},        /* lower right of keypad */
-    {KEY_BTAB|TAG_FN,          &TextEditor::pending},        /* back-tab key */
-    {KEY_BEG|TAG_FN,           &TextEditor::pending},        /* begin key */
-    {KEY_CANCEL|TAG_FN,        &TextEditor::pending},        /* cancel key */
-    {KEY_CLOSE|TAG_FN,         &TextEditor::pending},        /* close key */
-    {KEY_COMMAND|TAG_FN,       &TextEditor::pending},        /* command key */
-    {KEY_COPY|TAG_FN,          &TextEditor::pending},        /* copy key */
-    {KEY_CREATE|TAG_FN,        &TextEditor::pending},        /* create key */
-    {KEY_END|TAG_FN,           &TextEditor::pending},        /* end key */
-    {KEY_EXIT|TAG_FN,          &TextEditor::pending},        /* exit key */
-    {KEY_FIND|TAG_FN,          &TextEditor::pending},        /* find key */
-    {KEY_HELP|TAG_FN,          &TextEditor::pending},        /* help key */
-    {KEY_MARK|TAG_FN,          &TextEditor::pending},        /* mark key */
-    {KEY_MESSAGE|TAG_FN,       &TextEditor::pending},        /* message key */
-    {KEY_MOVE|TAG_FN,          &TextEditor::pending},        /* move key */
-    {KEY_NEXT|TAG_FN,          &TextEditor::pending},        /* next key */
-    {KEY_OPEN|TAG_FN,          &TextEditor::pending},        /* open key */
-    {KEY_OPTIONS|TAG_FN,       &TextEditor::pending},        /* options key */
-    {KEY_PREVIOUS|TAG_FN,      &TextEditor::pending},        /* previous key */
-    {KEY_REDO|TAG_FN,          &TextEditor::pending},        /* redo key */
-    {KEY_REFERENCE|TAG_FN,     &TextEditor::pending},        /* reference key */
-    {KEY_REFRESH|TAG_FN,       &TextEditor::pending},        /* refresh key */
-    {KEY_REPLACE|TAG_FN,       &TextEditor::pending},        /* replace key */
-    {KEY_RESTART|TAG_FN,       &TextEditor::pending},        /* restart key */
-    {KEY_RESUME|TAG_FN,        &TextEditor::pending},        /* resume key */
-    {KEY_SAVE|TAG_FN,          &TextEditor::pending},        /* save key */
-    {KEY_SBEG|TAG_FN,          &TextEditor::pending},        /* shifted begin key */
-    {KEY_SCANCEL|TAG_FN,       &TextEditor::pending},        /* shifted cancel key */
-    {KEY_SCOMMAND|TAG_FN,      &TextEditor::pending},        /* shifted command key */
-    {KEY_SCOPY|TAG_FN,         &TextEditor::pending},        /* shifted copy key */
-    {KEY_SCREATE|TAG_FN,       &TextEditor::pending},        /* shifted create key */
-    {KEY_SDC|TAG_FN,           &TextEditor::pending},        /* shifted delete-character key */
-    {KEY_SDL|TAG_FN,           &TextEditor::pending},        /* shifted delete-line key */
-    {KEY_SELECT|TAG_FN,        &TextEditor::pending},        /* select key */
-    {KEY_SEND|TAG_FN,          &TextEditor::pending},        /* shifted end key */
-    {KEY_SEOL|TAG_FN,          &TextEditor::pending},        /* shifted clear-to-end-of-line key */
-    {KEY_SEXIT|TAG_FN,         &TextEditor::pending},        /* shifted exit key */
-    {KEY_SFIND|TAG_FN,         &TextEditor::pending},        /* shifted find key */
-    {KEY_SHELP|TAG_FN,         &TextEditor::pending},        /* shifted help key */
-    {KEY_SHOME|TAG_FN,         &TextEditor::pending},        /* shifted home key */
-    {KEY_SIC|TAG_FN,           &TextEditor::pending},        /* shifted insert-character key */
-    {KEY_SLEFT|TAG_FN,         &TextEditor::pending},        /* shifted left-arrow key */
-    {KEY_SMESSAGE|TAG_FN,      &TextEditor::pending},        /* shifted message key */
-    {KEY_SMOVE|TAG_FN,         &TextEditor::pending},        /* Shfted move key */
-    {KEY_SNEXT|TAG_FN,         &TextEditor::pending},        /* shifted next key */
-    {KEY_SOPTIONS|TAG_FN,      &TextEditor::pending},        /* shifted options key */
-    {KEY_SPREVIOUS|TAG_FN,     &TextEditor::pending},        /* shifted previous key */
-    {KEY_SPRINT|TAG_FN,        &TextEditor::pending},        /* shifted print key */
-    {KEY_SREDO|TAG_FN,         &TextEditor::pending},        /* shifted redo key */
-    {KEY_SREPLACE|TAG_FN,      &TextEditor::pending},        /* shifted replace key */
-    {KEY_SRIGHT|TAG_FN,        &TextEditor::pending},        /* shifted right-arrow key */
-    {KEY_SRSUME|TAG_FN,        &TextEditor::pending},        /* shifted resume key */
-    {KEY_SSAVE|TAG_FN,         &TextEditor::pending},        /* shifted save key */
-    {KEY_SSUSPEND|TAG_FN,      &TextEditor::pending},        /* shifted suspend key */
-    {KEY_SUNDO|TAG_FN,         &TextEditor::pending},        /* shifted undo key */
-    {KEY_SUSPEND|TAG_FN,       &TextEditor::pending},        /* suspend key */
-    {KEY_UNDO|TAG_FN,          &TextEditor::pending},        /* undo key */
-    {KEY_MOUSE|TAG_FN,         &TextEditor::pending},        /* Mouse event has occurred */
+    {KEY_DOWN | TAG_FN,          &TextEditor::line_down},      /* down-arrow key */
+    {KEY_UP | TAG_FN,            &TextEditor::line_up},        /* up-arrow key */
+    {KEY_LEFT | TAG_FN,          &TextEditor::char_left},      /* left-arrow key */
+    {KEY_RIGHT | TAG_FN,         &TextEditor::char_right},     /* right-arrow key */
+    {KEY_HOME | TAG_FN,          &TextEditor::pending},        /* home key */
+    {KEY_BACKSPACE | TAG_FN,     &TextEditor::pending},        /* backspace key */
+    {KEY_F0 | TAG_FN,            &TextEditor::pending},        /* Function keys.  Space for 64 */
+    {KEY_F(1) | TAG_FN,          &TextEditor::pending},
+    {KEY_F(2) | TAG_FN,          &TextEditor::pending},
+    {KEY_F(3) | TAG_FN,          &TextEditor::pending},
+    {KEY_F(4) | TAG_FN,          &TextEditor::pending},
+    {KEY_F(5) | TAG_FN,          &TextEditor::pending},
+    {KEY_F(6) | TAG_FN,          &TextEditor::pending},
+    {KEY_F(7) | TAG_FN,          &TextEditor::pending},
+    {KEY_F(8) | TAG_FN,          &TextEditor::pending},
+    {KEY_F(9) | TAG_FN,          &TextEditor::pending},
+    {KEY_F(10) | TAG_FN,         &TextEditor::pending},
+    {KEY_F(11) | TAG_FN,         &TextEditor::pending},
+    {KEY_F(12) | TAG_FN,         &TextEditor::pending},
+    {KEY_F(13) | TAG_FN,         &TextEditor::pending},
+    {KEY_F(14) | TAG_FN,         &TextEditor::pending},
+    {KEY_F(15) | TAG_FN,         &TextEditor::pending},
+    {KEY_F(16) | TAG_FN,         &TextEditor::pending},
+    {KEY_DL | TAG_FN,            &TextEditor::pending},        /* delete-line key */
+    {KEY_IL | TAG_FN,            &TextEditor::pending},        /* insert-line key */
+    {KEY_DC | TAG_FN,            &TextEditor::pending},        /* delete-character key */
+    {KEY_IC | TAG_FN,            &TextEditor::pending},        /* insert-character key */
+    {KEY_EIC | TAG_FN,           &TextEditor::pending},        /* sent by rmir or smir in insert mode */
+    {KEY_CLEAR | TAG_FN,         &TextEditor::pending},        /* clear-screen or erase key */
+    {KEY_EOS | TAG_FN,           &TextEditor::pending},        /* clear-to-end-of-screen key */
+    {KEY_EOL | TAG_FN,           &TextEditor::pending},        /* clear-to-end-of-line key */
+    {KEY_SF | TAG_FN,            &TextEditor::page_up},        /* scroll-forward key */
+    {KEY_SR | TAG_FN,            &TextEditor::page_down},      /* scroll-backward key */
+    {KEY_NPAGE | TAG_FN,         &TextEditor::page_up},        /* next-page key */
+    {KEY_PPAGE | TAG_FN,         &TextEditor::page_down},      /* previous-page key */
+    {KEY_STAB | TAG_FN,          &TextEditor::pending},        /* set-tab key */
+    {KEY_CTAB | TAG_FN,          &TextEditor::pending},        /* clear-tab key */
+    {KEY_CATAB | TAG_FN,         &TextEditor::pending},        /* clear-all-tabs key */
+    {KEY_ENTER | TAG_FN,         &TextEditor::pending},        /* enter/send key */
+    {KEY_PRINT | TAG_FN,         &TextEditor::pending},        /* print key */
+    {KEY_LL | TAG_FN,            &TextEditor::pending},        /* lower-left key (home down) */
+    {KEY_A1 | TAG_FN,            &TextEditor::pending},        /* upper left of keypad */
+    {KEY_A3 | TAG_FN,            &TextEditor::pending},        /* upper right of keypad */
+    {KEY_B2 | TAG_FN,            &TextEditor::pending},        /* center of keypad */
+    {KEY_C1 | TAG_FN,            &TextEditor::pending},        /* lower left of keypad */
+    {KEY_C3 | TAG_FN,            &TextEditor::pending},        /* lower right of keypad */
+    {KEY_BTAB | TAG_FN,          &TextEditor::pending},        /* back-tab key */
+    {KEY_BEG | TAG_FN,           &TextEditor::pending},        /* begin key */
+    {KEY_CANCEL | TAG_FN,        &TextEditor::pending},        /* cancel key */
+    {KEY_CLOSE | TAG_FN,         &TextEditor::pending},        /* close key */
+    {KEY_COMMAND | TAG_FN,       &TextEditor::pending},        /* command key */
+    {KEY_COPY | TAG_FN,          &TextEditor::pending},        /* copy key */
+    {KEY_CREATE | TAG_FN,        &TextEditor::pending},        /* create key */
+    {KEY_END | TAG_FN,           &TextEditor::pending},        /* end key */
+    {KEY_EXIT | TAG_FN,          &TextEditor::pending},        /* exit key */
+    {KEY_FIND | TAG_FN,          &TextEditor::pending},        /* find key */
+    {KEY_HELP | TAG_FN,          &TextEditor::pending},        /* help key */
+    {KEY_MARK | TAG_FN,          &TextEditor::pending},        /* mark key */
+    {KEY_MESSAGE | TAG_FN,       &TextEditor::pending},        /* message key */
+    {KEY_MOVE | TAG_FN,          &TextEditor::pending},        /* move key */
+    {KEY_NEXT | TAG_FN,          &TextEditor::pending},        /* next key */
+    {KEY_OPEN | TAG_FN,          &TextEditor::pending},        /* open key */
+    {KEY_OPTIONS | TAG_FN,       &TextEditor::pending},        /* options key */
+    {KEY_PREVIOUS | TAG_FN,      &TextEditor::pending},        /* previous key */
+    {KEY_REDO | TAG_FN,          &TextEditor::pending},        /* redo key */
+    {KEY_REFERENCE | TAG_FN,     &TextEditor::pending},        /* reference key */
+    {KEY_REFRESH | TAG_FN,       &TextEditor::pending},        /* refresh key */
+    {KEY_REPLACE | TAG_FN,       &TextEditor::pending},        /* replace key */
+    {KEY_RESTART | TAG_FN,       &TextEditor::pending},        /* restart key */
+    {KEY_RESUME | TAG_FN,        &TextEditor::pending},        /* resume key */
+    {KEY_SAVE | TAG_FN,          &TextEditor::pending},        /* save key */
+    {KEY_SBEG | TAG_FN,          &TextEditor::pending},        /* shifted begin key */
+    {KEY_SCANCEL | TAG_FN,       &TextEditor::pending},        /* shifted cancel key */
+    {KEY_SCOMMAND | TAG_FN,      &TextEditor::pending},        /* shifted command key */
+    {KEY_SCOPY | TAG_FN,         &TextEditor::pending},        /* shifted copy key */
+    {KEY_SCREATE | TAG_FN,       &TextEditor::pending},        /* shifted create key */
+    {KEY_SDC | TAG_FN,           &TextEditor::pending},        /* shifted delete-character key */
+    {KEY_SDL | TAG_FN,           &TextEditor::pending},        /* shifted delete-line key */
+    {KEY_SELECT | TAG_FN,        &TextEditor::pending},        /* select key */
+    {KEY_SEND | TAG_FN,          &TextEditor::pending},        /* shifted end key */
+    {KEY_SEOL | TAG_FN,          &TextEditor::pending},        /* shifted clear-to-end-of-line key */
+    {KEY_SEXIT | TAG_FN,         &TextEditor::pending},        /* shifted exit key */
+    {KEY_SFIND | TAG_FN,         &TextEditor::pending},        /* shifted find key */
+    {KEY_SHELP | TAG_FN,         &TextEditor::pending},        /* shifted help key */
+    {KEY_SHOME | TAG_FN,         &TextEditor::pending},        /* shifted home key */
+    {KEY_SIC | TAG_FN,           &TextEditor::pending},        /* shifted insert-character key */
+    {KEY_SLEFT | TAG_FN,         &TextEditor::pending},        /* shifted left-arrow key */
+    {KEY_SMESSAGE | TAG_FN,      &TextEditor::pending},        /* shifted message key */
+    {KEY_SMOVE | TAG_FN,         &TextEditor::pending},        /* Shfted move key */
+    {KEY_SNEXT | TAG_FN,         &TextEditor::pending},        /* shifted next key */
+    {KEY_SOPTIONS | TAG_FN,      &TextEditor::pending},        /* shifted options key */
+    {KEY_SPREVIOUS | TAG_FN,     &TextEditor::pending},        /* shifted previous key */
+    {KEY_SPRINT | TAG_FN,        &TextEditor::pending},        /* shifted print key */
+    {KEY_SREDO | TAG_FN,         &TextEditor::pending},        /* shifted redo key */
+    {KEY_SREPLACE | TAG_FN,      &TextEditor::pending},        /* shifted replace key */
+    {KEY_SRIGHT | TAG_FN,        &TextEditor::pending},        /* shifted right-arrow key */
+    {KEY_SRSUME | TAG_FN,        &TextEditor::pending},        /* shifted resume key */
+    {KEY_SSAVE | TAG_FN,         &TextEditor::pending},        /* shifted save key */
+    {KEY_SSUSPEND | TAG_FN,      &TextEditor::pending},        /* shifted suspend key */
+    {KEY_SUNDO | TAG_FN,         &TextEditor::pending},        /* shifted undo key */
+    {KEY_SUSPEND | TAG_FN,       &TextEditor::pending},        /* suspend key */
+    {KEY_UNDO | TAG_FN,          &TextEditor::pending},        /* undo key */
+    {KEY_MOUSE | TAG_FN,         &TextEditor::pending},        /* Mouse event has occurred */
 
-    {KEY_RESIZE|TAG_FN,        &TextEditor::pending},        /* Terminal resize event */
+    {KEY_RESIZE | TAG_FN,        &TextEditor::pending},        /* Terminal resize event */
 };
 
 // end of keymap.cpp

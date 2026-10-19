@@ -2375,11 +2375,13 @@ static int compare_strings(const void *a, const void *b)
 static int lookup_name(const char* s)
 {   uniname k, *p;
     k.name = s;
+fprintf(logfile, "looking up %s\n", s);
     p = (uniname *)std::bsearch(&k, unicode_names,
                                 sizeof(unicode_names)/sizeof(unicode_names[0]) -
                                 sizeof(unicode_names[0]), // allow for the terminator
                                 sizeof(unicode_names[0]),
                                 compare_strings);
+fprintf(logfile, "bsearch returns %p\n", p);
     if (p == nullptr) return -1; // not found
     else return p->code;
 }
@@ -2388,7 +2390,7 @@ static int lookup_name(const char* s)
 // search the name table. I deal with that by first reducing things
 // to a narrow string.
 
-static int lookup_wide_name(const wchar_t *s)
+static int lookup_wide_name(const wchar_t* s)
 {   char narrow[20];
     size_t i;
     for (i=0; i<sizeof(narrow)-1; i++)
@@ -2420,9 +2422,9 @@ const char* lookup_code(int c)
 
 static wchar_t wide_char_name[20];
 
-const wchar_t *wide_lookup_code(int c)
+const wchar_t* wide_lookup_code(int c)
 {   const char* s = lookup_code(c);
-    wchar_t *p;
+    wchar_t* p;
     if (s == nullptr) return nullptr;
     p = wide_char_name;
     while (*s != 0) *p++ = (*s++ & 0xff);
@@ -2432,7 +2434,7 @@ const wchar_t *wide_lookup_code(int c)
 
 // 
 
-static void term_replace_chars_backwards(int n, const wchar_t *s)
+static void term_replace_chars_backwards(int n, const wchar_t* s)
 {
 // Replace n characters that are before the caret with bytes from the
 // C wide string s. 
@@ -2455,7 +2457,7 @@ static wchar_t output_word[40];
 // want to adjust probably be having functions that I used to map
 // index positions within the string to where full characters start.
  
-static void make_wchar(wchar_t *s, int c)
+static void make_wchar(wchar_t* s, int c)
 {   c &= 0x001fffff;
     if (sizeof(wchar_t) == 4 || c <= 0xffff)
     {   s[0] = c;
@@ -2557,9 +2559,12 @@ void TextEditor::unicodeConvert()
 
     line = buffer[cy];
     caretpos = cx;
-
+    fprintf(logfile, "unicodeConvery with cx=%d, cy=%d\n", cx, cy);
+    for (wchar_t c : line)
+        fprintf(logfile, "[%c]", c);
+    fprintf(logfile, "\n"); fflush(logfile);
     int i, n, c;
-    const wchar_t *p;
+    const wchar_t* p;
     if (caretpos == 0)
     {   beep();
         return;
@@ -2572,7 +2577,11 @@ void TextEditor::unicodeConvert()
         for (i=0; i<n; i++)
             input_word[i] = line[caretpos-n+i];
         input_word[n] = 0;           // extract the (potential) word
+fprintf(logfile, "input_word = ");
+for (wchar_t cc : input_word) fprintf(logfile, "%c", cc);
+fprintf(logfile, "\n");
         c = lookup_wide_name(input_word);
+fprintf(logfile, "lookupname returns %d\n", c);
         if (c == -1) continue;    // not a recognised name
 // The code may be over u+ffff and so if sizeof(wchar_t)==2 it needs packing
 // in UTF16
@@ -2632,7 +2641,7 @@ void TextEditor::unicodeConvert()
 // entity-names! I will test for these cases in a pretty crude manner.
     if (p != nullptr)
     {   int w = -1;
-        const wchar_t *p1 = p+1;
+        const wchar_t* p1 = p+1;
         while (*p1 != 0)
         {   w = lookup_wide_name(p1);
             if (w != -1) break;    // Found a suffix

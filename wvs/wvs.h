@@ -35,6 +35,8 @@
 #include <vector>
 #include <unordered_map>
 
+extern FILE* logfile;
+
 inline constexpr int CTRL_KEY(int32_t k)
 {   return k & 0x1f;
 }
@@ -80,7 +82,7 @@ public:
     void run()
     {   while (true)
         {   renderScreen();
-            processKeypress(getch());
+            processKeypress(mygetch(), true);
         }
     }
 
@@ -111,7 +113,7 @@ public:
     void addch8(int c);
 
     using funcMap = std::unordered_map<wchar_t, void (TextEditor::*)()>;
-    funcMap charAction;
+    static funcMap keymap;
 
 // Now all the edit actions that are supported.
 
