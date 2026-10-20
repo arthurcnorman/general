@@ -35,6 +35,15 @@
 #include <vector>
 #include <unordered_map>
 
+#include <cctype>
+#include <cstdlib>
+#include <cstring>
+#include <cstdint>
+#include <cwctype>
+
+#include <ncurses.h>
+
+
 extern FILE* logfile;
 
 inline constexpr int CTRL_KEY(int32_t k)

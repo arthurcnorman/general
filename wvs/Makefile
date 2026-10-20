@@ -3,19 +3,19 @@
 OPT=-O0 -g
 #OPT = -O3
 
-wvs:	wvs.cpp uniconv.cpp keymap.cpp wvs.h
-	g++ $(OPT) wvs.cpp uniconv.cpp keymap.cpp \
-		-l ncursesw -o wvs
+SOURCES = wvs.cpp uniconv.cpp keymap.cpp entities.cpp adobenames.cpp
+
+wvs:	wvs.h $(SOURCES)
+	g++ $(OPT) $(SOURCES) -l ncursesw -o wvs
 
 # Not yet tested, and the availability of the wide character version of
 # ncurses is not quite clear yet.
 
-winvs:	wvs.cpp uniconv.cpp keymap.cpp wvs.h
-	x86_64-w64-mingw32-g++ $(OPT) wvs.cpp uniconv.cpp keymap.cpp \
-		-l ncursesw -o wvs.exe
+winvs:	$(SOURCES) wvs.h
+	x86_64-w64-mingw32-g++ $(OPT) $(SOURCES) -l ncursesw -o wvs.exe
 
-wvs.tgz:	Makefile wvs.h wvs.cpp uniconv.cpp keymap.cpp
-	tar cvfz wvs.tgz Makefile wvs.h wvs.cpp uniconv.cpp keymap.cpp
+wvs.tgz:	Makefile wvs.h $(SOURCES)
+	tar cvfz wvs.tgz Makefile wvs.h $(SOURCES)
 
 clean:
 	rm *.o *.exe wvs *.tgz
