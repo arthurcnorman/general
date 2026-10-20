@@ -3,7 +3,8 @@
 OPT=-O0 -g
 #OPT = -O3
 
-SOURCES = wvs.cpp uniconv.cpp keymap.cpp entities.cpp adobenames.cpp
+SOURCES = wvs.cpp uniconv.cpp keymap.cpp entities.cpp adobenames.cpp \
+		texnames.cpp
 
 wvs:	wvs.h $(SOURCES)
 	g++ $(OPT) $(SOURCES) -l ncursesw -o wvs
