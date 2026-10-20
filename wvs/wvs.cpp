@@ -68,7 +68,6 @@ void TextEditor::clearLine(int y, int w)
 
 int TextEditor::mygetch8()
 {   int c = getch();
-    fprintf(logfile, "getch return %x\n", c); fflush(logfile);
     if (c == WEOF) return c;
     if (c < 0x80) return c;
     if (c > 0xff) return c | TAG_FN;
@@ -109,11 +108,9 @@ int TextEditor::mygetch8()
 
 int TextEditor::mygetch()
     {   int c = mygetch8();
-        fprintf(logfile, "mygetch8 return %x\n", c); fflush(logfile);
         if (c == WEOF) return c;
         if (c == 0x1b)
         {   c = mygetch8();
-            fprintf(logfile, "after ESC mygetch8 return %x\n", c); fflush(logfile);
             if (c == WEOF) return c;
 // I will not let arrow and function keys combine with the ALT key. So if
 // you either go ESC-up or hold down ALT while you press up I will just
@@ -215,7 +212,6 @@ void TextEditor::renderScreen()
                 attron(COLOR_PAIR(1));
             }
             addch8(UNICODE(c));
-fprintf(logfile, "%x:", UNICODE(c));
             //attroff(A_REVERSE);
             attroff(COLOR_PAIR(1));
             col++;
@@ -233,9 +229,7 @@ fprintf(logfile, "%x:", UNICODE(c));
 
 void TextEditor::processKeypress(int32_t c, bool insert)
 {
-fprintf(logfile, "processkeypress %x: %c\n", c, (c & 0x7f) | 0x40);
     auto f = keymap[c];
-    fprintf(logfile, "process: %x has function %p\n", c, (void*)f); fflush(logfile);
     if (f != nullptr) (this->*f)();
     else if (insert)
     {   buffer[cy].insert(cx, 1, c);

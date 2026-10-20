@@ -66,12 +66,6 @@ static int digofhex(wchar_t ch)
     }
 }
 
-// The line being edited is "line" and the cursor is at position
-// caretpos within it.
-
-std::wstring line = L"";
-int caretpos = 0;
-
 // Encode into buffer b as up to 4 characters (plus a nul). Because I
 // am only concerned with Unicode I only need encode values in the
 // range 0 to 0x10ffff. Returns the number of chars packed (not counting
@@ -2434,10 +2428,13 @@ const wchar_t* wide_lookup_code(int c)
 
 // 
 
-static void term_replace_chars_backwards(int n, const wchar_t* s)
+static void term_replace_chars_backwards(
+    std::wstring& line, int& caretpos,
+    int n, const wchar_t* s)
 {
 // Replace n characters that are before the caret with bytes from the
 // C wide string s. 
+    fprintf(logfile, "replace_back(%d)\n", n); 
     if (n > caretpos) return; // not enough chars to delete - should never happen.
     caretpos -= n;
     line.erase(caretpos, n);
@@ -2468,6 +2465,7 @@ static void make_wchar(wchar_t* s, int c)
         s[1] = 0xdc00 + (c & 0x3ff);
         s[2] = 0;
     }
+    fprintf(logfile, "make_wchar %x\n", c);
 }
 
 // Surrogates are used with utf16, and so may appear in native
@@ -2481,7 +2479,7 @@ bool is_low_surrogate(int c)
 {   return c>=0xdc00 && c <- 0xdfff;
 }
 
-void TextEditor::unicodeConvert()
+void convert(std::wstring& line, int& caretpos)
 {
 // If you position the caret to the right of (up to) 6 hex digits and
 // go ALT-X then the digits are replaced by single Unicode character.
@@ -2557,9 +2555,7 @@ void TextEditor::unicodeConvert()
 //   epsilon -> {\epsilon} -> e{\psi} -> e03c8 -> 03b5 -> epsi -> {\epsilon}
 // and the "lon" gets lost when the string "psi" is spotted.
 
-    line = buffer[cy];
-    caretpos = cx;
-    fprintf(logfile, "unicodeConvery with cx=%d, cy=%d\n", cx, cy);
+    fprintf(logfile, "unicodeConvery with cx=%d\n", caretpos);
     for (wchar_t c : line)
         fprintf(logfile, "[%c]", c);
     fprintf(logfile, "\n"); fflush(logfile);
@@ -2586,8 +2582,7 @@ fprintf(logfile, "lookupname returns %d\n", c);
 // The code may be over u+ffff and so if sizeof(wchar_t)==2 it needs packing
 // in UTF16
         make_wchar(output_word, c);
-        term_replace_chars_backwards(n, output_word);
-        cx = caretpos;
+        term_replace_chars_backwards(line, caretpos, n, output_word);
         return;
     }
 // Next check for a 6-digit hex value. Note that the first two digits
@@ -2608,8 +2603,7 @@ fprintf(logfile, "lookupname returns %d\n", c);
             }
             if (c > 0)
             {   make_wchar(output_word, c);
-                term_replace_chars_backwards(6, output_word);
-                cx = caretpos;
+                term_replace_chars_backwards(line, caretpos, 6, output_word);
                 return;
             }
         }
@@ -2655,8 +2649,7 @@ fprintf(logfile, "lookupname returns %d\n", c);
         if (w != -1)
         {   std::wcscpy(output_word, p);
             make_wchar(&output_word[p1-p], w);
-            term_replace_chars_backwards(n, output_word);
-            cx = caretpos;
+            term_replace_chars_backwards(line, caretpos, n, output_word);
             return;
         }
 // Now there is the possible conversion the other way, where (for example)
@@ -2676,8 +2669,7 @@ fprintf(logfile, "lookupname returns %d\n", c);
 // with a name it will fit within 4 digits.
                 if (lookup_wide_name(input_word) != -1)
                 {   std::swprintf(output_word, 16, L"%.4x", c);
-                    term_replace_chars_backwards(n, output_word);
-                    cx = caretpos;
+                    term_replace_chars_backwards(line, caretpos, n, output_word);
                     return;
                 }
             }
@@ -2689,8 +2681,7 @@ fprintf(logfile, "lookupname returns %d\n", c);
 // two digits of hex code ahead of that.
     if (c > 0xffff && (p = wide_lookup_code(c & 0xffff)) != nullptr)
     {   std::swprintf(output_word, 16, L"%.2x%ls", (c >> 16) & 0x3f, p);
-        term_replace_chars_backwards(n, output_word);
-        cx = caretpos;
+        term_replace_chars_backwards(line, caretpos, n, output_word);
         return;
     }
 // Character up to u+ffff turns into hex (except that plain ASCII characters
@@ -2698,8 +2689,7 @@ fprintf(logfile, "lookupname returns %d\n", c);
 // with their use in hex numeric representation.
     if (c > 0x7f && c <= 0xffff)
     {   std::swprintf(output_word, 16, L"%.4x", c);
-        term_replace_chars_backwards(n, output_word);
-        cx = caretpos;
+        term_replace_chars_backwards(line, caretpos, n, output_word);
         return;
     }
 // The case I look at now all have 4 hex digits ahead of the insertion
@@ -2732,25 +2722,29 @@ fprintf(logfile, "lookupname returns %d\n", c);
                         std::wcscpy(&input_word[i], p);
                         if ((c1 = lookup_wide_name(input_word)) != -1)
                         {   std::swprintf(output_word, 16, L"%.4x", c1);
-                            term_replace_chars_backwards(i+4, output_word);
+                            term_replace_chars_backwards(line, caretpos, i+4, output_word);
                             return;
                         }
                     }
                 }
-                term_replace_chars_backwards(4, p);
-                cx = caretpos;
+                term_replace_chars_backwards(line, caretpos, 4, p);
                 return;
             }
             make_wchar(output_word, c);
-            term_replace_chars_backwards(4, output_word);
-            cx = caretpos;
+            term_replace_chars_backwards(line, caretpos, 4, output_word);
             return;
         }
     }
 // If I do not recognise any of the situations I will give an alert and
 // not change the buffer at all.
     beep();
-    cx = caretpos;
+}
+
+void TextEditor::unicodeConvert()
+{   convert(buffer[cy], cx);
+    fprintf(logfile, "after update cx = %d\n", cx);
+    for (wchar_t c : buffer[cy]) fprintf(logfile, "[%x]", c);
+    fprintf(logfile, "\n");
 }
 
 // end of uniconv.cpp
