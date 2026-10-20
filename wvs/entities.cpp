@@ -34,6 +34,20 @@
 
 #include "wvs.h"
 
+// The information included here is available from many sources and
+// has been converted into the code-based tables here for use in a C++
+// context.
+// One sources that could be reviewed to collect an upstream version of
+// the data is https://github.com/whatwg/html/blob/main/LICENSE and
+// documentation there explains;
+//    "This work is licensed under a Creative Commons Attribution 4.0
+//     International License. To the extent portions of it are
+//     incorporated into source code, such portions in the source code
+//     are licensed under the BSD 3-Clause License instead."
+// and this file contains information in the form of source code.
+//
+// I have reformatted material from original versions of the tables in
+// a number of ways!
 
 // Here I have a table showing the names of HTML entities. In HTML each
 // will be written as e,g, "&AElig;" but I just put the textual part
@@ -67,11 +81,9 @@ enum combining_mark
     combining_spare   = 0xe00000
 };
 
-struct
-{   const char* name;
-    std::int32_t code;
-} html_entities[] =
-{   {"AElig",                                   0xc6},
+name_to_code html_names[] =
+{
+    {"AElig",                                   0xc6},
     {"AElig",                                   0xc6},
     {"AMP",                                     0x26},
     {"AMP",                                     0x26},

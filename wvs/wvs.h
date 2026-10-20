@@ -151,5 +151,16 @@ public:
 
 };
 
+typedef struct _name_to_code
+{   const char* name;
+    std::int32_t code;
+} name_to_code;
+
+typedef struct _adobe_name_to_code
+{   std::uint32_t code;
+    const char* name;
+    const char* long_name;
+} adobe_name_to_code;
+
 
 // end of wvs.h

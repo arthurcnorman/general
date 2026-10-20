@@ -151,11 +151,7 @@
 // #   renaming "tcommaaccent" to "tcedilla" and "Tcommaaccent" to "Tcedilla"
 // #
 
-struct adobenames
-{   uint32_t code;
-    const char* name;
-    const char* long_name;
-} symbol_name[] =
+adobe_name_to_code adobe_names[] =
 {
     {0x0041, "A", "LATIN CAPITAL LETTER A"},
     {0x00C6, "AE", "LATIN CAPITAL LETTER AE"},

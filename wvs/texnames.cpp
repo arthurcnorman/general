@@ -71,10 +71,7 @@ enum combining_mark
 // TeX symbols that is shorter than the huge comprehensivce one and that
 // provides me with unicode equivalents.
 
-struct
-{   const char* name;
-    std::int32_t code;
-} tex_entities[] =
+name_to_code tex_names[] =
 {
     {"Alpha",                                   0x391},
     {"alpha",                                   0x381}
