@@ -140,10 +140,12 @@ void TextEditor::loadFile()
         {   if (line.size()>0 && line[0]==0xfeff)
                 line.erase(0, 1);  // Get rid of BOM if present.
             buffer.push_back(line);
+            buffer_state.push_back(0);
         }
     }
     else
     {   buffer.push_back(L"");
+        buffer_state.push_back(0);
     }
     file.close();
 }
@@ -211,27 +213,127 @@ void TextEditor::addch8(int c)
 // (.)     // .... EOL             a 1-line commant.
 // (.)     /* .... */              comments that may span lines.
 // (.)     " ... \x ... "          string with possible escaped characters.
-// (.)     ' ... \x ... ;          character literal with possible escapoes.
-
+// (.)     ' ... \x ... ;          character literal with possible escapes.
+//
 // For a first version I will not highlight numbers or keywords, but if I
 // ever extend to them we have
 // (,)     letter alphanumeric*    name. Well could also be "_" at start
-                                   keywords spotted via lookup.
+//                                 keywords spotted via lookup.
 // (.)     0X hexdig* suffix       hex integer (also 0x). L or U suffix
 // (.)     0 octdig* suffix        octal integer
 // (,)     digit* suffix           decimal integer
-// (.)     floating point literal  inclusing hex ones.
+// (.)     floating point literal  includ ing hex ones.
 // With all these there can be line-continuation with "\" so that the
 // item is split across two or more lines.
 
-// To mechanise this I will use a finite automaton ane the key states
+// To mechanise this I will use a finite automaton ane the states
 // will be:
-// (.)     general text;
-// (.)     within single line comment;
-// (.)     within balanced comment;
-// (.)     within string;
-// (.)     within character literal.
 //
+// (.)     base:               general text.
+// (.)     slash:              seen "/", so will next char be "/" or "*"?
+// (.)     slash_comment:      within single line comment;
+// (.)     slash_star_comment: within balanced comment;
+// (.)     star:               following "/*" we see a "*".
+// (.)     string:             within string.
+// (.)     string_esc:         Within string have just seen a "\"
+// (.)     char:               within character literal.
+// (.)     char_esc:           within character have just seen "\"
+
+enum lexer_state
+{
+    lexer_base,
+    lexer_slash,
+    lexer_slash_comment,
+    lexer_slash_star_comment,
+    lexer_star,
+    lexer_string,
+    lexer_string_esc,
+    lexer_char,
+    lexer_char_esc
+};
+
+// Here is the transition function for the lexer.
+
+enum lexer_state lexer_transition(lexer_state state, wchar_t c)
+{   switch (state)
+    {
+    default:
+    case lexer_base:
+        switch (c)
+        {
+        case '/':
+            return lexer_slash;
+        case '"':
+            return lexer_string;
+        case '\'':
+            return lexer_char;
+        default:
+            return lexer_base;
+        }
+    case lexer_slash:
+        switch (c)
+        {
+        case '/':
+            return lexer_slash_comment;
+        case '*':
+            return lexer_slash_star_comment;
+        default:
+            return lexer_base;
+        }
+    case lexer_slash_comment:
+        switch (c)
+        {
+        case '\n':
+            return lexer_base;
+        default:
+            return lexer_slash_comment;
+        }
+    case lexer_slash_star_comment:
+        switch (c)
+        {
+        case '*':
+            return lexer_star;
+        default:
+            return lexer_slash_star_comment;
+        }
+    case lexer_star:
+        switch (c)
+        {
+        case '/':
+            return lexer_base;
+        case '*':
+;           return lexer_star;
+        default:
+            return lexer_slash_star_comment;
+        }
+    case lexer_string:
+        switch (c)
+        {
+        case '"':
+            return lexer_base;
+        case '\\':
+;           return lexer_string_esc;
+        default:
+            return lexer_string;
+        }
+    case lexer_string_esc:
+        return lexer_string;
+    case lexer_char:
+        switch (c)
+        {
+        case '\'':
+            return lexer_base;
+        case '\\':
+;           return lexer_char_esc;
+        default:
+            return lexer_char;
+        }
+    case lexer_char_esc:
+         return lexer_char;
+    }
+}
+
+
 // At any stage I will want the state of the automaton at the start of each
 // line of the buffer up as far as the last one displayed to be recorded. So
 // on startup I only need to scan the first page. When I scroll down I will
@@ -383,20 +485,21 @@ void TextEditor::q_menu()
 }
 
 void TextEditor::insert_newline()
-{
-    buffer.insert(buffer.begin()+cy+1, L"");
+{   buffer.insert(buffer.begin()+cy+1, L"");
+    buffer_state.insert(buffer_state.begin()+cy+1, 0);
     cx = 0;
     cy++;
-fprintf(logfile, "insert newline\n");
 }
 
 void TextEditor::line_up()
 {   if (cy > 0) cy--;
+    if (cx > buffer[cy].size()) cx = buffer[cy].size();
     makeCursorVisible();
 }
 
 void TextEditor::line_down()
 {   if (cy < buffer.size() - 1) cy++;
+    if (cx > buffer[cy].size()) cx = buffer[cy].size();
     makeCursorVisible();
 }
 
@@ -452,6 +555,7 @@ void TextEditor::join_lines()
     for (auto c : buffer[cy])
         buffer[cy-1].push_back(c);
     buffer.erase(buffer.begin()+cy);
+    buffer_state.erase(buffer_state.begin()+cy);
     cy--;
 }
 
@@ -483,6 +587,7 @@ void TextEditor::delete_to_eol()
 
 void TextEditor::delete_line()
 {   buffer.erase(buffer.begin()+cy);
+    buffer_state.erase(buffer_state.begin()+cy);
     cx = 0;
 }
 

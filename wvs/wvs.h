@@ -99,6 +99,7 @@ public:
     int startSelectLine = 3, startSelectCol = 4;
     int endSelectLine = 6, endSelectCol = 17;
     std::vector<std::wstring> buffer;
+    std::vector<uint8_t> buffer_state;
     std::string filename;
 
     void loadFile();
