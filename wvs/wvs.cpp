@@ -44,12 +44,18 @@
 #include <cstdio>
 #include <cstdint>
 
-#include <unistd.h> // for sleep()
+#include <unistd.h>
 
 #include "wvs.h"
 
 FILE* logfile = std::fopen("log.log", "w");
 
+void TextEditor::run()
+{   while (true)
+    {   renderScreen();
+        processKeypress(mygetch(), true);
+    }
+}
 
 void TextEditor::clearLine(int y, int w)
 {   move(y, 0);
@@ -142,8 +148,32 @@ void TextEditor::loadFile()
     file.close();
 }
 
+// This arranges that when I am about to write out a file "abc.def" that it
+// maintains a chain of backups with tames like "abc.def.old",
+// "abc.def.old" etc.
+
+void make_backup(std::string filename)
+{   char filename1[1024];
+    char filename2[1024];
+    const char* name = filename.c_str();
+    const int number_of_backups = 5;
+    for (int i=0; i<number_of_backups; i++)
+    {   int target = number_of_backups - i;
+        int source = target - 1;
+// Rename source as target supposing it exists
+        if (source == 0) std::snprintf(filename1, 1024, "%s", name);
+        else std::snprintf(filename1, 1024, "%s.old.%d", name, source);
+        if (std::filesystem::exists(filename1))
+        {   if (target == 1) std::snprintf(filename2, 1024, "%s.old", name);
+            else std::snprintf(filename2, 1024, "%s.old.%d", name, target-1);
+            std::filesystem::rename(filename1, filename2);
+        }
+    }
+}
+
 void TextEditor::saveFile()
-{   std::wofstream file(filename, std::wofstream::out);
+{   make_backup(filename);
+    std::wofstream file(filename, std::wofstream::out);
     file.imbue(std::locale(file.getloc(),
                            new std::codecvt_utf8<wchar_t>));
 
@@ -173,6 +203,47 @@ void TextEditor::addch8(int c)
         addch(0x80 | (c & 0x3f));
     }
 }
+
+// Here I will jhave a commentary about syntax colouring. I will just
+// be thinking about C++.
+
+// The notations I want to be aware of are:
+// (.)     // .... EOL             a 1-line commant.
+// (.)     /* .... */              comments that may span lines.
+// (.)     " ... \x ... "          string with possible escaped characters.
+// (.)     ' ... \x ... ;          character literal with possible escapoes.
+
+// For a first version I will not highlight numbers or keywords, but if I
+// ever extend to them we have
+// (,)     letter alphanumeric*    name. Well could also be "_" at start
+                                   keywords spotted via lookup.
+// (.)     0X hexdig* suffix       hex integer (also 0x). L or U suffix
+// (.)     0 octdig* suffix        octal integer
+// (,)     digit* suffix           decimal integer
+// (.)     floating point literal  inclusing hex ones.
+// With all these there can be line-continuation with "\" so that the
+// item is split across two or more lines.
+
+// To mechanise this I will use a finite automaton ane the key states
+// will be:
+// (.)     general text;
+// (.)     within single line comment;
+// (.)     within balanced comment;
+// (.)     within string;
+// (.)     within character literal.
+//
+// At any stage I will want the state of the automaton at the start of each
+// line of the buffer up as far as the last one displayed to be recorded. So
+// on startup I only need to scan the first page. When I scroll down I will
+// scan from the final line of the page forward to fill in this info. When
+// I scoll up it is already present. Whenever I make an edit within a line
+// I will scan from the start of that line down to the bottom of the
+// window.
+// As I send a line to ncurses so it can be displayed I parse that line
+// from its known starting state and set text colour appropriately.
+
+// Well the above is not done thus far but having a plan may let me implement
+// it incrementally.
 
 void TextEditor::makeCursorVisible()
 {
@@ -225,15 +296,22 @@ void TextEditor::renderScreen()
     refresh();
 }
 
-
+int32_t command_character;
 
 void TextEditor::processKeypress(int32_t c, bool insert)
-{
+{   command_character = c;
+fprintf(logfile, "Key = %x enter=%x %x\n", c, '\n', CTRL_KEY('m'));
     auto f = keymap[c];
-    if (f != nullptr) (this->*f)();
-    else if (insert)
-    {   buffer[cy].insert(cx, 1, c);
-        cx++;
+    if (f != nullptr)
+    {   fprintf(logfile, "Command from table found\n");
+        (this->*f)();
+    }
+    else
+    {   fprintf(logfile, "char to insert = %x\n", c);
+        if (insert)
+        {   buffer[cy].insert(cx, 1, c);
+            cx++;
+        }
     }
 }
 
@@ -253,7 +331,7 @@ int main(int argc, char* argv[])
 }
 
 void TextEditor::pending()
-{   fprintf(logfile, "Pending op\n");
+{   fprintf(logfile, "Pending op %x\n", command_character);
 }
 
 void TextEditor::displayMenu(const char* menu[])
@@ -304,6 +382,14 @@ void TextEditor::q_menu()
 {
 }
 
+void TextEditor::insert_newline()
+{
+    buffer.insert(buffer.begin()+cy+1, L"");
+    cx = 0;
+    cy++;
+fprintf(logfile, "insert newline\n");
+}
+
 void TextEditor::line_up()
 {   if (cy > 0) cy--;
     makeCursorVisible();
@@ -349,6 +435,57 @@ void TextEditor::page_line_up()
 void TextEditor::page_line_down()
 {   if (firstVisibleLine > 0) firstVisibleLine--;
 }
+
+void TextEditor::delete_forward(int n)
+{   buffer[cy].erase(cx+1, n);
+}
+
+void TextEditor::delete_backward(int n)
+{   if (n > cx) beep();
+    cx -= n;
+    buffer[cy].erase(cx, n);
+}
+
+void TextEditor::join_lines()
+{   if (cy == 0) beep();
+    cx = buffer[cy-1].length();
+    for (auto c : buffer[cy])
+        buffer[cy-1].push_back(c);
+    buffer.erase(buffer.begin()+cy);
+    cy--;
+}
+
+void TextEditor::backspace()
+{   if (cx == 0)
+    {   if (cy == 0) beep();
+        else join_lines();
+    }
+    else delete_backward(1);
+}
+
+void TextEditor::delete_char()
+{   size_t n = buffer[cy].length();
+    if (cx == n-1)
+    {   n = buffer.size();
+        if (cy == n-1) beep();
+        else
+        {   cx = 0;
+            cy++;
+            join_lines();
+        }
+    }
+    else delete_forward(1);
+}
+
+void TextEditor::delete_to_eol()
+{   delete_forward(buffer[cy].length() - cx - 1);
+}
+
+void TextEditor::delete_line()
+{   buffer.erase(buffer.begin()+cy);
+    cx = 0;
+}
+
 
 void TextEditor::flip_column_mode()
 {   columnMode = !columnMode;

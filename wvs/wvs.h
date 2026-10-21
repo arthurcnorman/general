@@ -30,13 +30,14 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id: $
-// $Id: 264f030f6ec9b5b05d66d22fc89c2eee3a932a42 $
+// $Id$
+// $Id$
 
 
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <filesystem>
 
 #include <cctype>
 #include <cstdlib>
@@ -87,16 +88,10 @@ public:
     }
 
     ~TextEditor()
-    {   //saveFile();
-        endwin();
+    {   endwin();
     }
 
-    void run()
-    {   while (true)
-        {   renderScreen();
-            processKeypress(mygetch(), true);
-        }
-    }
+    void run();
 
     int cx=0, cy=0;  // cursor position
     int firstVisibleLine = 0;
@@ -121,6 +116,7 @@ public:
     int mygetch();
 
     void processKeypress(int32_t c, bool insert=true);
+    void insert_newline();
 
     void addch8(int c);
 
@@ -140,6 +136,15 @@ public:
     void page_down();
     void page_line_up();
     void page_line_down();
+
+    void delete_forward(int n);
+    void delete_backward(int n);
+    void join_lines();
+    
+    void backspace();
+    void delete_char();
+    void delete_to_eol();
+    void delete_line();
 
     void k_menu();
     void o_menu();

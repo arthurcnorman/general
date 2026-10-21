@@ -49,7 +49,7 @@ TextEditor::funcMap TextEditor::keymap =
     {CTRL_KEY('g'),      &TextEditor::pending},
     {CTRL_KEY('h'),      &TextEditor::pending},
     {CTRL_KEY('i'),      &TextEditor::pending},
-    {CTRL_KEY('j'),      &TextEditor::pending},
+    {CTRL_KEY('j'),      &TextEditor::insert_newline},
     {CTRL_KEY('k'),      &TextEditor::k_menu},
     {CTRL_KEY('l'),      &TextEditor::pending},
     {CTRL_KEY('m'),      &TextEditor::pending},
@@ -162,7 +162,7 @@ TextEditor::funcMap TextEditor::keymap =
     {KEY_LEFT | TAG_FN,          &TextEditor::char_left},      /* left-arrow key */
     {KEY_RIGHT | TAG_FN,         &TextEditor::char_right},     /* right-arrow key */
     {KEY_HOME | TAG_FN,          &TextEditor::pending},        /* home key */
-    {KEY_BACKSPACE | TAG_FN,     &TextEditor::pending},        /* backspace key */
+    {KEY_BACKSPACE | TAG_FN,     &TextEditor::backspace},      /* backspace key */
     {KEY_F0 | TAG_FN,            &TextEditor::pending},        /* Function keys.  Space for 64 */
     {KEY_F(1) | TAG_FN,          &TextEditor::pending},
     {KEY_F(2) | TAG_FN,          &TextEditor::pending},
@@ -182,7 +182,7 @@ TextEditor::funcMap TextEditor::keymap =
     {KEY_F(16) | TAG_FN,         &TextEditor::pending},
     {KEY_DL | TAG_FN,            &TextEditor::pending},        /* delete-line key */
     {KEY_IL | TAG_FN,            &TextEditor::pending},        /* insert-line key */
-    {KEY_DC | TAG_FN,            &TextEditor::pending},        /* delete-character key */
+    {KEY_DC | TAG_FN,            &TextEditor::delete_char},    /* delete-character key */
     {KEY_IC | TAG_FN,            &TextEditor::pending},        /* insert-character key */
     {KEY_EIC | TAG_FN,           &TextEditor::pending},        /* sent by rmir or smir in insert mode */
     {KEY_CLEAR | TAG_FN,         &TextEditor::pending},        /* clear-screen or erase key */
@@ -195,7 +195,7 @@ TextEditor::funcMap TextEditor::keymap =
     {KEY_STAB | TAG_FN,          &TextEditor::pending},        /* set-tab key */
     {KEY_CTAB | TAG_FN,          &TextEditor::pending},        /* clear-tab key */
     {KEY_CATAB | TAG_FN,         &TextEditor::pending},        /* clear-all-tabs key */
-    {KEY_ENTER | TAG_FN,         &TextEditor::pending},        /* enter/send key */
+    {KEY_ENTER | TAG_FN,         &TextEditor::insert_newline}, /* enter/send key */
     {KEY_PRINT | TAG_FN,         &TextEditor::pending},        /* print key */
     {KEY_LL | TAG_FN,            &TextEditor::pending},        /* lower-left key (home down) */
     {KEY_A1 | TAG_FN,            &TextEditor::pending},        /* upper left of keypad */

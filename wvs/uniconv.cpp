@@ -197,17 +197,17 @@ static int hexval(int c)
 //
 // Just so you know, there are somewhat over 2000 names here.
 
-typedef struct _uniname
-{
-// Note that the names of special characters will never themselves include
-// any special characters, so using "char*" here rather than "wchar_t*"
-// is reasonable.
-    const char* name;
-    int code;
-} uniname;
+// At present I used this single embeeded list. In a while I intend to move
+// to having three lists in three separate files:
+//   entities.cpp    the HTML entity names intended for use as in &Alpha;
+//   adobenames.cpp  names proposed by Adobe
+//   texnames.cpp    as for use with \Alpha
+// These three lists are being set up in 2026. The first is probably
+// a dcomplete list for HTML 5. The Adobe one is their shorter list.
+// the TeX list will need to be populated.
 
 
-uniname unicode_names[] =
+name_to_code unicode_names[] =
 {
     {"AElig",                           198},
     {"AMP",                             38},
@@ -2358,8 +2358,8 @@ uniname unicode_names[] =
 };
 
 static int compare_strings(const void *a, const void *b)
-{   const uniname *a1 = (uniname *)a;
-    const uniname *b1 = (uniname *)b;
+{   const name_to_code *a1 = (name_to_code *)a;
+    const name_to_code *b1 = (name_to_code *)b;
     return std::strcmp(a1->name, b1->name);
 }
 
@@ -2367,10 +2367,10 @@ static int compare_strings(const void *a, const void *b)
 // Names are expressed in terns of char* ot wchar_t*.
 
 static int lookup_name(const char* s)
-{   uniname k, *p;
+{   name_to_code k, *p;
     k.name = s;
 fprintf(logfile, "looking up %s\n", s);
-    p = (uniname *)std::bsearch(&k, unicode_names,
+    p = (name_to_code *)std::bsearch(&k, unicode_names,
                                 sizeof(unicode_names)/sizeof(unicode_names[0]) -
                                 sizeof(unicode_names[0]), // allow for the terminator
                                 sizeof(unicode_names[0]),
