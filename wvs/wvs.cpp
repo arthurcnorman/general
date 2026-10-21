@@ -399,6 +399,10 @@ void TextEditor::renderLine(int i, std::wstring line, enum lexer_state state,
         if (inSelect) attron(A_REVERSE);
         addch8(UNICODE(c));
         if (inSelect) attroff(A_REVERSE);
+        state = lexer_transition(state, c);
+        if (state == lexer_string ||
+            state == lexer_string_esc) attron(COLOR_PAIR(7));
+        else attron(COLOR_PAIR(1));
         col++;
     }
     while (col < width)
