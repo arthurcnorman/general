@@ -72,55 +72,53 @@ inline const int32_t TAG_Q   = 0x10000000;
 inline const int32_t ESC      = 0x1b;
 inline const int32_t BAD_UTF8 = 0x25a0;   // BLACK SQUARE
 
+enum lexer_state
+{
+    lexer_base,
+    lexer_slash,
+    lexer_slash_comment,
+    lexer_slash_star_comment,
+    lexer_star,
+    lexer_string,
+    lexer_string_esc,
+    lexer_char,
+    lexer_char_esc
+};
+
 class TextEditor
 {
 public:
-    TextEditor(const std::string& filename) : filename(filename)
-    {   setlocale(LC_ALL, "");
-        initscr();
-        raw();
-        noecho();
-        keypad(stdscr, true);
-        start_color();
-        init_pair(1, COLOR_RED, COLOR_BLUE);
-        refresh();
-        loadFile();
-    }
-
-    ~TextEditor()
-    {   endwin();
-    }
-
+    TextEditor(const std::string& filename);
+    ~TextEditor();
     void run();
-
+    void lex_from_line(int n);
     int cx=0, cy=0;  // cursor position
     int firstVisibleLine = 0;
     bool columnMode = true;
     int startSelectLine = 3, startSelectCol = 4;
     int endSelectLine = 6, endSelectCol = 17;
     std::vector<std::wstring> buffer;
-    std::vector<uint8_t> buffer_state;
+    std::vector<enum lexer_state> buffer_state;
     std::string filename;
-
     void loadFile();
     void saveFile();
-
     void unicodeConvert();
+    bool inSelect;
+    bool inComment;
+    bool inString;
+    bool inChar;
+    void renderLine(int i, std::wstring line, enum lexer_state state,
+                    int height, int width);
     void renderScreen();
     void makeCursorVisible();
     void displayMenu(const char* menu[]);
     void hideMenu();
-
     void clearLine(int y, int w);
-
     int mygetch8();
     int mygetch();
-
     void processKeypress(int32_t c, bool insert=true);
     void insert_newline();
-
     void addch8(int c);
-
     using funcMap = std::unordered_map<wchar_t, void (TextEditor::*)()>;
     static funcMap keymap;
 

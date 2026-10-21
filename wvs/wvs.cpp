@@ -50,6 +50,46 @@
 
 FILE* logfile = std::fopen("log.log", "w");
 
+TextEditor::TextEditor(const std::string& filename) : filename(filename)
+{   setlocale(LC_ALL, "");
+    initscr();
+    raw();
+    noecho();
+    keypad(stdscr, true);
+    start_color();
+    chtype blank = getbkgd(stdscr);     // background
+    int pair_id = PAIR_NUMBER(blank);
+    short foreground, background;
+    pair_content(pair_id, &foreground, &background);
+// 
+fprintf(logfile, "colour for screen is %d %d\n", foreground, background);
+// Colours:
+//                     normal               in selection
+//   plain text    white on black           white on blue      1  2
+//   comments      red on black             red on blue        3  4
+//   strings       green on black           green on blue      5  6
+//   characters    magenta on black         magenta on blue    7  8
+//   keyword       yellow on black          yellow on blue     9 10
+    init_pair(1,  COLOR_WHITE, COLOR_BLACK);
+    init_pair(2,  COLOR_WHITE, COLOR_BLUE);
+    init_pair(3,  COLOR_RED, COLOR_BLACK);
+    init_pair(4,  COLOR_RED, COLOR_BLUE);
+    init_pair(5,  COLOR_GREEN, COLOR_BLACK);
+    init_pair(6,  COLOR_GREEN, COLOR_BLUE);
+    init_pair(7,  COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(8,  COLOR_MAGENTA, COLOR_BLUE);
+    init_pair(9,  COLOR_YELLOW, COLOR_BLACK);
+    init_pair(10, COLOR_YELLOW, COLOR_BLUE);
+    attron(1);
+    refresh();
+    loadFile();
+}
+
+TextEditor::~TextEditor()
+{   endwin();
+}
+
+
 void TextEditor::run()
 {   while (true)
     {   renderScreen();
@@ -60,150 +100,6 @@ void TextEditor::run()
 void TextEditor::clearLine(int y, int w)
 {   move(y, 0);
     for (int x=0; x<w; x++) addch(' ');
-}
-
-// Here the getch() function from ncurses hands back characters in the
-// range 0 to 0xff as themselves, but it then uses return values from
-// 0x100 to to 0x5xx to stand for special keys: arrow keys, page-up and
-// page-down, function keys and on selected keyboards many more. I
-// will return those extended values with TAG_FN. Here I expect that
-// those extended keys that sometimes get returned as sequences starting
-// with ESC will have been converted into single codes. But letters types
-// with the ALT ket pressed will get returned as two characters, ESC and
-// then the letter.
-
-int TextEditor::mygetch8()
-{   int c = getch();
-    if (c == WEOF) return c;
-    if (c < 0x80) return c;
-    if (c > 0xff) return c | TAG_FN;
-    if ((c & 0xc0) == 0x80) return BAD_UTF8;
-    if ((c * 0xe0) == 0xc0)
-    {   int c1 = getch();
-        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
-        c = ((c & 0x1f)<<6) | (c1 & 0x3f);
-        if (c <= 0x7f) return BAD_UTF8;
-        else return c;
-    }
-    if ((c * 0xf0) == 0xe0)
-    {   int c1 = getch();
-        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
-        c = ((c & 0x0f)<<6) | (c1 & 0x3f);
-        c1 = getch();
-        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
-        c = (c<<6) | (c1 & 0x3f);
-        if (c <= 0x7ff) return BAD_UTF8;
-        else return c;
-    }
-    if ((c * 0xf8) == 0xf0)
-    {   int c1 = getch();
-        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
-        c = ((c & 0x07)<<6) | (c1 & 0x3f);
-        c1 = getch();
-        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
-        c = (c<<6) | (c1 & 0x3f);
-        c1 = getch();
-        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
-        c = (c<<6) | (c1 & 0x3f);
-        if (c <= 0xffff ||
-            c > 0x10ffff) return BAD_UTF8;
-        else return c;
-    }
-    else return BAD_UTF8;
-}
-
-int TextEditor::mygetch()
-    {   int c = mygetch8();
-        if (c == WEOF) return c;
-        if (c == 0x1b)
-        {   c = mygetch8();
-            if (c == WEOF) return c;
-// I will not let arrow and function keys combine with the ALT key. So if
-// you either go ESC-up or hold down ALT while you press up I will just
-// hand back the "up" part.
-            else if ((c & TAG_FN) != 0) return c;
-            else return c | TAG_ALT;
-        }
-        else return c;
-    }
-
-
-
-void TextEditor::loadFile()
-{   std::wifstream file(filename, std::wifstream::in);
-    file.imbue(std::locale(file.getloc(),
-                           new std::codecvt_utf8<wchar_t>));
-
-    if (file.is_open())
-    {   std::wstring line;
-        while (getline(file, line))
-        {   if (line.size()>0 && line[0]==0xfeff)
-                line.erase(0, 1);  // Get rid of BOM if present.
-            buffer.push_back(line);
-            buffer_state.push_back(0);
-        }
-    }
-    else
-    {   buffer.push_back(L"");
-        buffer_state.push_back(0);
-    }
-    file.close();
-}
-
-// This arranges that when I am about to write out a file "abc.def" that it
-// maintains a chain of backups with tames like "abc.def.old",
-// "abc.def.old" etc.
-
-void make_backup(std::string filename)
-{   char filename1[1024];
-    char filename2[1024];
-    const char* name = filename.c_str();
-    const int number_of_backups = 5;
-    for (int i=0; i<number_of_backups; i++)
-    {   int target = number_of_backups - i;
-        int source = target - 1;
-// Rename source as target supposing it exists
-        if (source == 0) std::snprintf(filename1, 1024, "%s", name);
-        else std::snprintf(filename1, 1024, "%s.old.%d", name, source);
-        if (std::filesystem::exists(filename1))
-        {   if (target == 1) std::snprintf(filename2, 1024, "%s.old", name);
-            else std::snprintf(filename2, 1024, "%s.old.%d", name, target-1);
-            std::filesystem::rename(filename1, filename2);
-        }
-    }
-}
-
-void TextEditor::saveFile()
-{   make_backup(filename);
-    std::wofstream file(filename, std::wofstream::out);
-    file.imbue(std::locale(file.getloc(),
-                           new std::codecvt_utf8<wchar_t>));
-
-    if (file.is_open())
-    {   for (const auto& line : buffer)
-        {   file << line << L"\n";
-        }
-    }
-    file.close();
-}
-
-void TextEditor::addch8(int c)
-{   if (c <= 0x7f) addch(c);
-    else if (c <= 0x7ff)
-    {   addch(0xc0 | ((c>>6) & 0x1f));
-        addch(0x80 | (c & 0x3f));
-    }
-    else if (c <= 0xffff)
-    {   addch(0xe0 | ((c>>12) & 0xf));
-        addch(0x80 | ((c>>6) & 0x3f));
-        addch(0x80 | (c & 0x3f));
-    }
-    else if (c <= 0x10fff)
-    {   addch(0xf0 | ((c>>18) & 0x7));
-        addch(0x80 | ((c>>12) & 0x3f));
-        addch(0x80 | ((c>>6) & 0x3f));
-        addch(0x80 | (c & 0x3f));
-    }
 }
 
 // Here I will jhave a commentary about syntax colouring. I will just
@@ -238,19 +134,6 @@ void TextEditor::addch8(int c)
 // (.)     string_esc:         Within string have just seen a "\"
 // (.)     char:               within character literal.
 // (.)     char_esc:           within character have just seen "\"
-
-enum lexer_state
-{
-    lexer_base,
-    lexer_slash,
-    lexer_slash_comment,
-    lexer_slash_star_comment,
-    lexer_star,
-    lexer_string,
-    lexer_string_esc,
-    lexer_char,
-    lexer_char_esc
-};
 
 // Here is the transition function for the lexer.
 
@@ -347,15 +230,187 @@ enum lexer_state lexer_transition(lexer_state state, wchar_t c)
 // Well the above is not done thus far but having a plan may let me implement
 // it incrementally.
 
+// Here the getch() function from ncurses hands back characters in the
+// range 0 to 0xff as themselves, but it then uses return values from
+// 0x100 to to 0x5xx to stand for special keys: arrow keys, page-up and
+// page-down, function keys and on selected keyboards many more. I
+// will return those extended values with TAG_FN. Here I expect that
+// those extended keys that sometimes get returned as sequences starting
+// with ESC will have been converted into single codes. But letters types
+// with the ALT ket pressed will get returned as two characters, ESC and
+// then the letter.
+
+int TextEditor::mygetch8()
+{   int c = getch();
+    if (c == WEOF) return c;
+    if (c < 0x80) return c;
+    if (c > 0xff) return c | TAG_FN;
+    if ((c & 0xc0) == 0x80) return BAD_UTF8;
+    if ((c * 0xe0) == 0xc0)
+    {   int c1 = getch();
+        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
+        c = ((c & 0x1f)<<6) | (c1 & 0x3f);
+        if (c <= 0x7f) return BAD_UTF8;
+        else return c;
+    }
+    if ((c * 0xf0) == 0xe0)
+    {   int c1 = getch();
+        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
+        c = ((c & 0x0f)<<6) | (c1 & 0x3f);
+        c1 = getch();
+        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
+        c = (c<<6) | (c1 & 0x3f);
+        if (c <= 0x7ff) return BAD_UTF8;
+        else return c;
+    }
+    if ((c * 0xf8) == 0xf0)
+    {   int c1 = getch();
+        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
+        c = ((c & 0x07)<<6) | (c1 & 0x3f);
+        c1 = getch();
+        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
+        c = (c<<6) | (c1 & 0x3f);
+        c1 = getch();
+        if ((c1 & 0xc0) != 0x80) return BAD_UTF8;
+        c = (c<<6) | (c1 & 0x3f);
+        if (c <= 0xffff ||
+            c > 0x10ffff) return BAD_UTF8;
+        else return c;
+    }
+    else return BAD_UTF8;
+}
+
+int TextEditor::mygetch()
+    {   int c = mygetch8();
+        if (c == WEOF) return c;
+        if (c == 0x1b)
+        {   c = mygetch8();
+            if (c == WEOF) return c;
+// I will not let arrow and function keys combine with the ALT key. So if
+// you either go ESC-up or hold down ALT while you press up I will just
+// hand back the "up" part.
+            else if ((c & TAG_FN) != 0) return c;
+            else return c | TAG_ALT;
+        }
+        else return c;
+    }
+
+
+
+void TextEditor::loadFile()
+{   std::wifstream file(filename, std::wifstream::in);
+    file.imbue(std::locale(file.getloc(),
+                           new std::codecvt_utf8<wchar_t>));
+
+    if (file.is_open())
+    {   std::wstring line;
+        while (getline(file, line))
+        {   if (line.size()>0 && line[0]==0xfeff)
+                line.erase(0, 1);  // Get rid of BOM if present.
+            buffer.push_back(line);
+            buffer_state.push_back(lexer_base);
+        }
+    }
+    else
+    {   buffer.push_back(L"");
+        buffer_state.push_back(lexer_base);
+    }
+    file.close();
+}
+
+// This arranges that when I am about to write out a file "abc.def" that it
+// maintains a chain of backups with tames like "abc.def.old",
+// "abc.def.old" etc.
+
+void make_backup(std::string filename)
+{   char filename1[1024];
+    char filename2[1024];
+    const char* name = filename.c_str();
+    const int number_of_backups = 5;
+    for (int i=0; i<number_of_backups; i++)
+    {   int target = number_of_backups - i;
+        int source = target - 1;
+// Rename source as target supposing it exists
+        if (source == 0) std::snprintf(filename1, 1024, "%s", name);
+        else std::snprintf(filename1, 1024, "%s.old.%d", name, source);
+        if (std::filesystem::exists(filename1))
+        {   if (target == 1) std::snprintf(filename2, 1024, "%s.old", name);
+            else std::snprintf(filename2, 1024, "%s.old.%d", name, target-1);
+            std::filesystem::rename(filename1, filename2);
+        }
+    }
+}
+
+void TextEditor::saveFile()
+{   make_backup(filename);
+    std::wofstream file(filename, std::wofstream::out);
+    file.imbue(std::locale(file.getloc(),
+                           new std::codecvt_utf8<wchar_t>));
+
+    if (file.is_open())
+    {   for (const auto& line : buffer)
+        {   file << line << L"\n";
+        }
+    }
+    file.close();
+}
+
+void TextEditor::addch8(int c)
+{   if (c <= 0x7f) addch(c);
+    else if (c <= 0x7ff)
+    {   addch(0xc0 | ((c>>6) & 0x1f));
+        addch(0x80 | (c & 0x3f));
+    }
+    else if (c <= 0xffff)
+    {   addch(0xe0 | ((c>>12) & 0xf));
+        addch(0x80 | ((c>>6) & 0x3f));
+        addch(0x80 | (c & 0x3f));
+    }
+    else if (c <= 0x10fff)
+    {   addch(0xf0 | ((c>>18) & 0x7));
+        addch(0x80 | ((c>>12) & 0x3f));
+        addch(0x80 | ((c>>6) & 0x3f));
+        addch(0x80 | (c & 0x3f));
+    }
+}
+
 void TextEditor::makeCursorVisible()
 {
+}
+
+
+void TextEditor::renderLine(int i, std::wstring line, enum lexer_state state,
+                            int height, int width)
+{   int col = 0;
+    for (wchar_t c : line)
+    {   if (columnMode)
+        {   if (i >= startSelectLine &&
+                i <= endSelectLine &&
+                col >= startSelectCol &&
+                col <= endSelectCol) inSelect = true;
+            else inSelect = false;
+        }
+        else
+        {   if (i == startSelectLine && col == startSelectCol)
+                inSelect = true;
+            if (i == endSelectLine && col == endSelectCol)
+                inSelect = false;
+        }
+        if (inSelect) attron(A_REVERSE);
+        addch8(UNICODE(c));
+        if (inSelect) attroff(A_REVERSE);
+        col++;
+    }
+    while (col < width)
+    {   addch(' ');
+        col++;
+    }
 }
 
 void TextEditor::renderScreen()
 {   int height, width;
     getmaxyx(stdscr, height, width);
-
-    bool inSelect = false;
+    inSelect = false;
     for (int k = 0; k < height; k++)
     {   int i = firstVisibleLine + k;
         if (i >= buffer.size())
@@ -365,34 +420,7 @@ void TextEditor::renderScreen()
         }
 
         move(k, 0);
-        int col = 0;
-        for (wchar_t c : buffer[i])
-        {   if (columnMode)
-            {   if (i >= startSelectLine &&
-                    i <= endSelectLine &&
-                    col >= startSelectCol &&
-                    col <= endSelectCol) inSelect = true;
-                else inSelect = false;
-            }
-            else
-            {   if (i == startSelectLine && col == startSelectCol)
-                    inSelect = true;
-                if (i == endSelectLine && col == endSelectCol)
-                    inSelect = false;
-            }
-            if (inSelect)
-            {   //attron(A_REVERSE);
-                attron(COLOR_PAIR(1));
-            }
-            addch8(UNICODE(c));
-            //attroff(A_REVERSE);
-            attroff(COLOR_PAIR(1));
-            col++;
-        }
-        while (col < width)
-        {   addch(' ');
-            col++;
-        }
+        renderLine(i, buffer[i], buffer_state[i], height, width);
     }
     move(cy, cx);
     refresh();
@@ -402,18 +430,12 @@ int32_t command_character;
 
 void TextEditor::processKeypress(int32_t c, bool insert)
 {   command_character = c;
-fprintf(logfile, "Key = %x enter=%x %x\n", c, '\n', CTRL_KEY('m'));
     auto f = keymap[c];
     if (f != nullptr)
-    {   fprintf(logfile, "Command from table found\n");
         (this->*f)();
-    }
-    else
-    {   fprintf(logfile, "char to insert = %x\n", c);
-        if (insert)
-        {   buffer[cy].insert(cx, 1, c);
-            cx++;
-        }
+    else if (insert)
+    {   buffer[cy].insert(cx, 1, c);
+        cx++;
     }
 }
 
@@ -486,7 +508,7 @@ void TextEditor::q_menu()
 
 void TextEditor::insert_newline()
 {   buffer.insert(buffer.begin()+cy+1, L"");
-    buffer_state.insert(buffer_state.begin()+cy+1, 0);
+    buffer_state.insert(buffer_state.begin()+cy+1, lexer_base);
     cx = 0;
     cy++;
 }
