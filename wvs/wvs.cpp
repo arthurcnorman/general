@@ -64,23 +64,28 @@ TextEditor::TextEditor(const std::string& filename) : filename(filename)
 // 
 fprintf(logfile, "colour for screen is %d %d\n", foreground, background);
 // Colours:
-//                     normal               in selection
-//   plain text    white on black           white on blue      1  2
-//   comments      red on black             red on blue        3  4
-//   strings       green on black           green on blue      5  6
-//   characters    magenta on black         magenta on blue    7  8
-//   keyword       yellow on black          yellow on blue     9 10
-    init_pair(1,  COLOR_WHITE, COLOR_BLACK);
-    init_pair(2,  COLOR_WHITE, COLOR_BLUE);
-    init_pair(3,  COLOR_RED, COLOR_BLACK);
-    init_pair(4,  COLOR_RED, COLOR_BLUE);
-    init_pair(5,  COLOR_GREEN, COLOR_BLACK);
-    init_pair(6,  COLOR_GREEN, COLOR_BLUE);
-    init_pair(7,  COLOR_MAGENTA, COLOR_BLACK);
-    init_pair(8,  COLOR_MAGENTA, COLOR_BLUE);
-    init_pair(9,  COLOR_YELLOW, COLOR_BLACK);
-    init_pair(10, COLOR_YELLOW, COLOR_BLUE);
-    attron(1);
+//   plain text    white on black
+//   comments      red on black
+//   strings       green on black
+//   characters    magenta on black
+//   keyword       yellow on black
+    init_pair(fg_red,     COLOR_RED, COLOR_BLACK);
+    init_pair(fg_green,   COLOR_GREEN, COLOR_BLACK);
+    init_pair(fg_yellow,  COLOR_YELLOW, COLOR_BLACK);
+    init_pair(fg_blue,    COLOR_BLUE, COLOR_BLACK);
+    init_pair(fg_magenta, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(fg_cyan,    COLOR_CYAN, COLOR_BLACK);
+    init_pair(fg_white ,  COLOR_WHITE, COLOR_BLACK);
+    attron(COLOR_PAIR(fg_white));
+    last_lexed_line = -1;
+    startBlockLine = -1;
+    startBlockCol = -1;
+    endBlockLine = -1;
+    endBlockCol = -1;
+    for (int i=0; i<10; i++)
+    {   markLine[i] = -1;
+        markCol[i] = -1;
+    }
     refresh();
     loadFile();
 }
@@ -379,52 +384,87 @@ void TextEditor::makeCursorVisible()
 }
 
 
-void TextEditor::renderLine(int i, std::wstring line, enum lexer_state state,
-                            int height, int width)
+void TextEditor::renderLine(int screeny, int row, std::wstring line, enum lexer_state state)
 {   int col = 0;
+    move(screeny, 0);
     for (wchar_t c : line)
     {   if (columnMode)
-        {   if (i >= startSelectLine &&
-                i <= endSelectLine &&
-                col >= startSelectCol &&
-                col <= endSelectCol) inSelect = true;
-            else inSelect = false;
+        {   if (row >= startBlockLine &&
+                row <= endBlockLine &&
+                col >= startBlockCol &&
+                col <= endBlockCol) inBlock = true;
+            else inBlock = false;
         }
         else
-        {   if (i == startSelectLine && col == startSelectCol)
-                inSelect = true;
-            if (i == endSelectLine && col == endSelectCol)
-                inSelect = false;
+        {   if (row == startBlockLine && col == startBlockCol)
+                inBlock = true;
+            if (row == endBlockLine && col == endBlockCol)
+                inBlock = false;
         }
-        if (inSelect) attron(A_REVERSE);
+        if (inBlock) attron(A_REVERSE);
         addch8(UNICODE(c));
-        if (inSelect) attroff(A_REVERSE);
+        enum lexer_state prev = state;
         state = lexer_transition(state, c);
         if (state == lexer_string ||
-            state == lexer_string_esc) attron(COLOR_PAIR(7));
-        else attron(COLOR_PAIR(1));
+            state == lexer_string_esc)
+        {   attron(COLOR_PAIR(fg_green));
+            if (prev == lexer_base)
+            {   move(screeny, col);
+                addch('"');
+            }
+        }
+        else if (state == lexer_char ||
+                 state == lexer_char_esc)
+        {   attron(COLOR_PAIR(fg_cyan));
+            if (prev == lexer_base)
+            {   move(screeny, col);
+                addch('\'');   
+            }
+        }
+        else if (state == lexer_slash_comment ||
+                 state == lexer_star)
+        {   attron(COLOR_PAIR(fg_red));
+            if (prev == lexer_slash)
+            {   move(screeny, col-1);
+                addch('/');   
+                addch('/');
+            }
+        }
+        else if (state == lexer_slash_star_comment)
+        {   attron(COLOR_PAIR(fg_red));
+            if (prev == lexer_slash)
+            {   move(screeny, col-1);
+                addch('/');   
+                addch('*');   
+            }
+        }
+        else attron(COLOR_PAIR(fg_white));
+        if (inBlock) attroff(A_REVERSE);
         col++;
     }
     while (col < width)
     {   addch(' ');
         col++;
     }
+// Always reset base colouring after displaying a line
+    attron(COLOR_PAIR(fg_white));
 }
 
 void TextEditor::renderScreen()
 {   int height, width;
+// It is always possible that the user re-sized the windows, so measure
+// its size each time I render.
     getmaxyx(stdscr, height, width);
-    inSelect = false;
+    inBlock = false;
     for (int k = 0; k < height; k++)
     {   int i = firstVisibleLine + k;
         if (i >= buffer.size())
-        {   inSelect = false;
+        {   inBlock = false;
             clearLine(i, width);
             continue;
         }
 
-        move(k, 0);
-        renderLine(i, buffer[i], buffer_state[i], height, width);
+        renderLine(k, i, buffer[i], buffer_state[i]);
     }
     move(cy, cx);
     refresh();
@@ -470,6 +510,10 @@ void TextEditor::hideMenu()
 {
 }
 
+void TextEditor::j_menu()
+{   pending();
+}
+
 void TextEditor::k_menu()
 {   timeout(500);
     int32_t c = mygetch();
@@ -499,11 +543,11 @@ void TextEditor::k_menu()
 }
 
 void TextEditor::o_menu()
-{
+{   pending();
 }
 
 void TextEditor::p_menu()
-{
+{   pending();
 }
 
 void TextEditor::q_menu()
@@ -511,7 +555,12 @@ void TextEditor::q_menu()
 }
 
 void TextEditor::insert_newline()
-{   buffer.insert(buffer.begin()+cy+1, L"");
+{
+// Here I will need to truncate the current line and move its tail
+// to for the next line.
+    std::wstring tail = buffer[cy].substr(cx);
+    delete_to_eol();
+    buffer.insert(buffer.begin()+cy+1, tail);
     buffer_state.insert(buffer_state.begin()+cy+1, lexer_base);
     cx = 0;
     cy++;
@@ -640,6 +689,123 @@ void TextEditor::save_and_exit()
 void TextEditor::quit_editor()
 {   endwin();
     exit(0);
+}
+
+void TextEditor::word_left()
+{   pending();
+}
+
+void TextEditor::scroll_page_up()
+{   pending();
+}
+
+void TextEditor::word_right()
+{   pending();
+}
+
+void TextEditor::undelete()
+{   pending();
+}
+
+void TextEditor::tab()
+{   pending();
+}
+
+void TextEditor::repeat_last_find()
+{   pending();
+}
+
+void TextEditor::insert_return()
+{   pending();
+}
+
+void TextEditor::scroll_page_down()
+{   pending();
+}
+
+void TextEditor::delete_word()
+{   pending();
+}
+
+void TextEditor::stop_command()
+{   pending();
+}
+
+void TextEditor::overwrite_mode()
+{   overwriteMode = !overwriteMode;
+}
+
+void TextEditor::scroll_line_down()
+{   pending();
+}
+
+void TextEditor::scroll_line_up()
+{   pending();
+}
+
+// ^Kn for n in the range 0 to 9 sets a marker at the current position
+
+void TextEditor::set_mark()
+{   int n = command_character & 0xf;
+    markLine[n] = cy;
+    markCol[n] = cx;
+}
+
+void TextEditor::goto_mark()
+{   int n = command_character & 0xf;
+    cy = markLine[n];
+    cx = markCol[n];
+    makeCursorVisible();
+}
+
+void TextEditor::set_start_block()
+{   startBlockLine = cy;
+    startBlockCol = cx;
+}
+
+void TextEditor::goto_start_block()
+{   cy = startBlockLine;
+    cx = startBlockCol;
+    makeCursorVisible();
+}
+
+void TextEditor::set_end_block()
+{   endBlockLine = cy;
+    endBlockCol = cx;
+}
+
+void TextEditor::goto_end_block()
+{   cy = endBlockLine;
+    cx = endBlockCol;
+    makeCursorVisible();
+}
+
+void TextEditor::copy_block()
+{   pending();
+}
+
+void TextEditor::insert_from_file()
+{   pending();
+}
+
+void TextEditor::move_block()
+{   pending();
+}
+
+void TextEditor::delete_block()
+{   pending();
+}
+
+void TextEditor::redraw_screen()
+{   pending();
+}
+
+void TextEditor::find_and_replace()
+{   pending();
+}
+
+void TextEditor::find()
+{   pending();
 }
 
 // end of wvs.cpp

@@ -65,9 +65,11 @@ inline constexpr int TAGBITS(uint32_t k)
 inline const int32_t TAG_ALT = 0x02000000;
 inline const int32_t TAG_FN  = 0x04000000;
 
-inline const int32_t TAG_K   = 0x08000000;
-inline const int32_t TAG_P   = 0x10000000;
-inline const int32_t TAG_Q   = 0x10000000;
+inline const int32_t TAG_J   = 0x08000000;
+inline const int32_t TAG_K   = 0x09000000;
+inline const int32_t TAG_O   = 0x0a000000;
+inline const int32_t TAG_P   = 0x0b000000;
+inline const int32_t TAG_Q   = 0x0c000000;
 
 inline const int32_t ESC      = 0x1b;
 inline const int32_t BAD_UTF8 = 0x25a0;   // BLACK SQUARE
@@ -85,30 +87,47 @@ enum lexer_state
     lexer_char_esc
 };
 
+enum
+{   fg_black = 0,
+    fg_red,
+    fg_green,
+    fg_yellow,
+    fg_blue,
+    fg_magenta,
+    fg_cyan,
+    fg_white
+};
+   
+
 class TextEditor
 {
 public:
     TextEditor(const std::string& filename);
     ~TextEditor();
     void run();
+    int height, width;
     void lex_from_line(int n);
     int cx=0, cy=0;  // cursor position
     int firstVisibleLine = 0;
     bool columnMode = true;
-    int startSelectLine = 3, startSelectCol = 4;
-    int endSelectLine = 6, endSelectCol = 17;
+    bool overwriteMode = false;
+    int startBlockLine = 3, startBlockCol = 4;
+    int endBlockLine = 6, endBlockCol = 17;
+    int markLine[10];
+    int markCol[10];
     std::vector<std::wstring> buffer;
     std::vector<enum lexer_state> buffer_state;
+    int last_lexed_line;
     std::string filename;
     void loadFile();
     void saveFile();
     void unicodeConvert();
-    bool inSelect;
+    bool inBlock;
     bool inComment;
     bool inString;
     bool inChar;
-    void renderLine(int i, std::wstring line, enum lexer_state state,
-                    int height, int width);
+    void renderLine(int screeny, int row, std::wstring line,
+                    enum lexer_state state);
     void renderScreen();
     void makeCursorVisible();
     void displayMenu(const char* menu[]);
@@ -156,6 +175,33 @@ public:
     void write_file();
     void save_and_exit();
 
+    void word_left();
+    void scroll_page_up();
+    void word_right();
+    void undelete();
+    void tab();
+    void j_menu();
+    void repeat_last_find();
+    void insert_return();
+    void scroll_page_down();
+    void delete_word();
+    void stop_command();
+    void overwrite_mode();
+    void scroll_line_down();
+    void scroll_line_up();
+    void set_mark();
+    void goto_mark();
+    void set_start_block();
+    void goto_start_block();
+    void copy_block();
+    void set_end_block();
+    void goto_end_block();
+    void insert_from_file();
+    void move_block();
+    void delete_block();
+    void redraw_screen();
+    void find_and_replace();
+    void find();
 };
 
 typedef struct _name_to_code
