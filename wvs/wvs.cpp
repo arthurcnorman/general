@@ -32,20 +32,6 @@
 // $Id$
 
 
-#include <ncurses.h>
-#include <vector>
-#include <string>
-#include <locale>
-#include <codecvt>
-#include <fstream>
-#include <iostream>
-#include <unordered_map>
-#include <cstdlib>
-#include <cstdio>
-#include <cstdint>
-
-#include <unistd.h>
-
 #include "wvs.h"
 
 FILE* logfile = std::fopen("log.log", "w");

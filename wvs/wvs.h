@@ -30,21 +30,26 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
-// $Id$
-
+// $Id:$
 
 #include <string>
 #include <vector>
 #include <unordered_map>
 #include <filesystem>
-
+#include <string>
+#include <locale>
+#include <codecvt>
+#include <fstream>
+#include <iostream>
+#include <cstdlib>
+#include <cstdio>    
 #include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <cstdint>
 #include <cwctype>
 
+#include <unistd.h>
 #include <ncurses.h>
 
 
@@ -204,16 +209,12 @@ public:
     void find();
 };
 
-typedef struct _name_to_code
-{   const char* name;
-    std::int32_t code;
-} name_to_code;
+using glyphMap = std::unordered_map<std::string, std::int32_t>;
+extern glyphMap html_names;
+extern glyphMap tex_names;
+extern glyphMap adove_names;
 
-typedef struct _adobe_name_to_code
-{   std::uint32_t code;
-    const char* name;
-    const char* long_name;
-} adobe_name_to_code;
-
+extern std::int32_t name_to_code(const char* name);
+extern const char* code_to_name(std::int32_t code);
 
 // end of wvs.h

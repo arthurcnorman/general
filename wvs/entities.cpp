@@ -81,7 +81,7 @@ enum combining_mark
     combining_spare   = 0xe00000
 };
 
-name_to_code html_names[] =
+glyphMap html_names =
 {
     {"AElig",                                   0xc6},
     {"AElig",                                   0xc6},

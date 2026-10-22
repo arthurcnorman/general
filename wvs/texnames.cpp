@@ -71,7 +71,7 @@ enum combining_mark
 // TeX symbols that is shorter than the huge comprehensivce one and that
 // provides me with unicode equivalents.
 
-name_to_code tex_names[] =
+glyphMap tex_names =
 {
     {"Alpha",                                   0x391},
     {"alpha",                                   0x381}

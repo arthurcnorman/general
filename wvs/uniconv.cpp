@@ -207,7 +207,7 @@ static int hexval(int c)
 // the TeX list will need to be populated.
 
 
-name_to_code unicode_names[] =
+glyphMap unicode_names =
 {
     {"AElig",                           198},
     {"AMP",                             38},
@@ -2357,27 +2357,9 @@ name_to_code unicode_names[] =
     {nullptr,                              -1}
 };
 
-static int compare_strings(const void *a, const void *b)
-{   const name_to_code *a1 = (name_to_code *)a;
-    const name_to_code *b1 = (name_to_code *)b;
-    return std::strcmp(a1->name, b1->name);
-}
-
-// Finding an entry by name is fast because I set the table up sorted.
-// Names are expressed in terns of char* ot wchar_t*.
-
 static int lookup_name(const char* s)
-{   name_to_code k, *p;
-    k.name = s;
-fprintf(logfile, "looking up %s\n", s);
-    p = (name_to_code *)std::bsearch(&k, unicode_names,
-                                sizeof(unicode_names)/sizeof(unicode_names[0]) -
-                                sizeof(unicode_names[0]), // allow for the terminator
-                                sizeof(unicode_names[0]),
-                                compare_strings);
-fprintf(logfile, "bsearch returns %p\n", p);
-    if (p == nullptr) return -1; // not found
-    else return p->code;
+{   fprintf(logfile, "name %s maps to value %d\n", s, (int)unicode_names[s]);
+    return unicode_names[s];
 }
 
 // There can be times that I start with a wide string and want to
@@ -2399,15 +2381,9 @@ static int lookup_wide_name(const wchar_t* s)
 // The converse search starts with a code and needs to recover the
 // associated name.
 
-const char* lookup_code(int c)
-{   size_t i;
-// I do a simple linear search here. It is cheap-enough given that it is
-// only needed when the user types a special command, ALT-x. It does not
-// matter here that I scan the very final nullptr entry. and the equality
-// test in the loop is a very cheap one.
-    for (i=0; i<sizeof(unicode_names)/sizeof(unicode_names[0]); i++)
-    {   if (unicode_names[i].code == c) return unicode_names[i].name;
-    }
+std::string lookup_code(std::int32_t c)
+{   for (auto kv : unicode_names)
+        if (kv.second == c) return kv.first;
     return nullptr;
 }
 
@@ -2417,11 +2393,8 @@ const char* lookup_code(int c)
 static wchar_t wide_char_name[20];
 
 const wchar_t* wide_lookup_code(int c)
-{   const char* s = lookup_code(c);
-    wchar_t* p;
-    if (s == nullptr) return nullptr;
-    p = wide_char_name;
-    while (*s != 0) *p++ = (*s++ & 0xff);
+{   wchar_t* p = wide_char_name;
+    for (auto ch : lookup_code(c)) *p++ = ch;
     *p = 0;
     return wide_char_name;
 }
