@@ -2354,49 +2354,22 @@ glyphMap unicode_names =
 //  {"vsubne",                          8842, 65024},
 //  {"vsupnE",                          10956, 65024},
 //  {"vsupne",                          8843, 65024},
-    {nullptr,                              -1}
 };
 
-static int lookup_name(const char* s)
-{   fprintf(logfile, "name %s maps to value %d\n", s, (int)unicode_names[s]);
-    return unicode_names[s];
-}
+//static int count = 10;
 
-// There can be times that I start with a wide string and want to
-// search the name table. I deal with that by first reducing things
-// to a narrow string.
-
-static int lookup_wide_name(const wchar_t* s)
-{   char narrow[20];
-    size_t i;
-    for (i=0; i<sizeof(narrow)-1; i++)
-    {   if (s[i] == 0) break;
-        if (s[i] >= 0x7f) return -1; // not a basic ASCII character
-        narrow[i] = s[i];
-    }
-    narrow[i] = 0;
-    return lookup_name(narrow);
+static int lookup_name(std::wstring s)
+{   if (unicode_names.count(s) == 0) return -1;
+    else return unicode_names[s];
 }
 
 // The converse search starts with a code and needs to recover the
 // associated name.
 
-std::string lookup_code(std::int32_t c)
+std::string lookup_code(std::uint32_t c)
 {   for (auto kv : unicode_names)
         if (kv.second == c) return kv.first;
-    return nullptr;
-}
-
-// I could need to map from a codepoint to the name of the symbol
-// given as a wide string. I use a C not C++ string here.
-
-static wchar_t wide_char_name[20];
-
-const wchar_t* wide_lookup_code(int c)
-{   wchar_t* p = wide_char_name;
-    for (auto ch : lookup_code(c)) *p++ = ch;
-    *p = 0;
-    return wide_char_name;
+    return std::wstring(L"");
 }
 
 // 
@@ -2598,7 +2571,7 @@ fprintf(logfile, "lookupname returns %d\n", c);
     }
     else n = 0, c = -1;
 // See if the character has a name.
-    p = wide_lookup_code(c);
+    std::wstring pp = lookup_code(c);
 // Now I have two messy cases to detect. The first is if the name
 // I have just found has a shorter name as a terminal sub-string. The second
 // is if the name is a suffix of something longer and the prefix part happens

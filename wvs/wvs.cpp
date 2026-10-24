@@ -294,7 +294,8 @@ void TextEditor::loadFile()
                            new std::codecvt_utf8<wchar_t>));
 
     if (file.is_open())
-    {   std::wstring line;
+    {   std::basic_string<uint32_t> line;
+#pragma message "???"
         while (getline(file, line))
         {   if (line.size()>0 && line[0]==0xfeff)
                 line.erase(0, 1);  // Get rid of BOM if present.
@@ -335,6 +336,7 @@ void make_backup(std::string filename)
 void TextEditor::saveFile()
 {   make_backup(filename);
     std::wofstream file(filename, std::wofstream::out);
+#pragme message "whooj"
     file.imbue(std::locale(file.getloc(),
                            new std::codecvt_utf8<wchar_t>));
 
@@ -456,13 +458,12 @@ void TextEditor::renderScreen()
     refresh();
 }
 
-int32_t command_character;
+uint32_t command_character;
 
-void TextEditor::processKeypress(int32_t c, bool insert)
+void TextEditor::processKeypress(uint32_t c, bool insert)
 {   command_character = c;
-    auto f = keymap[c];
-    if (f != nullptr)
-        (this->*f)();
+    
+    if (keymap.count(c) > 0) (this->*keymap[c])();
     else if (insert)
     {   buffer[cy].insert(cx, 1, c);
         cx++;
@@ -502,7 +503,7 @@ void TextEditor::j_menu()
 
 void TextEditor::k_menu()
 {   timeout(500);
-    int32_t c = mygetch();
+    uint32_t c = mygetch();
     timeout(-1);
     if (c != ERR)
     {   processKeypress(c | TAG_K, false);

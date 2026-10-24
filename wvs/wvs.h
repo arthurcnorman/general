@@ -30,7 +30,7 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id:$
+// $Id$
 
 #include <string>
 #include <vector>
@@ -55,11 +55,11 @@
 
 extern FILE* logfile;
 
-inline constexpr int CTRL_KEY(int32_t k)
+inline constexpr int CTRL_KEY(uint32_t k)
 {   return k & 0x1f;
 }
 
-inline constexpr int UNICODE(int32_t k)
+inline constexpr int UNICODE(uint32_t k)
 {   return k & 0x00ffffff;
 }
 
@@ -67,17 +67,17 @@ inline constexpr int TAGBITS(uint32_t k)
 {   return k & 0xff000000;
 }
 
-inline const int32_t TAG_ALT = 0x02000000;
-inline const int32_t TAG_FN  = 0x04000000;
+inline const uint32_t TAG_ALT = 0x02000000;
+inline const uint32_t TAG_FN  = 0x04000000;
 
-inline const int32_t TAG_J   = 0x08000000;
-inline const int32_t TAG_K   = 0x09000000;
-inline const int32_t TAG_O   = 0x0a000000;
-inline const int32_t TAG_P   = 0x0b000000;
-inline const int32_t TAG_Q   = 0x0c000000;
+inline const uint32_t TAG_J   = 0x08000000;
+inline const uint32_t TAG_K   = 0x09000000;
+inline const uint32_t TAG_O   = 0x0a000000;
+inline const uint32_t TAG_P   = 0x0b000000;
+inline const uint32_t TAG_Q   = 0x0c000000;
 
-inline const int32_t ESC      = 0x1b;
-inline const int32_t BAD_UTF8 = 0x25a0;   // BLACK SQUARE
+inline const uint32_t ESC      = 0x1b;
+inline const uint32_t BAD_UTF8 = 0x25a0;   // BLACK SQUARE
 
 enum lexer_state
 {
@@ -120,7 +120,7 @@ public:
     int endBlockLine = 6, endBlockCol = 17;
     int markLine[10];
     int markCol[10];
-    std::vector<std::wstring> buffer;
+    std::vector<std::basic_string<uint32_t>> buffer;
     std::vector<enum lexer_state> buffer_state;
     int last_lexed_line;
     std::string filename;
@@ -209,12 +209,12 @@ public:
     void find();
 };
 
-using glyphMap = std::unordered_map<std::string, std::int32_t>;
+using glyphMap = std::unordered_map<std:string, std::uint32_t>;
 extern glyphMap html_names;
 extern glyphMap tex_names;
-extern glyphMap adove_names;
+extern glyphMap adobe_names;
 
-extern std::int32_t name_to_code(const char* name);
-extern const char* code_to_name(std::int32_t code);
+extern std::uint32_t name_to_code(const char* name);
+extern const char* code_to_name(std::uint32_t code);
 
 // end of wvs.h
