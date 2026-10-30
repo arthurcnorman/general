@@ -197,7 +197,7 @@ static int hexval(int c)
 //
 // Just so you know, there are somewhat over 2000 names here.
 
-// At present I used this single embeeded list. In a while I intend to move
+// At present I used this single embedded list. In a while I intend to move
 // to having three lists in three separate files:
 //   entities.cpp    the HTML entity names intended for use as in &Alpha;
 //   adobenames.cpp  names proposed by Adobe
@@ -2358,9 +2358,14 @@ glyphMap unicode_names =
 
 //static int count = 10;
 
-static int lookup_name(std::wstring s)
-{   if (unicode_names.count(s) == 0) return -1;
-    else return unicode_names[s];
+static std::uint32_t lookup_name(string32 s)
+{   std::string s1 = "";
+    for (auto ch : s)
+    {   if (ch >= 0x80) return -1;
+        s1.push_back((char)ch);
+    }
+    if (unicode_names.count(s1) == 0) return -1;
+    else return unicode_names[s1];
 }
 
 // The converse search starts with a code and needs to recover the
@@ -2369,28 +2374,25 @@ static int lookup_name(std::wstring s)
 std::string lookup_code(std::uint32_t c)
 {   for (auto kv : unicode_names)
         if (kv.second == c) return kv.first;
-    return std::wstring(L"");
+    return std::string("");
 }
 
 // 
 
 static void term_replace_chars_backwards(
-    std::wstring& line, int& caretpos,
-    int n, const wchar_t* s)
+    string32& line, int& caretpos,
+    int n, string32 s)
 {
 // Replace n characters that are before the caret with bytes from the
-// C wide string s. 
+// string32 s. 
     fprintf(logfile, "replace_back(%d)\n", n); 
     if (n > caretpos) return; // not enough chars to delete - should never happen.
     caretpos -= n;
     line.erase(caretpos, n);
-    size_t m = std::wcslen(s);
-    line.insert(caretpos, s, m);
-    caretpos += m;
+    line.insert(caretpos, s);
+    caretpos += s.size();
 }
 
-static wchar_t input_word[40];
-static wchar_t output_word[40];
 
 // This next function is a bit horrid. If sizeof(wchar_t)==2 I need to use
 // utf16 packing with surrogate pairs for some things. If that
@@ -2425,264 +2427,133 @@ bool is_low_surrogate(int c)
 {   return c>=0xdc00 && c <- 0xdfff;
 }
 
-void convert(std::wstring& line, int& caretpos)
-{
-// If you position the caret to the right of (up to) 6 hex digits and
-// go ALT-X then the digits are replaced by single Unicode character.
-// This may (and indeed often will) be a multi-byte character stored in the
-// input buffer in UTF-8 form.
-// There will also be a selection of words so that if you type ALT-X with
-// the caret to the right of the word you get a conversion to a single
-// character. Eg think in terms of names such as "euro" and "alpha". The
-// initial set of names I use is the list of HTML entities.
-//
-// If you are to the right of a character that is a genuine multi-byte
-// UTF-8 sequence or that seems to be in windows-1252-1 (because it has a top
-// bit set but the preceeding bytes would not parse properly for UTF-8) then
-// that character is expanded to a name or to hex. If it is to be expanded to
-// hex it is normally converted to exactly 4 digits - but if the code is
-// too large for that (which is improbable, I believe) it expands to 6.
-//
-// The idea is that ALT-X will cycle between the possible meanings of the
-// input.
-//
-// There are a rather small number of cases where there could be ambiguity.
-// These are coped with by arranging that successive uses of ALT-X cycle
-// through all possibilities.
-// Here are some particular cases that are a nuisance:
-//    "101010"   The issue here is how many hex digits are to be used. The
-//               first choice here will be to use exactly 4, and the
-//               second choice exactly 6. I will only ever process 4 or 6
-//               digits, and I will not accept codes over 10ffff or in the
-//               surrogate region d800-dfff.
-//    "oline"    Choice one is to interpret this "oli" followed
-//               by a "not equal to" symbol. Choice two will be to treat
-//               it as a single name for a "spacing overscore".
-//    "frac12"   Choice one "fr" followed by the Unicode character U+ac12
-//               (a Hangul (Korean) syllable). Two will be to turn it
-//               into a fraction (1/2) symbol.
-// The policy I will attempt to arrange is that all possible interpretations
-// are cycled through, with the original state eventually reinstated.
-//
-// Well let me consider the possible display options by showing illustrations
-// of all the cases. I will write (u+nnnn) to denote a single character. I
-// use "10" here the possible first 2 digits of a 6-digit hex value from
-// 00 to 10, and X for any character that can not lead to special
-// prefixing.
-//
-// X(u+nnnn) 10(u+nnnn) X(u+03b1) (u+00bd)    X(u+203e)    10(u+203e)
-// Xnnnn     10nnnn     Xalpha    frac12      Xoline       10oline
-//           (u+10nnnn) X03b1     fr(u+ac12)  Xoli(u+2260) 10oli(u+2260)
-//                                00bd        Xoli2260     10oli2260
-//                                            X203e        10203e
-//                                                         (u+10203e)
-//
-// I judge that restricting support to only 4 hex digits would not simplify
-// things enough to really transform matters, but I will rely on having
-// all names denote symbols in the basic multilingual plane.
-//
-// The following transformation rules are designed to cause the code to
-// cycle through all possibilities:
-//                                                            example
-// longest name that matches     -> character       10oline    -> 10(u+203e)
-// 01 to 10 followed by 4 hex    -> character       102030     -> (u+102030)
-// char with name NNNN
-//    NNNN has a suffix          -> split suffix    (u+203e)   -> oli(u+2260)
-//    NNNN has a prefix          -> hex             oli(u+2260)->oli2260
-// char NNMMMM over 0xffff
-//    MMMM has a name            -> NNname          (u+10203e) -> 10oline
-//    otherwise                  -> 6 hex           (u+102030) -> 102030
-// char <= 0xffff                -> 4 hex           (i+1234)   -> 1234
-// 4 hex of name with prefix     -> hex expanded    oli2260    -> 203e
-// 4 hex of name                 -> name            203e       -> oline
-// 4 hex of unnamed character    -> character       1234       -> (u+1234)
 
-// BUG REPORT:
+// Yet another attempot to design the sequence of transformations. I will
+// use NNnnnn to denore a 6-digit hex number where NN is in the range
+// 01 to 10, and nnnn is a 4-digit one. CamelCaseName is denotes a word
+// that is registered as the name of a character where CaseName and Name are
+// as well. &xxx; will be a single character with xxx its description
+// either by name or codepoint. &xxx:yyy: and &xxx:yyy:zzz; will be spacing
+// characters &xxx; followed by combining marks yyy and perhaps zzz.
+
+// VeryLongName    => &VeryLongName;      name => character
+// &VeryLongName;  => Very&LongName;      if the symbol has a name...
+// VeryLong&Name;  => VeryLong&Name;      ... and the name has a suffix name.
+// xxx&Name;       => xxxNN&nnnn;         if &Name; uses 6 digits
+// xxxNN&nnnn      => xxNNnnnn            ) these two are the same!
+// xxx&Name;       => xxxnnnn             )
+// VeryLongnnnn    => Verynnnn
+// Verynnnn        => nnnn
+// nnnn            => VeryLongName
+
+
+void convert(string32& line, int& caretpos)
+{
+    string32 input_word;;
+    string32 output_word;
+// When this function is called (triggered by ALT-x) the cursor will be
+// to the right of some text, and that text can be modified. The most
+// important case is when the text is a word that names a character.
+// on which case the word will be replaced by that character.
+// To illustrate this the material that will appear will be described
+// using HTML notation.
+//
+//     alpha       => &alpha;
+//     Ascr        => &Ascr;      mathematical script capital A
+//     oline       => &oline;     match longest recognised word
+//                                and it may really be oli&ne;
+//     frac12      => (1/2)       but note it could be fr&ac12;
+//
+//     &alpha;     => nnnn        4 digit codepoint, eg   03b1
+//     &Ascr;      => nnnnnn      6 digit codepoint, eg 01d49c
+//
+// I then want to close the cycle with eg
+//     03ba        => alpha
+//     01d49c      => Ascr
+//
+// There are a collection of awkward cases with ambiguities due to prefixing
+// and to start with I still want the "longest match" rule to apply, 
+// To resolve those I may want transformations of the following form:
+//     &oline;     => oli&ne;
+//     oli&ne;     => oli2260     code for &ne;
+//     oli2260     => 203e        code for &oline;
+//     203e        => oline
+// so that the cycle is close via a range of possibilities.
+//
+//     Ascr        => &Ascr;
+//     &Ascr;      => 01&d496;
+// (&d496; is a Mathematical Bold Italic Small U which does not
+// have a neat textual name as an HTML entity, but could still be wanted).
+// If it had an entity name MBIu then we woold next see
+//     01&d496;    => 01MBIu
+//     01MBIu      => 0xd496
+// but since it does not we skip a step...
+//     01&d496;    => 01d496
+//
+//     &0100ac;    => 01&00ac;  (that is 01&not;)
+//     01&not;     => 0100&ac;  (0100 followed by "inverted lazy s")
+//     0100&ac;    => <mathematical bold italic small u>
+//                 => &0100ac;
+// where the step in <> is only used if there is an entity name to use.
+// Well if enough TeX symbols are supported there may be!
+//
+// So try to formulate the rules.
+// (1) find the string ending at the cursor that is the first of these found:
+//     1.1:   a "complex character"
+//     1.2:   any single (spacing) unicode character with code > U+007f
+//     1.3:   letter a-z, A-Z followed by letters/digits (ie a word) 
+//     1.4:   6 hex digits starting with 01 to 10
+//     1.4:   4 hex digits
+//
+// 1.1: Split off the final combining char of the complex and rewrite as
+//      the simpler base and digits for the combing mark.
+// 1.2: Replace the character with its numeric code as either 4 or 6 digits. 
+// 1.3: if the name denotes a recognised entity replace it with the character.
+//      if not try with the next shorter string.
+//      If you would end up creating a combining character and there is
+//      a previous character on the line merge it in, otherwise do not
+//      make that coversion (ie go and try for a shorter name).
+//      if no replacement is found treat final char as in 1.5.
+// 1.4:
+// 1.5: A numeric code is on the screen. I make this the complex case.
+//
+// 2.1: A six digit code ....
+
+// HEY let's only do the really simple cases for this first cut, and come
+// back to being clever later on...
+
+
+
+// BUG REPORT FROM PREVIOUS VERSION:
 //   epsilon -> {\epsilon} -> e{\psi} -> e03c8 -> 03b5 -> epsi -> {\epsilon}
 // and the "lon" gets lost when the string "psi" is spotted.
 
-    fprintf(logfile, "unicodeConvery with cx=%d\n", caretpos);
-    for (wchar_t c : line)
-        fprintf(logfile, "[%c]", c);
-    fprintf(logfile, "\n"); fflush(logfile);
-    int i, n, c;
-    const wchar_t* p;
+    fprintf(logfile, "unicodeConvert with cx=%d\n", caretpos);
     if (caretpos == 0)
     {   beep();
         return;
     }
-// I will first see if I can find a name, and I will look for long ones first.
+    for (auto c : line)
+        fprintf(logfile, "[%c]", c < 0x80 ? c : '@');
+    fprintf(logfile, "\n"); fflush(logfile);
 // The "32" here is the length of the longest word in my table of names, and
 // I note that HTML 5 has "CounterClockwiseContourIntegral" has 31 characters.
-    for (n=32; n>=2; n--) // word length to seek
-    {   if (n>caretpos) continue; // not this many chars before cursor
-        for (i=0; i<n; i++)
-            input_word[i] = line[caretpos-n+i];
-        input_word[n] = 0;           // extract the (potential) word
-fprintf(logfile, "input_word = ");
-for (wchar_t cc : input_word) fprintf(logfile, "%c", cc);
-fprintf(logfile, "\n");
-        c = lookup_wide_name(input_word);
-fprintf(logfile, "lookupname returns %d\n", c);
-        if (c == -1) continue;    // not a recognised name
-// The code may be over u+ffff and so if sizeof(wchar_t)==2 it needs packing
-// in UTF16
-        make_wchar(output_word, c);
-        term_replace_chars_backwards(line, caretpos, n, output_word);
+    int i = caretpos - 32;
+    if (i < 0) i = 0;
+    uint32_t c;
+    for (;;)
+    {   input_word = line.substr(i, caretpos-i);
+        c = lookup_name(input_word);
+        if (c != -1u) break;
+        i++;
+        if (i == caretpos) break;
+    }
+    if (c != -1u)
+    {   output_word = string32(1, c);
+        term_replace_chars_backwards(line, caretpos, caretpos-i, output_word);
         return;
     }
-// Next check for a 6-digit hex value. Note that the first two digits
-// must be 01, 02, ... 0f, 10. If you had "00" there then there was no
-// point in using a 6-digit format. If you have any value beyond "10" you
-// are outside the Unicode range.
-    if (caretpos >= 6)
-    {   p = &line[caretpos-6];
-        if ((p[0] == '0' && std::iswxdigit(p[1]) && p[1] != '0') ||
-            (p[0] == '1' && p[1] == '0'))
-        {   c = (hexval(p[0]) << 4) | hexval(p[1]);
-// By virtue of packing up digits here using OR it will be the case that
-// if ANY of the calls to hexval return a negative value I can be certain
-// that the overall result will be negative.
-            for (i=2; i<6 && c > 0; i++)
-            {   n = hexval(p[i]);
-                c = (c << 4) | n;
-            }
-            if (c > 0)
-            {   make_wchar(output_word, c);
-                term_replace_chars_backwards(line, caretpos, 6, output_word);
-                return;
-            }
-        }
-    }
-// In the next two cases the character before the caret has a name
-// associated with it. Well first I will just extract a Unicode character
-// from before the caret.
-    if (caretpos >= 1)
-    {   n = 1;
-        c = line[caretpos-1];
-        if (is_low_surrogate(c) &&
-            caretpos >= 2 &&
-            is_high_surrogate(line[caretpos-2]))
-        {   n = 2;
-            c = 0x10000 +
-                ((line[caretpos-2] & 0x3ff) << 10) +
-                (c & 0x3ff);
-        }
-    }
-    else n = 0, c = -1;
-// See if the character has a name.
-    std::wstring pp = lookup_code(c);
-// Now I have two messy cases to detect. The first is if the name
-// I have just found has a shorter name as a terminal sub-string. The second
-// is if the name is a suffix of something longer and the prefix part happens
-// to be in the buffer ahead of it. These two cases could both happen together
-// if there were say names ABC, BC and just C in the list of entities, but
-// I am glad to say that that is not the case. Beware if you ever add new
-// entity-names! I will test for these cases in a pretty crude manner.
-    if (p != nullptr)
-    {   int w = -1;
-        const wchar_t* p1 = p+1;
-        while (*p1 != 0)
-        {   w = lookup_wide_name(p1);
-            if (w != -1) break;    // Found a suffix
-            p1++;
-        }
-// The code here will convert (u+203e) to oli(u+2260) via expanding to
-// the name "oline" and then re-coding the last two letters "ne". And
-// a whole pile of other similar cases such Eaccute, rang, Theta, lfloor,
-// ntilde, otimes and Yuml. I count 57 cases in the HTML 4 entity table, and
-// there will be more now I have moved to use of the HTML 5 list.
-        if (w != -1)
-        {   std::wcscpy(output_word, p);
-            make_wchar(&output_word[p1-p], w);
-            term_replace_chars_backwards(line, caretpos, n, output_word);
-            return;
-        }
-// Now there is the possible conversion the other way, where (for example)
-// oli(u+2260) is in the buffer. If I merely expanded the unicode character
-// to its name here I would end up with "oline" and the next ALT-X would
-// convert that to (u+203e) - I would never get to see thing in hex form.
-// So in this case I merely expand the character to 4 hex digits.
-        for (i=1; i+std::wcslen(p)<9; i++)
-        {   // i is the number of prefix characters to test for
-            if (caretpos >= i+n)
-            {   std::memcpy(input_word, &line[caretpos-i-n],
-                            i*sizeof(wchar_t));
-                std::wcscpy(&input_word[i], p);
-// I have now concatenated some stuff from the input buffer with the
-// expanded character name and look it up. If I find a match I will
-// convert the character to hex. Because the character itself was one
-// with a name it will fit within 4 digits.
-                if (lookup_wide_name(input_word) != -1)
-                {   std::swprintf(output_word, 16, L"%.4x", c);
-                    term_replace_chars_backwards(line, caretpos, n, output_word);
-                    return;
-                }
-            }
-        }
-    }
-// Here I have a character with code c and I am not processing any
-// name it might have just now. However maybe its low 16 bits is a named
-// character. In which case turn the low 16 bits into that name, leaving
-// two digits of hex code ahead of that.
-    if (c > 0xffff && (p = wide_lookup_code(c & 0xffff)) != nullptr)
-    {   std::swprintf(output_word, 16, L"%.2x%ls", (c >> 16) & 0x3f, p);
-        term_replace_chars_backwards(line, caretpos, n, output_word);
-        return;
-    }
-// Character up to u+ffff turns into hex (except that plain ASCII characters
-// do not need that, and if I tried to convert them here that would conflict
-// with their use in hex numeric representation.
-    if (c > 0x7f && c <= 0xffff)
-    {   std::swprintf(output_word, 16, L"%.4x", c);
-        term_replace_chars_backwards(line, caretpos, n, output_word);
-        return;
-    }
-// The case I look at now all have 4 hex digits ahead of the insertion
-// point.
-    if (caretpos >= 4 &&
-        std::iswxdigit(line[caretpos-4]) &&
-        std::iswxdigit(line[caretpos-3]) &&
-        std::iswxdigit(line[caretpos-3]) &&
-        std::iswxdigit(line[caretpos-1]))
-    {   c = hexval(line[caretpos-4]);
-        c = (c << 4) | hexval(line[caretpos-3]);
-        c = (c << 4) | hexval(line[caretpos-2]);
-        c = (c << 4) | hexval(line[caretpos-1]);
-// Now c is the integer corresponding to the 4 hex digits. If it is in the
-// range 0xd800 to 0xdfff it would be a surrogate - in that case I will
-// reject it. I need to see if the code has an associated name.
-        if (c < 0 || c < 0xd800 || c > 0xdfff)
-        {   if ((p = wide_lookup_code(c)) != nullptr)  // yes it does!
-            {
-// Now if the buffer contains characters that would form a prefix to the
-// name I just found I will convert to the hex representation of the
-// character corresponding to the longer name.
-// This prefix processing is rather similar to a case considered earlier.
-                for (i=1; i+std::wcslen(p)<9; i++)
-                {   // i is the number of prefix characters to test for
-                    int c1;
-                    if (caretpos >= i+4)
-                    {   std::memcpy(input_word, &line[caretpos-i-4],
-                                    i*sizeof(wchar_t));
-                        std::wcscpy(&input_word[i], p);
-                        if ((c1 = lookup_wide_name(input_word)) != -1)
-                        {   std::swprintf(output_word, 16, L"%.4x", c1);
-                            term_replace_chars_backwards(line, caretpos, i+4, output_word);
-                            return;
-                        }
-                    }
-                }
-                term_replace_chars_backwards(line, caretpos, 4, p);
-                return;
-            }
-            make_wchar(output_word, c);
-            term_replace_chars_backwards(line, caretpos, 4, output_word);
-            return;
-        }
-    }
-// If I do not recognise any of the situations I will give an alert and
-// not change the buffer at all.
+// Do not change the buffer at all.
     beep();
 }
 

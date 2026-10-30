@@ -47,14 +47,14 @@ TextEditor::TextEditor(const std::string& filename) : filename(filename)
     int pair_id = PAIR_NUMBER(blank);
     short foreground, background;
     pair_content(pair_id, &foreground, &background);
-// 
+//
 fprintf(logfile, "colour for screen is %d %d\n", foreground, background);
 // Colours:
 //   plain text    white on black
-//   comments      red on black
-//   strings       green on black
-//   characters    magenta on black
-//   keyword       yellow on black
+//   comments      blue on black
+//   strings       red on black
+//   characters    red on black
+//   keyword       green on black
     init_pair(fg_red,     COLOR_RED, COLOR_BLACK);
     init_pair(fg_green,   COLOR_GREEN, COLOR_BLACK);
     init_pair(fg_yellow,  COLOR_YELLOW, COLOR_BLACK);
@@ -91,10 +91,8 @@ void TextEditor::run()
 void TextEditor::clearLine(int y, int w)
 {   move(y, 0);
     for (int x=0; x<w; x++) addch(' ');
+    if (last_lexed_line >= y) last_lexed_line = y-1;
 }
-
-// Here I will jhave a commentary about syntax colouring. I will just
-// be thinking about C++.
 
 // The notations I want to be aware of are:
 // (.)     // .... EOL             a 1-line commant.
@@ -102,7 +100,7 @@ void TextEditor::clearLine(int y, int w)
 // (.)     " ... \x ... "          string with possible escaped characters.
 // (.)     ' ... \x ... ;          character literal with possible escapes.
 //
-// For a first version I will not highlight numbers or keywords, but if I
+// For a first version I may not highlight numbers or keywords, but if I
 // ever extend to them we have
 // (,)     letter alphanumeric*    name. Well could also be "_" at start
 //                                 keywords spotted via lookup.
@@ -128,7 +126,7 @@ void TextEditor::clearLine(int y, int w)
 
 // Here is the transition function for the lexer.
 
-enum lexer_state lexer_transition(lexer_state state, wchar_t c)
+enum lexer_state lexer_transition(lexer_state state, std::uint32_t c)
 {   switch (state)
     {
     default:
@@ -176,7 +174,7 @@ enum lexer_state lexer_transition(lexer_state state, wchar_t c)
         case '/':
             return lexer_base;
         case '*':
-;           return lexer_star;
+            return lexer_star;
         default:
             return lexer_slash_star_comment;
         }
@@ -186,7 +184,7 @@ enum lexer_state lexer_transition(lexer_state state, wchar_t c)
         case '"':
             return lexer_base;
         case '\\':
-;           return lexer_string_esc;
+            return lexer_string_esc;
         default:
             return lexer_string;
         }
@@ -198,7 +196,7 @@ enum lexer_state lexer_transition(lexer_state state, wchar_t c)
         case '\'':
             return lexer_base;
         case '\\':
-;           return lexer_char_esc;
+            return lexer_char_esc;
         default:
             return lexer_char;
         }
@@ -287,24 +285,25 @@ int TextEditor::mygetch()
     }
 
 
+// I assume that the input file is in utf8 format and expand it to
+// my own "extra wide string" style (which uses one item even for
+// glyphs made up using multiply combining characters).
 
 void TextEditor::loadFile()
-{   std::wifstream file(filename, std::wifstream::in);
-    file.imbue(std::locale(file.getloc(),
-                           new std::codecvt_utf8<wchar_t>));
-
+{   std::ifstream file(filename, std::ifstream::in);
     if (file.is_open())
-    {   std::basic_string<uint32_t> line;
-#pragma message "???"
-        while (getline(file, line))
-        {   if (line.size()>0 && line[0]==0xfeff)
+    {   std::string rawline;
+        string32 line;
+        while (getline(file, rawline))
+        {   line = L(rawline);
+            if (line.size()>0 && line[0]==0xfeff)
                 line.erase(0, 1);  // Get rid of BOM if present.
             buffer.push_back(line);
             buffer_state.push_back(lexer_base);
         }
     }
     else
-    {   buffer.push_back(L"");
+    {   buffer.push_back(L(""));
         buffer_state.push_back(lexer_base);
     }
     file.close();
@@ -335,48 +334,236 @@ void make_backup(std::string filename)
 
 void TextEditor::saveFile()
 {   make_backup(filename);
-    std::wofstream file(filename, std::wofstream::out);
-#pragme message "whooj"
-    file.imbue(std::locale(file.getloc(),
-                           new std::codecvt_utf8<wchar_t>));
-
+    std::ofstream file(filename, std::ofstream::out);
+// I do my own conversion to utf8 so the output stream is opened as
+// an ordinary "narrow" one.
     if (file.is_open())
     {   for (const auto& line : buffer)
-        {   file << line << L"\n";
+        {   file << S(line) << "\n";
         }
     }
     file.close();
 }
 
-void TextEditor::addch8(int c)
-{   if (c <= 0x7f) addch(c);
-    else if (c <= 0x7ff)
-    {   addch(0xc0 | ((c>>6) & 0x1f));
-        addch(0x80 | (c & 0x3f));
-    }
-    else if (c <= 0xffff)
-    {   addch(0xe0 | ((c>>12) & 0xf));
-        addch(0x80 | ((c>>6) & 0x3f));
-        addch(0x80 | (c & 0x3f));
-    }
-    else if (c <= 0x10fff)
-    {   addch(0xf0 | ((c>>18) & 0x7));
-        addch(0x80 | ((c>>12) & 0x3f));
-        addch(0x80 | ((c>>6) & 0x3f));
-        addch(0x80 | (c & 0x3f));
-    }
-}
-
 void TextEditor::makeCursorVisible()
-{
+{   if (last_lexed_line >= cy) last_lexed_line = cy - 1;
 }
 
+void to_utf8(uint32_t ch, char*& p)
+{   if (ch <= 0x7f) *p++ = ch;
+    else if (ch <= 0x7ff)
+    {   *p++ = 0xc0 | ((ch >> 6) & 0x1f);
+        *p++ = 0x80 | ch;
+    }
+    else if (ch <= 0x7ff)
+    {   *p++ = 0xc0 | (ch >> 6);
+        *p++ = 0x80 | (ch & 0x3f);
+    }
+    else if (ch <= 0xffff)
+    {   *p++ = 0xe0 | (ch >> 12);
+        *p++ = 0x80 | ((ch >> 6) & 0x1f);
+        *p++ = 0x80 | (ch & 0x3f);
+    }
+    else if (ch <= 0x10ffff)
+    {   *p++ = 0xf0 | (ch >> 18);
+        *p++ = 0x80 | ((ch >> 12) & 0x1f);
+        *p++ = 0x80 | ((ch >> 6) & 0x1f);
+        *p++ = 0x80 | (ch & 0x3f);
+    }
+    else *p++ = 0; // Not in Unicode range
+}
 
-void TextEditor::renderLine(int screeny, int row, std::wstring line, enum lexer_state state)
-{   int col = 0;
-    move(screeny, 0);
-    for (wchar_t c : line)
-    {   if (columnMode)
+// If I am on a machine where wchar_t is 16 bits wode I need to
+// use utf16 encoding. Otherwise nothing much is needed.
+
+void to_utf(uint32_t ch, wchar_t*& p)
+{   if (sizeof(wchar_t) == 4)
+    {   if (ch <= 0xffff) *p++ = ch;
+        else
+        {   ch -= 0x10000;
+            *p++ = 0xd800 | (ch >> 10);
+            *p++ = 0xdc00 | (ch & 0x3ff);
+        }
+    }
+    else *p++ = ch;
+}
+
+// This finds a sequence starting at column i that is made up of alphanumeric
+// characters. It might be a C++ keyword!
+
+std::string simple_word(string32 line, int col)
+{   std::string r = "";
+    while (col < line.length())
+    {   int32_t c = line[col++];
+        if (c > 0x7f || !std::isalnum(c)) break;
+        r.push_back((char)c);
+    }
+    return r;
+}
+
+// Here we have a table of all the C++ keywords...
+
+std::unordered_set<std::string> cxx_keywords =
+{
+    "alignas",
+    "alignof",
+    "and",
+    "and_eq",
+    "asm",
+    "atomic_cancel",
+    "atomic_commit",
+    "atomic_noexcept",
+    "auto",
+    "bitand",
+    "bitor",
+    "bool",
+    "break",
+    "case",
+    "catch",
+    "char",
+    "char8_t",
+    "char16_t",
+    "char32_t",
+    "class",
+    "compl",
+    "concept",
+    "const",
+    "consteval",
+    "constexpr",
+    "constinit",
+    "const_cast",
+    "continue",
+    "contract_assert",
+    "co_await",
+    "co_return",
+    "co_yield",
+    "decltype",
+    "default",
+    "delete",
+    "do",
+    "double",
+    "dynamic_cast",
+    "else",
+    "enum",
+    "explicit",
+    "export",
+    "extern",
+    "false",
+    "float",
+    "for",
+    "friend",
+    "goto",
+    "if",
+    "inline",
+    "int",
+    "long",
+    "mutable",
+    "namespace",
+    "new",
+    "noexcept",
+    "not",
+    "not_eq",
+    "nullptr",
+    "operator",
+    "or",
+    "or_eq",
+    "private",
+    "protected",
+    "public",
+    "reflexpr",
+    "register",
+    "reinterpret_cast",
+    "requires",
+    "return",
+    "short",
+    "signed",
+    "sizeof",
+    "static",
+    "static_assert",
+    "static_cast",
+    "struct",
+    "switch",
+    "synchronized",
+    "template",
+    "this",
+    "thread_local",
+    "throw",
+    "true",
+    "try",
+    "typedef",
+    "typeid",
+    "typename",
+    "union",
+    "unsigned",
+    "using",
+    "virtual",
+    "void",
+    "volatile",
+    "wchar_t",
+    "while",
+    "xor",
+    "xor_eq",
+};
+
+void TextEditor::renderLine(int screeny, int row, string32 line,
+                            enum lexer_state state)
+{   move(screeny, 0);
+    int col;
+    bool inKeyword = false;
+    for (col=0; col<line.length(); col++)
+    {   move(screeny, 0);
+        uint32_t c = line[col];
+        if (c > 0x7f || !std::isalnum(c)) inKeyword = false;
+        enum lexer_state oldstate = state;
+        state = lexer_transition(state, c);
+fprintf(logfile, "[%d,%d] char %x => ", screeny, col, c);
+        cchar_t cc;
+        std::memset(&cc, 0, sizeof(cc));
+        if (c > 0x0010ffff)
+        {   cchar_t ccc = ccharmap[c];
+            std::memcpy(&cc.chars, &ccc.chars, sizeof(cc.chars));
+        }
+        else if (sizeof(wchar_t) == 4 && c > 0xffff)
+        {   c -= 0x10000;
+            cc.chars[0] = 0xd800 | (c >> 10);
+            cc.chars[1] = 0xdc00 | (c & 0x3ff);
+        }
+        else cc.chars[0] = c;
+fprintf(logfile, "%x %x %x %x %x", cc.chars[0], cc.chars[1],
+                                   cc.chars[2], cc.chars[3],
+                                   cc.chars[4]);
+if (' ' <= cc.chars[0] && cc.chars[0] < 0x7e)
+    fprintf(logfile, "  %c", cc.chars[0]);
+fprintf(logfile, "\n");
+// Select attributes and colour
+        attr_t attrs = 0;
+        short colour = fg_white;
+        if (state == lexer_string ||
+            state == lexer_string_esc) colour = fg_red;
+        else if (state == lexer_char ||
+                 state == lexer_char_esc) colour = fg_red;
+        else if (state == lexer_slash_comment ||
+                 state == lexer_slash_star_comment ||
+                 state == lexer_star) colour = fg_blue;
+        if (state == lexer_slash &&
+            col+1 < line.length() &&
+            (line[col+1] == '*' || line[col+1] == '/')) colour = fg_blue;
+        if (state == lexer_base &&
+            oldstate == lexer_star) colour = fg_blue;
+        if (state == lexer_base &&
+            (oldstate == lexer_string || oldstate == lexer_char))
+            colour = fg_red;
+        if (state == lexer_base &&
+            oldstate == lexer_star) colour = fg_blue;
+        if (state == lexer_base &&
+            (col == 0 ||
+             (line[col-1] > 0x7f || !std::isalnum(line[col-1]))))
+        {   std::string k = simple_word(line, col);
+            if (cxx_keywords.contains(k)) inKeyword = true;
+        }
+        if (inKeyword) colour = fg_green;
+        bool inBlock = false;
+        if (columnMode)
         {   if (row >= startBlockLine &&
                 row <= endBlockLine &&
                 col >= startBlockCol &&
@@ -389,53 +576,17 @@ void TextEditor::renderLine(int screeny, int row, std::wstring line, enum lexer_
             if (row == endBlockLine && col == endBlockCol)
                 inBlock = false;
         }
-        if (inBlock) attron(A_REVERSE);
-        addch8(UNICODE(c));
-        enum lexer_state prev = state;
-        state = lexer_transition(state, c);
-        if (state == lexer_string ||
-            state == lexer_string_esc)
-        {   attron(COLOR_PAIR(fg_green));
-            if (prev == lexer_base)
-            {   move(screeny, col);
-                addch('"');
-            }
-        }
-        else if (state == lexer_char ||
-                 state == lexer_char_esc)
-        {   attron(COLOR_PAIR(fg_cyan));
-            if (prev == lexer_base)
-            {   move(screeny, col);
-                addch('\'');   
-            }
-        }
-        else if (state == lexer_slash_comment ||
-                 state == lexer_star)
-        {   attron(COLOR_PAIR(fg_red));
-            if (prev == lexer_slash)
-            {   move(screeny, col-1);
-                addch('/');   
-                addch('/');
-            }
-        }
-        else if (state == lexer_slash_star_comment)
-        {   attron(COLOR_PAIR(fg_red));
-            if (prev == lexer_slash)
-            {   move(screeny, col-1);
-                addch('/');   
-                addch('*');   
-            }
-        }
-        else attron(COLOR_PAIR(fg_white));
-        if (inBlock) attroff(A_REVERSE);
-        col++;
+        if (inBlock) attrs = A_REVERSE;
+        cc.attr = attrs;
+        cc.ext_color = colour;
+        move(screeny, col);
+fprintf(logfile, "cc == %x [%x %x] %x\n", cc.attr, cc.chars[0], cc.chars[1], cc.ext_color);
+        add_wch(&cc);
     }
     while (col < width)
     {   addch(' ');
         col++;
     }
-// Always reset base colouring after displaying a line
-    attron(COLOR_PAIR(fg_white));
 }
 
 void TextEditor::renderScreen()
@@ -451,7 +602,18 @@ void TextEditor::renderScreen()
             clearLine(i, width);
             continue;
         }
-
+fprintf(logfile, "rendering %d %d %d\n", i, last_lexed_line, (int)buffer.size());
+        while (i > last_lexed_line &&
+               last_lexed_line < (int)buffer.size()-2)
+        {   last_lexed_line++;
+            enum lexer_state state = buffer_state[last_lexed_line];
+            string32 line = buffer[last_lexed_line];
+            for (auto c : line)
+                state = lexer_transition(state, c);
+            state = lexer_transition(state, '\n');
+            buffer_state[last_lexed_line+1] = state;
+        }
+fprintf(logfile, "line %d will start in state %d\n", i, buffer_state[i]);
         renderLine(k, i, buffer[i], buffer_state[i]);
     }
     move(cy, cx);
@@ -462,7 +624,7 @@ uint32_t command_character;
 
 void TextEditor::processKeypress(uint32_t c, bool insert)
 {   command_character = c;
-    
+
     if (keymap.count(c) > 0) (this->*keymap[c])();
     else if (insert)
     {   buffer[cy].insert(cx, 1, c);
@@ -545,7 +707,7 @@ void TextEditor::insert_newline()
 {
 // Here I will need to truncate the current line and move its tail
 // to for the next line.
-    std::wstring tail = buffer[cy].substr(cx);
+    string32 tail = buffer[cy].substr(cx);
     delete_to_eol();
     buffer.insert(buffer.begin()+cy+1, tail);
     buffer_state.insert(buffer_state.begin()+cy+1, lexer_base);
@@ -794,109 +956,5 @@ void TextEditor::find_and_replace()
 void TextEditor::find()
 {   pending();
 }
-
-// Here we have a table of all the C++ keywords...
-
-glyptMap cxx_keywords =
-{
-    {"alignas",                   1},
-    {"alignof",                   1},
-    {"and",                       1},
-    {"and_eq",                    1},
-    {"asm,                        1},
-    {"atomic_cancel",             1},
-    {"atomic_commit",             1},
-    {"atomic_noexcept",           1},
-    {"auto   ",                   1},
-    {"bitand",                    1},
-    {"bitor",                     1},
-    {"bool,                       1},
-    {"break,                      1},
-    {"case,                       1},
-    {"catch,                      1},
-    {"char,                       1},
-    {"char8_t",                   1},
-    {"char16_t",                  1},
-    {"char32_t",                  1},
-    {"class",                     1},
-    {"compl",                     1},
-    {"concept",                   1},
-    {"const,                      1},
-    {"consteval ",                1},
-    {"constexpr ",                1},
-    {"constinit",                 1},
-    {"const_cast,                 1},
-    {"continue,                   1},
-    {"contract_assert",           1},
-    {"co_await",                  1},
-    {"co_return",                 1},
-    {"co_yield",                  1},
-    {"decltype ",                 1},
-    {"default",                   1},
-    {"delete",                    1},
-    {"do,                         1},
-    {"double,                     1},
-    {"dynamic_cast,               1},
-    {"else,                       1},
-    {"enum",                      1},
-    {"explicit,                   1},
-    {"export ",                   1},
-    {"extern",                    1},
-    {"false,                      1},
-    {"float,                      1},
-    {"for",                       1},
-    {"friend,                     1},
-    {"goto,                       1},
-    {"if ",                       1},
-    {"inline ",                   1},
-    {"int",                       1},
-    {"long,                       1},
-    {"mutable",                   1},
-    {"namespace,                  1},
-    {"new,                        1},
-    {"noexcept",                  1},
-    {"not",                       1},
-    {"not_eq",                    1},
-    {"nullptr",                   1},
-    {"operator",                  1},
-    {"or",                        1},
-    {"or_eq",                     1},
-    {"private",                   1},
-    {"protected,                  1},
-    {"public,                     1},
-    {"reflexpr,                   1},
-    {"register",                  1},
-    {"reinterpret_cast,           1},
-    {"requires",                  1},
-    {"return,                     1},
-    {"short,                      1},
-    {"signed,                     1},
-    {"sizeof",                    1},
-    {"static,                     1},
-    {"static_assert",             1},
-    {"static_cast,                1},
-    {"struct",                    1},
-    {"switch,                     1},
-    {"synchronized",              1},
-    {"template,                   1},
-    {"this",                      1},
-    {"thread_local",              1},
-    {"throw ",                    1},
-    {"true,                       1},
-    {"try,                        1},
-    {"typedef,                    1},
-    {"typeid,                     1},
-    {"typename ",                 1},
-    {"union,                      1},
-    {"unsigned,                   1},
-    {"using ",                    1},
-    {"virtual,                    1},
-    {"void,                       1},
-    {"volatile,                   1},
-    {"wchar_t,                    1},
-    {"while,                      1},
-    {"xor",                       1},
-    {"xor_eq ",                   1}
-};
 
 // end of wvs.cpp,

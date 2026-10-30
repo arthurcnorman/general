@@ -1,24 +1,24 @@
 # Makefile for wvs.
 
-OPT=-O0 -g
-#OPT = -O3
+CXX=g++
+CFLAGS=-O0 -g
 
 SOURCES = wvs.cpp uniconv.cpp keymap.cpp entities.cpp adobenames.cpp \
-		texnames.cpp
+		texnames.cpp combining.cpp
 
-wvs:	wvs.h $(SOURCES)
-	g++ $(OPT) $(SOURCES) -l ncursesw -o wvs
+OBJECTS=$(SOURCES:.cpp=.o)
 
-# Not yet tested, and the availability of the wide character version of
-# ncurses is not quite clear yet.
+wvs:	$(OBJECTS) $(SOURCES) wvs.h
+	$(CXX) $(CFLAGS) $(OBJECTS) -l ncursesw -o wvs
 
-winvs:	$(SOURCES) wvs.h
-	x86_64-w64-mingw32-g++ $(OPT) $(SOURCES) -l ncursesw -o wvs.exe
+.cpp.o:
+	$(CXX) $(CFLAGS) -c $< -o $@
+
+clean:
+	rm *.o *.exe wvs *.tgz *.bak* *.old* *.tmp*
+
 
 wvs.tgz:	Makefile wvs.h $(SOURCES)
 	tar cvfz wvs.tgz Makefile wvs.h $(SOURCES)
-
-clean:
-	rm *.o *.exe wvs *.tgz
 
 # end of Makefile

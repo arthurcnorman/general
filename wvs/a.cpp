@@ -1,7 +1,10 @@
 #include <iostream>
-#include <cstring>
 #include <string>
 
+#include <cstring>
+#include <cstdint>
+
+#include <ncurses.h>
 
 // In unicode we have a range of characters that are zero-width and that
 // arrange to modify or overlay the character before them:
@@ -42,7 +45,7 @@ inline constexpr int is_combining(int c)
     if (0x1ab0 <= c && c <= 0x1aff) return base + c - 0xa1b0;
     base += 0x1aff - 0x1ab0 + 1;
     if (0x1dc0 <= c && c <= 0x1dff) return base + c - 0x1dc0;
-    base += 0x1dff - 0x1dc0 + 1;1;5q
+    base += 0x1dff - 0x1dc0 + 1;
     if (0x20d0 <= c && c <= 0x20ff) return base + c - 0x20d0;
     base += 0x20ff - 0x20d0 + 1;
     if (0xfe00 <= c && c <= 0xfe0f) return base + c - 0xfe00;
@@ -57,16 +60,22 @@ inline constexpr int n_combining = 1 + is_combining(0xfe2f);
 
 inline constexpr int code_of_combining(int n)
 {   if (n == 0) return 0;
-    else if (n <= is_combining(0x036f) return n = is_combining(0x0300) + 0x0300;
-    else if (n <= is_combining(0x1aff) return n = is_combining(0x1ab0) + 0x1ab0;
-    else if (n <= is_combining(0x1dff) return n = is_combining(0x1dc0) + 0x1dc0;
-    else if (n <= is_combining(0x20ff) return n = is_combining(0x20d0) + 0x20d0;
-    else if (n <= is_combining(0xfe0f) return n = is_combining(0xfe00) + 0xfe00;
-    else if (n <= is_combining(0xfe2f) return n = is_combining(0xfe20) + 0xfe20;
+    else if (n <= is_combining(0x036f))
+        return n = is_combining(0x0300) + 0x0300;
+    else if (n <= is_combining(0x1aff))
+        return n = is_combining(0x1ab0) + 0x1ab0;
+    else if (n <= is_combining(0x1dff))
+        return n = is_combining(0x1dc0) + 0x1dc0;
+    else if (n <= is_combining(0x20ff))
+        return n = is_combining(0x20d0) + 0x20d0;
+    else if (n <= is_combining(0xfe0f))
+        return n = is_combining(0xfe00) + 0xfe00;
+    else if (n <= is_combining(0xfe2f))
+        return n = is_combining(0xfe20) + 0xfe20;
     else return 0;
 }
 
-inline constexpr uint64_t pack_character(char64_t seq[6])
+inline constexpr uint64_t pack_character(char32_t seq[6])
 {    uint64_t combs = is_combining(seq[5]);
      combs = n_combining*combs | is_combining(seq[4]);
      combs = n_combining*combs | is_combining(seq[3]);
@@ -75,7 +84,7 @@ inline constexpr uint64_t pack_character(char64_t seq[6])
      return (combs << 21) | (seq[0] & 0x001fffff);
 }
 
-inline void unpack_character(uint64_t ch, char64_t seq[6])
+inline void unpack_character(uint64_t ch, char32_t seq[6])
 {   seq[0] = ch & 0x001fffff;
     ch = ch >> 21;
     seq[1] = code_of_combining(ch % n_combining);
@@ -96,6 +105,9 @@ using string64 = std::basic_string<uint64_t>;
 // I provide functions to convert both ways between string64 and
 // both std::string and C-style strings. These will pack and
 // unpock the combining characters.
+
+// NOTE: I can only use std::string and string64 freely in constexpr
+// functions from C++23 onwards. Here I am happy to apply that requirement.
 
 inline constexpr std::string S(string64 a)
 {   std::string r = "";
@@ -121,7 +133,7 @@ inline constexpr std::string S(string64 a)
         while (overlay != 0)
         {   c = code_of_combining(overlay % n_combining);
             overlay /= n_combining;
-            r += S(string65(1, code_of_combining(c)));
+            r += S(string64(1, code_of_combining(c)));
         }
     }
     return r;
@@ -184,51 +196,48 @@ inline constexpr uint32_t utf8_getc(const char*& b)
 inline constexpr string64 L(const char* a)
 {   string64 r;
     int32_t prev = -1;
+    int extra = 0;
     while (*a != 0)
-    {   int32_T c  = utf8_getc(a);
-        switch (c)
-        {
-        case -1:
-            return string64();     // an ampty string
-        default:
-            if (prev != -1) r += string64(1, prev);
+    {   int32_t c  = utf8_getc(a);
+        if (c == -1) return string64();     // malformed input
+        if ((extra = code_of_combining(c)) == 0)
+        {   if (prev != -1) r += string64(1, prev);
             prev = c;
             continue;
-        case 0x0331:      //  combining macron below
-// If there is nothing to combine with I will view the input as erroneous
-// and return an empty string. If multiple combining characters are
-// provided I will silently keep just the final one, because at present
-// (at least!) I can not cope with more than one.
-            if (prev == -1) return string64();
-            prev = (prev & 0x001fffff) | macron_below;
-            continue;
-        case 0x0333:      //  combining double low line
-            if (prev == -1) return string64();
-            prev = (prev & 0x001fffff) | double_low_line;
-            continue;
-        case 0x0338:      //  combining long solidus overlay
-            if (prev == -1) return string64();
-            prev = (prev & 0x001fffff) | long_solidus;
-            continue;
-        case 0x20d2:      //  combining long vertical bar overlay
-            if (prev == -1) return string64();
-            prev = (prev & 0x001fffff) | long_vertical_bar;
-            continue;
-        case 0x20e5:      //  combining reverse solidus overlay
-            if (prev == -1) return string64();
-            prev = (prev & 0x001fffff) | reverse solidus;
-            continue;
-        case 0xfe00:      //  variation selector (number 1)
-            if (prev == -1) return string64();
-            prev = (prev & 0x001fffff) | variation;
-            continue;
         }
+        if (prev == -1) return string64();  // malformed input
+// Here I want to add the new combing mark to the previous character.
+// This will be a pretty uncommon activity so I feel content doing it
+// a somewhat inefficient (biut I hope clear) way. I unpack the prending
+// character which may already have one or more extras. I look for a
+// gap and insert the new combining mark. If the4re is no room I will
+// beep and lose the new combining mark. I then pack things up again.
+        char32_t seq[6] = {0};
+        bool success = false;
+        unpack_character(prev, seq);
+        for (int i=1; i<6; i++)
+        {   if (seq[i] == 0)
+            {   seq[i] = code_of_combining(c);
+                success = true;
+                break;
+            }
+        }
+        if (!success) beep();
+        prev = pack_character(seq);
     }
     if (prev != -1) r += string64(1, prev);
     return r;
 }
 
 inline constexpr string64 L(const std::string a)
-{   return L(a.c_str);
+{   return L(a.c_str());
 }
 
+
+int main()
+{
+    string64 a = L("ARthur");
+    std::string b = S(a);
+    std::cout << b << "\n";
+    return 0;
+}
