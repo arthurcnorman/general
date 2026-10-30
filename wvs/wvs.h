@@ -117,41 +117,47 @@ public:
     TextEditor(const std::string& filename);
     ~TextEditor();
     void run();
-    int height, width;
-    void lex_from_line(int n);
-    int cx=0, cy=0;  // cursor position
-    int firstVisibleLine = 0;
-    bool columnMode = true;
-    bool overwriteMode = false;
-    int startBlockLine = 3, startBlockCol = 4;
-    int endBlockLine = 6, endBlockCol = 17;
-    int markLine[10];
-    int markCol[10];
+
     std::vector<string32> buffer;
     std::vector<enum lexer_state> buffer_state;
+
+    int cx=0, cy=0;            // cursor position
+    int wx=0, wy=0;            // top left corner of window
+    int height, width;         // size of window
+
+    bool columnMode = false;
+    bool overwriteMode = false;
+
+// Positions in the buffer are given the value (-1, -1) when they are
+// not set.
+    int startBlockLine, startBlockCol;
+    int endBlockLine, endBlockCol;
+    int markLine[10], markCol[10];
+
+    void renderScreen();
+    void renderLine(int screeny, int row, string32 line,
+                    enum lexer_state state);
+    void makeCursorVisible();
+    void clearLine(int y, int w);
     int last_lexed_line;
+
     std::string filename;
     void loadFile();
     void saveFile();
+
     void unicodeConvert();
-    bool inBlock;
-    bool inComment;
-    bool inString;
-    bool inChar;
-    void renderLine(int screeny, int row, string32 line,
-                    enum lexer_state state);
-    void renderScreen();
-    void makeCursorVisible();
+
     void displayMenu(const char* menu[]);
     void hideMenu();
-    void clearLine(int y, int w);
+
     int mygetch8();
     int mygetch();
     void processKeypress(uint32_t c, bool insert=true);
-    void insert_newline();
-    void addch8(int c);
     using funcMap = std::unordered_map<wchar_t, void (TextEditor::*)()>;
     static funcMap keymap;
+
+    void insert_newline();
+    void addch8(int c);
 
 // Now all the edit actions that are supported.
 
@@ -224,20 +230,8 @@ extern glyphMap adobe_names;
 extern std::uint32_t name_to_code(const char* name);
 extern const char* code_to_name(std::uint32_t code);
 
-// In unicode we have a range of characters that are zero-width and that
-// arrange to modify or overlay the character before them:
-//
-//   U+0300 to u+036f "combining diacritical marks"                112
-//   U+a1b0 to U+1aff "combining diacritical marks extended"        80
-//   U+1dc0 to U+1dff "combining diacritical marks supplement"      64
-//   U+20d0 to U+20ff "combining diacritical marks for symbols"     48
-//   U+fe00 to U+fe0f "variations"                                  16
-//   U+fe20 to 0xfe2f "combining half marks"                        16
-//
-// HOWEVER it seems that there are in fact rather a lot of other
-// combining characters scattered - for instance ones that are used
-// with just one language. So I have a std::unordered:set that identifies
-// the lot.
+// This is a table that lets me identify codepoints that denote
+// combining/diacritical marks.
 
 extern std::unordered_set<uint32_t> is_combining;
 
@@ -270,7 +264,7 @@ extern std::unordered_set<uint32_t> is_combining;
 // multilingual plane is that bit more restrictive.
 
 // These constraints are not down to my code but to ncurses and in fact
-// it would not be hard tp generate a customised version that used more
+// it would not be hard to generate a customised version that used more
 // memory but then allowed more modification.
 
 // But for me the big uncertainty is in idebntifing combining characters.
@@ -288,7 +282,9 @@ inline uint64_t lookup_composite(cchar_t& cc)
 // is such that the residue plus 0x00110000 is in the range I am allowed
 // to use to represent complex characters. I am expecting very light
 // loading in the hash scheme used here and so do not expect the competence
-// of hashing to be terribly important!
+// of hashing to be terribly important! The value -(uint32_t)1 wull never
+// be used because the hash modulus is small enough, so I can use that
+// value as a marker.
     for (;;)
     {   if (ccharmap.count(hash) == 0) // not found: insert in table.
         {   ccharmap[hash] = cc;
@@ -308,13 +304,12 @@ inline uint64_t lookup_composite(cchar_t& cc)
     }
 }
 
-
 // I provide functions to convert both ways between string32 and
 // both std::string and C-style strings. These will pack and
 // unpock the combining characters.
 
 // NOTE: I can only use std::string and string32 freely in constexpr
-// functions from C++23 onwards so building this code has that requiremnent.
+// functions from C++23 onwards so building this code has that requirement.
 // I may look into softening it later if I feel I need to.
 
 inline constexpr std::string S(string32 a)

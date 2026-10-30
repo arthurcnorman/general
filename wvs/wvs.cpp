@@ -860,7 +860,7 @@ void TextEditor::tab()
 {   pending();
 }
 
-void TextEditor::repeat_last_find()
+void WTextEditor::repeat_last_find()
 {   pending();
 }
 
