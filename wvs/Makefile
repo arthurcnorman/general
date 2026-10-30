@@ -1,7 +1,12 @@
 # Makefile for wvs.
 
+ifeq ($(OS),Windows NT)
+CXX=x86_64-w64-mingw32-g++
+else
 CXX=g++
-CFLAGS=-O0 -g
+endif
+
+CXXFLAGS=-O0 -g -std=c++23
 
 SOURCES = wvs.cpp uniconv.cpp keymap.cpp entities.cpp adobenames.cpp \
 		texnames.cpp combining.cpp
@@ -9,10 +14,13 @@ SOURCES = wvs.cpp uniconv.cpp keymap.cpp entities.cpp adobenames.cpp \
 OBJECTS=$(SOURCES:.cpp=.o)
 
 wvs:	$(OBJECTS) $(SOURCES) wvs.h
-	$(CXX) $(CFLAGS) $(OBJECTS) -l ncursesw -o wvs
+	$(CXX) $(CXXFLAGS) $(OBJECTS) -l ncursesw -o wvs
 
-.cpp.o:
-	$(CXX) $(CFLAGS) -c $< -o $@
+#.cpp.o:
+#	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(OBJECTS):	%.o:	 %.cpp wvs.h
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm *.o *.exe wvs *.tgz *.bak* *.old* *.tmp*

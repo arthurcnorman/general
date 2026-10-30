@@ -31,9 +31,6 @@
 
 // $Id$
 
-#include <cstdint>
-#include <ncurses.h>
-
 #include "wvs.h"
 
 TextEditor::funcMap TextEditor::keymap =
@@ -66,6 +63,7 @@ TextEditor::funcMap TextEditor::keymap =
     {CTRL_KEY('x'),      &TextEditor::line_down},
     {CTRL_KEY('y'),      &TextEditor::pending},
     {CTRL_KEY('z'),      &TextEditor::scroll_line_up},
+    {0x7f,               &TextEditor::backspace},
                          
     {'a' | TAG_ALT,      &TextEditor::pending},
     {'b' | TAG_ALT,      &TextEditor::pending},

@@ -51,21 +51,17 @@
 #include <cassert>
 
 #include <unistd.h>
-#include <ncurses.h>
+
+#ifndef NCURSES_WIDECHAR
+#define NCURSES_WIDECHAR 1
+#endif
+#include <ncursesw/ncurses.h>
 
 
 extern FILE* logfile;
 
 inline constexpr int CTRL_KEY(uint32_t k)
 {   return k & 0x1f;
-}
-
-inline constexpr int UNICODE(uint32_t k)
-{   return k & 0x00ffffff;
-}
-
-inline constexpr int TAGBITS(uint32_t k)
-{   return k & 0xff000000;
 }
 
 inline const uint32_t TAG_ALT = 0x02000000;
@@ -77,7 +73,7 @@ inline const uint32_t TAG_O   = 0x0a000000;
 inline const uint32_t TAG_P   = 0x0b000000;
 inline const uint32_t TAG_Q   = 0x0c000000;
 
-inline const uint32_t ESC      = 0x1b;
+inline const uint32_t ESC      = 0x001b;
 inline const uint32_t BAD_UTF8 = 0x25a0;   // BLACK SQUARE
 
 enum lexer_state

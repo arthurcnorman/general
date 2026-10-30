@@ -48,7 +48,6 @@ TextEditor::TextEditor(const std::string& filename) : filename(filename)
     short foreground, background;
     pair_content(pair_id, &foreground, &background);
 //
-fprintf(logfile, "colour for screen is %d %d\n", foreground, background);
 // Colours:
 //   plain text    white on black
 //   comments      blue on black
@@ -516,7 +515,6 @@ void TextEditor::renderLine(int screeny, int row, string32 line,
         if (c > 0x7f || !std::isalnum(c)) inKeyword = false;
         enum lexer_state oldstate = state;
         state = lexer_transition(state, c);
-fprintf(logfile, "[%d,%d] char %x => ", screeny, col, c);
         cchar_t cc;
         std::memset(&cc, 0, sizeof(cc));
         if (c > 0x0010ffff)
@@ -529,12 +527,6 @@ fprintf(logfile, "[%d,%d] char %x => ", screeny, col, c);
             cc.chars[1] = 0xdc00 | (c & 0x3ff);
         }
         else cc.chars[0] = c;
-fprintf(logfile, "%x %x %x %x %x", cc.chars[0], cc.chars[1],
-                                   cc.chars[2], cc.chars[3],
-                                   cc.chars[4]);
-if (' ' <= cc.chars[0] && cc.chars[0] < 0x7e)
-    fprintf(logfile, "  %c", cc.chars[0]);
-fprintf(logfile, "\n");
 // Select attributes and colour
         attr_t attrs = 0;
         short colour = fg_white;
@@ -580,17 +572,22 @@ fprintf(logfile, "\n");
         cc.attr = attrs;
         cc.ext_color = colour;
         move(screeny, col);
-fprintf(logfile, "cc == %x [%x %x] %x\n", cc.attr, cc.chars[0], cc.chars[1], cc.ext_color);
         add_wch(&cc);
     }
+    cchar_t cc;
+    std::memset(&cc, 0, sizeof(cc));
+    cc.chars[0] = ' ';
+    cc.attr = 0;
+    cc.ext_color = fg_white;
     while (col < width)
-    {   addch(' ');
+    {   move(screeny, col);
+        add_wch(&cc);
         col++;
     }
 }
 
 void TextEditor::renderScreen()
-{   int height, width;
+{
 // It is always possible that the user re-sized the windows, so measure
 // its size each time I render.
     getmaxyx(stdscr, height, width);
@@ -603,6 +600,7 @@ void TextEditor::renderScreen()
             continue;
         }
 fprintf(logfile, "rendering %d %d %d\n", i, last_lexed_line, (int)buffer.size());
+fflush(logfile);
         while (i > last_lexed_line &&
                last_lexed_line < (int)buffer.size()-2)
         {   last_lexed_line++;
@@ -614,6 +612,7 @@ fprintf(logfile, "rendering %d %d %d\n", i, last_lexed_line, (int)buffer.size())
             buffer_state[last_lexed_line+1] = state;
         }
 fprintf(logfile, "line %d will start in state %d\n", i, buffer_state[i]);
+fflush(logfile);
         renderLine(k, i, buffer[i], buffer_state[i]);
     }
     move(cy, cx);
@@ -624,7 +623,8 @@ uint32_t command_character;
 
 void TextEditor::processKeypress(uint32_t c, bool insert)
 {   command_character = c;
-
+fprintf(logfile, "Input char = %x\n", c); fflush(logfile);
+fprintf(logfile, "keymap.count = %d\n", keymap.count(c)); fflush(logfile);
     if (keymap.count(c) > 0) (this->*keymap[c])();
     else if (insert)
     {   buffer[cy].insert(cx, 1, c);
@@ -648,7 +648,7 @@ int main(int argc, char* argv[])
 }
 
 void TextEditor::pending()
-{   fprintf(logfile, "Pending op %x\n", command_character);
+{   fprintf(logfile, "Pending/Unimplemented op %x\n", command_character);
 }
 
 void TextEditor::displayMenu(const char* menu[])
