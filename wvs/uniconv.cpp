@@ -32,14 +32,6 @@
 // $Id$
 
 
-#include <ncurses.h>
-#include <string>
-#include <cctype>
-#include <cstdlib>
-#include <cstring>
-#include <cstdint>
-#include <cwctype>
-
 #include "wvs.h"
 
 
