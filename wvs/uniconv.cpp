@@ -195,7 +195,7 @@ static int hexval(int c)
 //   adobenames.cpp  names proposed by Adobe
 //   texnames.cpp    as for use with \Alpha
 // These three lists are being set up in 2026. The first is probably
-// a dcomplete list for HTML 5. The Adobe one is their shorter list.
+// a complete list for HTML 5. The Adobe one is their shorter list.
 // the TeX list will need to be populated.
 
 
@@ -2420,23 +2420,74 @@ bool is_low_surrogate(int c)
 }
 
 
-// Yet another attempot to design the sequence of transformations. I will
-// use NNnnnn to denore a 6-digit hex number where NN is in the range
-// 01 to 10, and nnnn is a 4-digit one. CamelCaseName is denotes a word
-// that is registered as the name of a character where CaseName and Name are
-// as well. &xxx; will be a single character with xxx its description
-// either by name or codepoint. &xxx:yyy: and &xxx:yyy:zzz; will be spacing
-// characters &xxx; followed by combining marks yyy and perhaps zzz.
-
-// VeryLongName    => &VeryLongName;      name => character
-// &VeryLongName;  => Very&LongName;      if the symbol has a name...
-// VeryLong&Name;  => VeryLong&Name;      ... and the name has a suffix name.
-// xxx&Name;       => xxxNN&nnnn;         if &Name; uses 6 digits
-// xxxNN&nnnn      => xxNNnnnn            ) these two are the same!
-// xxx&Name;       => xxxnnnn             )
-// VeryLongnnnn    => Verynnnn
-// Verynnnn        => nnnn
-// nnnn            => VeryLongName
+// The design for how ALT-x converts between names and symbols has
+// gone throgh a number of drafts. Here is where it ends up:
+//
+// When you press ALT-x it may modify characters before the cursor. If
+// you press it again without any intervening key-strokes it can continue
+// a sequence of transformations. So ALT-x ALT-x may do one thing and
+// ALT-x left right ALT-x may give a different result in cases that I
+// will note here.
+//
+// The simplest case is that word{ALT-x} will replace the word with a
+// single character that it names. The names supported icnlude all the
+// names that HTML-5 defines as entity names. In HTML one would say
+// e.g. "&alpha;" but here you just enter "alpha" and then ALT-x. The
+// second ALT-x will turn the greek letter (or other symbol) back into the
+// name it was derived from. As well as the HTML names you may use names
+// from an Adobe list of "glyph names intended for users" and a selection
+// of TeX/LaTeX keywords. Because of these multiple sources some chatacters
+// may be known by multiple names. The trasformation as above always returns
+// top the one the user had originally used.
+// There are two main extras to explain here:
+// (1) If one symbol-name forms a suffix of another then the conversion
+//     to a symbol will first use the longest name possible. The next ALT-x
+//     will cycle through progressively shorter matches before returning
+//     to the textual input. A concrete example will be "oline" which
+//     can also be interporeted as oli"ne".
+// (2) If the single character generated from an original name has several
+//     possible names recorded then if the sequence of ALT-x keys are
+//     uninterrupted then the one originally entered is returned to. But
+//     if any other keystrokes intervene than the character will be converted
+//     to a canonical name even if the user had started with something else,
+//     but in that case further ALT-x input will cycle through alternate
+//     names and only when those have all been shown will the system go
+//     back to the sinle4 character.
+//
+// Implicit in the above is that if a single character before the cursor
+// is outside the Basic Latin Block and it has one or more recorded names
+// then ALT-x replaces it with one of its names and can cycle through any
+// others.
+//
+// If there are hex digits before the cursor then the longest match would
+// grab six of them and the next shorter will grab 4. And in each case
+// use those as a codepoint provided it is in range and not a surrogate.
+// If there are character names those also join in. So the input 0211ee
+// will cycle through U+0211ee, 01U+11ee and 0211&ee; which is 0211U+2147
+// the final part being a Double-Struck Italic Small E. This should be
+// just treating sequences of digits as if they are names. It makes it
+// possible for the user to enter any codepoint they want.
+// Consistent with this, use of ALT-x following a single character can
+// include a string of hex digits as one if its "names". A consequence
+// is that eg if you wanted to know the codepoint for Omega you could
+// key in OmageALT-x then the screed displays it as a character. Then say
+// left and right using the arrow keys. Now Alt-x converts the symbol back
+// into the text "Omega" but a second ALT-x turns it into 03a9 bacause the
+// symbol is U+03a9.
+//
+// Now there is the issue of overlays and diacritical marks, They are
+// stored combined with the spacing symbol that they decorate. I will
+// use a notation Cabc for a base character C with combining marks a, b
+// and c. If combining marke are poresent this is a "complex character".
+// If you type ALT-x ahead of a complex character Cxyz the behaviour will
+// be as follows:
+// (.) If Cabc has a known name then the first choice conversion will
+//     be to that name.
+// (.) If Cabc is not names or as a second choice when ALT-x is used again
+//     ie text buffer gets expanded to hold "Cab c" with the final combining
+//     mark separated off. And then behaviour is as for just "c" which will
+//     be replaces by a name or a hex value.   
+ 
 
 
 void convert(string32& line, int& caretpos)
