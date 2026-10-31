@@ -39,14 +39,18 @@ TextEditor::funcMap TextEditor::keymap =
 
     {CTRL_KEY('a'),      &TextEditor::word_left},
     {CTRL_KEY('b'),      &TextEditor::pending},        // justify if in wrap
-    {CTRL_KEY('c'),      &TextEditor::scroll_page_up},
+    {CTRL_KEY('c'),      &TextEditor::page_up},
     {CTRL_KEY('d'),      &TextEditor::char_right},
     {CTRL_KEY('e'),      &TextEditor::line_up},
     {CTRL_KEY('f'),      &TextEditor::word_right},
     {CTRL_KEY('g'),      &TextEditor::delete_char},
     {CTRL_KEY('h'),      &TextEditor::undelete},
     {CTRL_KEY('i'),      &TextEditor::tab},
-    {CTRL_KEY('j'),      &TextEditor::j_menu},
+// Here I have a potential mess. ^J is "linefeed" and the enter key
+// probably send the same. I wanted curses to send KEY_ENTER for that.
+// But MAYBE it does not?
+//@@{CTRL_KEY('j'),      &TextEditor::j_menu},
+    {CTRL_KEY('j'),      &TextEditor::insert_newline},
     {CTRL_KEY('k'),      &TextEditor::k_menu},
     {CTRL_KEY('l'),      &TextEditor::repeat_last_find},
     {CTRL_KEY('m'),      &TextEditor::pending},
@@ -54,7 +58,7 @@ TextEditor::funcMap TextEditor::keymap =
     {CTRL_KEY('o'),      &TextEditor::o_menu},
     {CTRL_KEY('p'),      &TextEditor::p_menu},
     {CTRL_KEY('q'),      &TextEditor::q_menu},
-    {CTRL_KEY('r'),      &TextEditor::scroll_page_down},
+    {CTRL_KEY('r'),      &TextEditor::page_down},
     {CTRL_KEY('s'),      &TextEditor::char_left},
     {CTRL_KEY('t'),      &TextEditor::delete_word},
     {CTRL_KEY('u'),      &TextEditor::stop_command},

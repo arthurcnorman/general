@@ -81,7 +81,8 @@ TextEditor::~TextEditor()
 
 
 void TextEditor::run()
-{   while (true)
+{   uniConv = false;
+    while (true)
     {   renderScreen();
         processKeypress(mygetch(), true);
     }
@@ -346,6 +347,11 @@ void TextEditor::saveFile()
 
 void TextEditor::makeCursorVisible()
 {   if (last_lexed_line >= cy) last_lexed_line = cy - 1;
+    if (cy >= wy + height) wy = cy - 2;
+    else if (cy < wy)
+    {   wy = cy = 2;
+        if (wy < 0) wy = 0;
+    }
 }
 
 void to_utf8(uint32_t ch, char*& p)
@@ -591,16 +597,12 @@ void TextEditor::renderScreen()
 // It is always possible that the user re-sized the windows, so measure
 // its size each time I render.
     getmaxyx(stdscr, height, width);
-    inBlock = false;
     for (int k = 0; k < height; k++)
-    {   int i = firstVisibleLine + k;
+    {   int i = wy + k;
         if (i >= buffer.size())
-        {   inBlock = false;
-            clearLine(i, width);
+        {   clearLine(i, width);
             continue;
         }
-fprintf(logfile, "rendering %d %d %d\n", i, last_lexed_line, (int)buffer.size());
-fflush(logfile);
         while (i > last_lexed_line &&
                last_lexed_line < (int)buffer.size()-2)
         {   last_lexed_line++;
@@ -611,8 +613,6 @@ fflush(logfile);
             state = lexer_transition(state, '\n');
             buffer_state[last_lexed_line+1] = state;
         }
-fprintf(logfile, "line %d will start in state %d\n", i, buffer_state[i]);
-fflush(logfile);
         renderLine(k, i, buffer[i], buffer_state[i]);
     }
     move(cy, cx);
@@ -623,8 +623,21 @@ uint32_t command_character;
 
 void TextEditor::processKeypress(uint32_t c, bool insert)
 {   command_character = c;
-fprintf(logfile, "Input char = %x\n", c); fflush(logfile);
-fprintf(logfile, "keymap.count = %d\n", keymap.count(c)); fflush(logfile);
+// With ALT or after a menu key ^J, ^K, ^O, ^P, ^Q I will ignore the
+// case of simple letters. So eg ^KX and ^Kx will be treated the same way,
+// as will ALT-X and ALT-x. 
+    if ((c & (TAG_ALT|TAG_J|TAG_K|TAG_O|TAG_P|TAG_Q)) != 0 &&
+        (c & 0x01ffffff) < 0x7f)
+    {   c = (c & 0xfe000000) | std::tolower(c & 0x01ffffff);
+    }
+// I want to treate consecutive uses of ALT-x specially, so I will
+// set uniConv to false on any other input - i.e. things that disrupt
+// from being consecutive.
+    if (c != ('x' | TAG_ALT)) uniConv = false;
+    fprintf(logfile, "Key = %x ", c);
+    if (0x40 <= c && c < 0x7e) fprintf(logfile, " = %c\n", c);
+    else if (c < 0x40) fprintf(logfile, " = ^%c\n", c | 0x40);
+    else fprintf(logfile, "\n");
     if (keymap.count(c) > 0) (this->*keymap[c])();
     else if (insert)
     {   buffer[cy].insert(cx, 1, c);
@@ -709,6 +722,7 @@ void TextEditor::insert_newline()
 // to for the next line.
     string32 tail = buffer[cy].substr(cx);
     delete_to_eol();
+    if (last_lexed_line >= cy) last_lexed_line = cy-1;
     buffer.insert(buffer.begin()+cy+1, tail);
     buffer_state.insert(buffer_state.begin()+cy+1, lexer_base);
     cx = 0;
@@ -740,7 +754,7 @@ void TextEditor::char_right()
 void TextEditor::page_up()
 {   int height, x;
     getmaxyx(stdscr, height, x);
-    cy -= height-1;
+    cy += height-1;
     if (cy < 0) cy = 0;
     makeCursorVisible();
 }
@@ -748,19 +762,19 @@ void TextEditor::page_up()
 void TextEditor::page_down()
 {   int height, x;
     getmaxyx(stdscr, height, x);
-    cy += height-1;
-    if (cy > buffer.size()) cy = buffer.size();
+    cy -= height-1;
+    if (cy >= buffer.size()) cy = buffer.size()-1;
     makeCursorVisible();
 }
 
 void TextEditor::page_line_up()
 {   int x, height;
     getmaxyx(stdscr, height, x);
-    if (firstVisibleLine < buffer.size()-height-2) firstVisibleLine++;
+    if (wy < buffer.size()-height-2) wy++;
 }
 
 void TextEditor::page_line_down()
-{   if (firstVisibleLine > 0) firstVisibleLine--;
+{   if (wy > 0) wy--;
 }
 
 void TextEditor::delete_forward(int n)
@@ -806,7 +820,8 @@ void TextEditor::delete_char()
 }
 
 void TextEditor::delete_to_eol()
-{   delete_forward(buffer[cy].length() - cx - 1);
+{   if (cx+1 < buffer[cy].length())
+        delete_forward(buffer[cy].length() - cx - 1);
 }
 
 void TextEditor::delete_line()
@@ -844,10 +859,6 @@ void TextEditor::word_left()
 {   pending();
 }
 
-void TextEditor::scroll_page_up()
-{   pending();
-}
-
 void TextEditor::word_right()
 {   pending();
 }
@@ -860,15 +871,11 @@ void TextEditor::tab()
 {   pending();
 }
 
-void WTextEditor::repeat_last_find()
+void TextEditor::repeat_last_find()
 {   pending();
 }
 
 void TextEditor::insert_return()
-{   pending();
-}
-
-void TextEditor::scroll_page_down()
 {   pending();
 }
 
@@ -894,37 +901,56 @@ void TextEditor::scroll_line_up()
 
 // ^Kn for n in the range 0 to 9 sets a marker at the current position
 
+void TextEditor::flip_mark(int& y, int& x)
+{   if (cy == y && cx == x)  // already at that mark ..
+    {   y = -1;              // .. so cancel it
+        x = -1;
+        return;
+    }
+    y = cy;                  // set it.
+    x = cx;
+}
+
 void TextEditor::set_mark()
 {   int n = command_character & 0xf;
-    markLine[n] = cy;
-    markCol[n] = cx;
+    flip_mark(markLine[n], markCol[n]);
 }
 
 void TextEditor::goto_mark()
 {   int n = command_character & 0xf;
+    if (markLine[n] == -1)
+    {   beep();                // Mark not set
+        return;
+    }
     cy = markLine[n];
     cx = markCol[n];
     makeCursorVisible();
 }
 
 void TextEditor::set_start_block()
-{   startBlockLine = cy;
-    startBlockCol = cx;
+{   flip_mark(startBlockLine, startBlockCol);
 }
 
 void TextEditor::goto_start_block()
-{   cy = startBlockLine;
+{   if (startBlockLine == -1)
+    {   beep();                // Mark not set
+        return;
+    }
+    cy = startBlockLine;
     cx = startBlockCol;
     makeCursorVisible();
 }
 
 void TextEditor::set_end_block()
-{   endBlockLine = cy;
-    endBlockCol = cx;
+{   flip_mark(endBlockLine, endBlockCol);
 }
 
 void TextEditor::goto_end_block()
-{   cy = endBlockLine;
+{   if (endBlockLine == -1)
+    {   beep();                // Mark not set
+        return;
+    }
+    cy = endBlockLine;
     cx = endBlockCol;
     makeCursorVisible();
 }

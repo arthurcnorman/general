@@ -151,6 +151,7 @@ public:
     void processKeypress(uint32_t c, bool insert=true);
     using funcMap = std::unordered_map<wchar_t, void (TextEditor::*)()>;
     static funcMap keymap;
+    bool uniConv;
 
     void insert_newline();
     void addch8(int c);
@@ -190,19 +191,18 @@ public:
     void save_and_exit();
 
     void word_left();
-    void scroll_page_up();
     void word_right();
     void undelete();
     void tab();
     void j_menu();
     void repeat_last_find();
     void insert_return();
-    void scroll_page_down();
     void delete_word();
     void stop_command();
     void overwrite_mode();
     void scroll_line_down();
     void scroll_line_up();
+    void flip_mark(int& y, int& x);
     void set_mark();
     void goto_mark();
     void set_start_block();

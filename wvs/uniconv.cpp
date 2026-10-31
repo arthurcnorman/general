@@ -2483,12 +2483,27 @@ bool is_low_surrogate(int c)
 // be as follows:
 // (.) If Cabc has a known name then the first choice conversion will
 //     be to that name.
-// (.) If Cabc is not names or as a second choice when ALT-x is used again
+// (.) If Cabc is not named or as a second choice when ALT-x is used again
 //     ie text buffer gets expanded to hold "Cab c" with the final combining
 //     mark separated off. And then behaviour is as for just "c" which will
 //     be replaces by a name or a hex value.   
- 
-
+// To fit in with this if you enter either a name or a hex code that turns
+// into a combining mark then as it turns into a character it merges with
+// the predecessor. I think this is behaving as if the conversion between
+// names and characters treats Cabc as C a b c with the packing as a
+// single token merely an aspect of how it is represented in the buffer.
+// Well delete-backward must remove just the last combining mark, while
+// delete-forward removes the entire symbol. INserting a combining character
+// should never leave it by itself in the buffer - it must merge in with
+// a prior character. Well MAYBE as a kindness if you insert a combining
+// character at the start of a line things behave as if you had first
+// inserted a blank.
+//
+// To make a number of the more common cases easier to use I will
+// introduce names as follows:
+//   All of the official Unicode names but rendered as eg #macron_above
+//   Shorthands: #grave, #acute, #circumflex, and an uncertain number more.
+//
 
 void convert(string32& line, int& caretpos)
 {
