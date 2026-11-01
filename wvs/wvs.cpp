@@ -34,7 +34,9 @@
 
 #include "wvs.h"
 
+#ifdef DEBUG
 FILE* logfile = std::fopen("log.log", "w");
+#endif
 
 TextEditor::TextEditor(const std::string& filename) : filename(filename)
 {   setlocale(LC_ALL, "");
@@ -62,12 +64,14 @@ TextEditor::TextEditor(const std::string& filename) : filename(filename)
     init_pair(fg_cyan,    COLOR_CYAN, COLOR_BLACK);
     init_pair(fg_white ,  COLOR_WHITE, COLOR_BLACK);
     attron(COLOR_PAIR(fg_white));
-    last_lexed_line = -1;
+    uniConv = false;
+    wx = wy = cx = cy = 0;
+        last_lexed_line = -1;
     startBlockLine = -1;
     startBlockCol = -1;
     endBlockLine = -1;
     endBlockCol = -1;
-    for (int i=0; i<10; i++)
+for (int i=0; i<10; i++)
     {   markLine[i] = -1;
         markCol[i] = -1;
     }
@@ -81,8 +85,7 @@ TextEditor::~TextEditor()
 
 
 void TextEditor::run()
-{   uniConv = false;
-    while (true)
+{   while (true)
     {   renderScreen();
         processKeypress(mygetch(), true);
     }
@@ -615,7 +618,7 @@ void TextEditor::renderScreen()
         }
         renderLine(k, i, buffer[i], buffer_state[i]);
     }
-    move(cy, cx);
+    move(cy-wy, cx-wx);
     refresh();
 }
 
@@ -634,10 +637,12 @@ void TextEditor::processKeypress(uint32_t c, bool insert)
 // set uniConv to false on any other input - i.e. things that disrupt
 // from being consecutive.
     if (c != ('x' | TAG_ALT)) uniConv = false;
+#ifdef DEBUG
     fprintf(logfile, "Key = %x ", c);
     if (0x40 <= c && c < 0x7e) fprintf(logfile, " = %c\n", c);
     else if (c < 0x40) fprintf(logfile, " = ^%c\n", c | 0x40);
     else fprintf(logfile, "\n");
+#endif
     if (keymap.count(c) > 0) (this->*keymap[c])();
     else if (insert)
     {   buffer[cy].insert(cx, 1, c);
@@ -661,7 +666,10 @@ int main(int argc, char* argv[])
 }
 
 void TextEditor::pending()
-{   fprintf(logfile, "Pending/Unimplemented op %x\n", command_character);
+{
+#ifdef DEBUG
+    fprintf(logfile, "Pending/Unimplemented op %x\n", command_character);
+#endif
 }
 
 void TextEditor::displayMenu(const char* menu[])
@@ -752,18 +760,53 @@ void TextEditor::char_right()
 }
 
 void TextEditor::page_up()
-{   int height, x;
-    getmaxyx(stdscr, height, x);
-    cy += height-1;
-    if (cy < 0) cy = 0;
+{
+// When I scroll here I will re-check the size of the window. I am
+// not at present clear how ncurses responds if the user resizes the
+// window while it is in use, but to the extent to which it does I
+// will try to cope.
+    getmaxyx(stdscr, height, width);
+    int moveby = height-1;
+// If scrolling down would bring the bottom of the screen beyond the
+// end of the buffer then do not move so far. Ie the furthest you can scroll
+// is such as to make the end of the document just visible.
+    if (wy + moveby + height >= buffer.size())
+        moveby = buffer.size() - height - 1 - wy;
+// If the document is very short maybe then I will not move the screen
+// but I will then move the cursor to the end of the document.
+    if (wy + moveby < 0)
+    {   cy = buffer.size()-1;
+        cx = buffer[buffer.size()-1].length() - 1;
+    }
+    else
+    {   wy += moveby;
+        cy += moveby;
+// I do not thing that the following could arise but as a matter of
+// caution I still include it.
+        if (cy >= buffer.size())
+        {   cy = buffer.size()-1;
+            cx = buffer[buffer.size()-1].length() - 1;
+        }
+    }
+    if (cx > buffer[cy].size()) cx = buffer[cy].size();
+#ifdef DEBUG
+    fprintf(logfile, "moveby = %d set wy=%d cy = %d\n", moveby, wy, cy);
+#endif
     makeCursorVisible();
 }
 
 void TextEditor::page_down()
-{   int height, x;
-    getmaxyx(stdscr, height, x);
-    cy -= height-1;
-    if (cy >= buffer.size()) cy = buffer.size()-1;
+{   getmaxyx(stdscr, height, width);
+    int moveby = height-1;
+    if (moveby > wy)
+    {   wy = 0;
+        cy = 0;
+    }
+    else
+    {   wy -= moveby;
+        cy -= moveby;
+    }
+    if (cx > buffer[cy].size()) cx = buffer[cy].size();
     makeCursorVisible();
 }
 
@@ -836,11 +879,17 @@ void TextEditor::flip_column_mode()
 }
 
 void TextEditor::write_file()
-{   fprintf(logfile, "write file\n");
+{
+#ifdef DEBUG
+    fprintf(logfile, "write file\n");
+#endif
 }
 
 void TextEditor::save_file()
-{   fprintf(logfile, "save file\n");
+{
+#ifdef DEBUG
+    fprintf(logfile, "save file\n");
+#endif
     saveFile();
 }
 

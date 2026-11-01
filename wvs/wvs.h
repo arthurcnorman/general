@@ -57,8 +57,9 @@
 #endif
 #include <ncursesw/ncurses.h>
 
-
+#ifdef DEBUG
 extern FILE* logfile;
+#endif
 
 inline constexpr int CTRL_KEY(uint32_t k)
 {   return k & 0x1f;
@@ -222,6 +223,8 @@ using glyphMap = std::unordered_map<std::string, std::uint32_t>;
 extern glyphMap html_names;
 extern glyphMap tex_names;
 extern glyphMap adobe_names;
+extern glyphMap combining_names;
+extern glyphMap unicode_names;
 
 extern std::uint32_t name_to_code(const char* name);
 extern const char* code_to_name(std::uint32_t code);

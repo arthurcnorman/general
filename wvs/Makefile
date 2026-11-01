@@ -6,10 +6,14 @@ else
 CXX=g++
 endif
 
-CXXFLAGS=-O0 -g -std=c++23
+OPTS=-O0 -g -DDEBUG=1
+# OPTS=-O3
+
+CXXFLAGS=$(OPTS) -std=c++23
 
 SOURCES = wvs.cpp uniconv.cpp keymap.cpp entities.cpp adobenames.cpp \
-		texnames.cpp combining.cpp
+		texnames.cpp combining.cpp \
+		unicode-1.cpp unicode-2.cpp unicode-3.cpp unicode-4.cpp
 
 OBJECTS=$(SOURCES:.cpp=.o)
 
