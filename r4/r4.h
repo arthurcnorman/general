@@ -1,4 +1,4 @@
-// wvs.h                                       Copyright 2026 Arthur Norman
+// r4.h                                        Copyright 2026 Arthur Norman
 
 /**************************************************************************
  * Copyright (C) 2026, Arthur Norman                                      *
@@ -115,108 +115,142 @@ public:
     ~TextEditor();
     void run();
 
+// The main test buffer and a parallel one that records the lexical
+// state at the start of each line to help with syntax colouring.
     std::vector<string32> buffer;
     std::vector<enum lexer_state> buffer_state;
 
+// Positions:
     int cx=0, cy=0;            // cursor position
     int wx=0, wy=0;            // top left corner of window
     int height, width;         // size of window
-
-    bool columnMode = false;
-    bool overwriteMode = false;
+    int cursorx;               // Helps cx after eg <1> or <B> has been shown.
 
 // Positions in the buffer are given the value (-1, -1) when they are
-// not set.
+// not set. Here I have a "selected block" and ten marks.
     int startBlockLine, startBlockCol;
     int endBlockLine, endBlockCol;
+    bool columnMode = false;
     int markLine[10], markCol[10];
 
+// Code that send data from the buffer to ncurses.
     void renderScreen();
+    int last_lexed_line;
     void renderLine(int screeny, int row, string32 line,
                     enum lexer_state state);
     void makeCursorVisible();
     void clearLine(int y, int w);
-    int last_lexed_line;
 
+// Loading and saving the main file that is to be edited.
     std::string filename;
     void loadFile();
     void saveFile();
 
-    void unicodeConvert();
 
     void displayMenu(const char* menu[]);
     void hideMenu();
 
+// Reading and dispatch on keystrokes frrom the user.
     int mygetch8();
     int mygetch();
+    bool overwriteMode = false;
     void processKeypress(uint32_t c, bool insert=true);
     using funcMap = std::unordered_map<wchar_t, void (TextEditor::*)()>;
     static funcMap keymap;
-    bool uniConv;
 
+// A pile of stuff regarding conversion between names and characters that
+// are outside the Basic Latin Block. This has to preserve state so that
+// the system can notice when two uses of ALT-x are consecutive, so that
+// it can follow seqeunces of transformations in that case.
+    void unicodeConvert();
+    bool uniConvActive;
+    bool startedAsName;
+    bool userNames;
+    std::vector<std::string> converted_names;
+    bool inHex;
+    void convert(string32& line, int& caretpos);
+    void continueName(string32& line, int& caretpos);
+    void continueCode(string32& line, int& caretpos);
+    string32 input_word;
+    string32 output_word;
+    string32 removed;
+    string32 inserted;
+
+// Character combinations involving overlays and diacriticals need
+// special treatment in just a few places.
+    void normalise();
+    void denormalise();
+
+// Helper functions for the main editing operations. including "pending()"
+// which I activate if an operation that is not yet implemented is
+// called for.
     void insert_newline();
     void addch8(int c);
-
-// Now all the edit actions that are supported.
-
+    void delete_forward(int n);
+    void delete_backward(int n);
+    void join_lines();
+    void flip_mark(int& y, int& x);      // Set or clear a mark.
+    string32 insertMarks(string32 line); // put in explicit <K> etc as needed.
     void pending();
 
-    void char_left();
+// Now all the edit actions that are supported.
+    void flip_overwrite_mode();
+
+    void char_left();       // move the cursor.
     void char_right();
     void line_up();
     void line_down();
 
-    void page_up();
-    void page_down();
-    void page_line_up();
-    void page_line_down();
+    void word_left();
+    void word_right();
 
-    void delete_forward(int n);
-    void delete_backward(int n);
-    void join_lines();
+    void scroll_page_up();  // move document leaving cursor fixed on screen.
+    void scroll_page_down();
+    void scroll_up();       // by 1 line.
+    void scroll_down();
     
-    void backspace();
-    void delete_char();
+    void backspace();       // delete char before the cursor.
+    void delete_char();     // delete char after the cursor.
+    void delete_word();
     void delete_to_eol();
     void delete_line();
 
-    void k_menu();
+// Wordstar uses s ^J menu key, but with the way I use ncurses that seems
+// to alias against the enter key...
+//  void j_menu();
+    void k_menu();          // User hit *K 
     void o_menu();
     void p_menu();
     void q_menu();
 
-    void flip_column_mode();
-    void quit_editor();
-    void save_file();
-    void write_file();
-    void save_and_exit();
-
-    void word_left();
-    void word_right();
-    void undelete();
-    void tab();
-    void j_menu();
-    void repeat_last_find();
-    void insert_return();
-    void delete_word();
-    void stop_command();
-    void overwrite_mode();
-    void scroll_line_down();
-    void scroll_line_up();
-    void flip_mark(int& y, int& x);
-    void set_mark();
-    void goto_mark();
     void set_start_block();
-    void goto_start_block();
-    void copy_block();
     void set_end_block();
+    void flip_column_mode();// selected blocks are columns or all text.
+    void set_mark();
+
+    void goto_start_block();
     void goto_end_block();
-    void insert_from_file();
+    void goto_mark();
+
+    void copy_block();
     void move_block();
     void delete_block();
+
+    void insert_from_file();
+    void write_file();      // write the current block to a named file.
+
+    void quit_editor();     // quit without saving.
+    void save_file();
+    void save_and_exit();
+
+    void undelete();
+    void tab();
+    void repeat_last_find();
+    void insert_return();
+    void stop_command();
     void redraw_screen();
-    void find_and_replace();
     void find();
+    void find_and_replace();
 };
 
 using glyphMap = std::unordered_map<std::string, std::uint32_t>;
@@ -224,7 +258,10 @@ extern glyphMap html_names;
 extern glyphMap tex_names;
 extern glyphMap adobe_names;
 extern glyphMap combining_names;
-extern glyphMap unicode_names;
+extern glyphMap unicode_1;       // Too big to fit comfortably in 1 table!
+extern glyphMap unicode_2;
+extern glyphMap unicode_3;
+extern glyphMap unicode_4;
 
 extern std::uint32_t name_to_code(const char* name);
 extern const char* code_to_name(std::uint32_t code);
@@ -419,6 +456,7 @@ inline constexpr string32 L(const char* a)
         if (prev == -1) return string32();  // malformed input
 // Here I want to add the new combing mark to the previous character.
 // This will be a pretty uncommon activity so I feel content doing it
+// inefficiently.
         /* prev = ... */
     }
     if (prev != -1) r += string32(1, prev);
@@ -429,4 +467,4 @@ inline constexpr string32 L(const std::string a)
 {   return L(a.c_str());
 }
 
-// end of wvs.h
+// end of r4.h

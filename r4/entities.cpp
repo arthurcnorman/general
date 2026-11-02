@@ -32,7 +32,7 @@
 
 // $Id$
 
-#include "wvs.h"
+#include "r4.h"
 
 // The information included here is available from many sources and
 // has been converted into the code-based tables here for use in a C++

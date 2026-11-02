@@ -32,8 +32,95 @@
 // $Id$
 
 
-#include "wvs.h"
+#include "r4.h"
 
+// If you have a "complex" character just before the cursor then
+// denormalise will split it into its base and the kast of its
+// combining marks.
+
+
+// The following two are only relevant if we have sizeof(char_t)==4.
+
+size_t wchar_to_utf32(uint32_t* dest, wchar_t* src, size_t len)
+{   size_t r = 0;
+    for (size_t i=0; i<len; i++)
+    {   uint32_t c = *src++;
+        if (c >= 0xd800 && c <- 0xdbff)
+        {   c = 0x10000 +
+                (c & 0x3ff)<<10 |
+                (*src++ & 0x3ff);
+            i++;
+        }
+        *dest++ = c;
+        r++;
+    }
+    return r;
+}
+
+size_t utf32_to_wchar(wchar_t* dest, uint32_t* src, size_t len)
+{   size_t r = 0;
+    for (size_t i=0; i<len; i++)
+    {   uint32_t c = *src++;
+        if (sizeof(wchar_t)==4 && c > 0xffff)
+        {   *dest++ = 0xd800 | ((c-0x10000)>>10);
+            r++;
+            c = 0xdc00 | (c & 0x3ff);
+        }
+        *dest++ = c;
+        r++;
+    }
+    return r;
+}
+
+// If the character before the cursor is "complex", i.e. it involves
+// one or more combining marke, the last of those should be stripped
+// off and lest as a separate character. As it where "Cabc" -> "Cab  c".
+
+void TextEditor::denormalise()
+{   if (cx == 0) return;         // Do nothing if at start of line.
+    uint32_t c = buffer[cy][cx-1];
+    if (c <= 0x0010ffff) return; // A simple character. 
+    c -= 0x00110000;
+    cchar_t w = ccharmap[c];
+    uint32_t ww[CCHARW_MAX];
+    memset(&ww, 0, sizeof(ww));
+// In case I am on a machine where sizeof(wchar_t)==4 I expand to
+// 32-bit characters.
+    size_t n = wchar_to_utf32(ww, w.chars, CCHARW_MAX);
+    int i;
+    for (i=n; i!=0; i--)
+        if (ww[i] != 0) break;  // find final character.
+    uint32_t final = ww[i];     // a combining mark.
+    if (i == 1) c = ww[0];      // Removing the only or final combiner
+    else
+    {   ww[i] = 0;
+        cchar_t reduced;
+        memset(&reduced, 0, sizeof(reduced));
+        utf32_to_wchar(reduced.chars, ww, i-1);
+        c = lookup_composite(reduced);
+    }
+//Now I need to replace the character just before the cursor with the
+// pair {c, final}
+    delete_backward(1);
+    buffer[cy].insert(cx, 1, c);
+    buffer[cy].insert(cx, 1, final);
+}
+
+// Here if the character before the cursor is a combining one it should be
+// merged in with whatever came befote it.
+
+void TextEditor::normalise()
+{   if (cx == 0) return;
+    uint32_t c = buffer[cy][cx-1];
+    if (!is_combining.contains(c)) return; // A simple character.
+// As a special case if I try to normalise at the very start of a line
+// and I have a combining mark I will forcibly insert a space before
+// it so it has something to combine with.
+    if (cx == 0)
+    {   buffer[cy].insert(0, 1, ' ');
+        cx = 1;
+    }
+}
 
 static int digofhex(wchar_t ch)
 {   switch (ch)
@@ -329,8 +416,8 @@ bool is_low_surrogate(int c)
 }
 
 
-// The design for how ALT-x converts between names and symbols has
-// gone throgh a number of drafts. Here is where it ends up:
+// The design for how ALT-x converts between names and symbols
+// and numeric codes.
 //
 // When you press ALT-x it may modify characters before the cursor. If
 // you press it again without any intervening key-strokes it can continue
@@ -338,163 +425,70 @@ bool is_low_surrogate(int c)
 // ALT-x left right ALT-x may give a different result in cases that I
 // will note here.
 //
-// The simplest case is that word{ALT-x} will replace the word with a
-// single character that it names. The names supported icnlude all the
-// names that HTML-5 defines as entity names. In HTML one would say
-// e.g. "&alpha;" but here you just enter "alpha" and then ALT-x. The
-// second ALT-x will turn the greek letter (or other symbol) back into the
-// name it was derived from. As well as the HTML names you may use names
-// from an Adobe list of "glyph names intended for users" and a selection
-// of TeX/LaTeX keywords. Because of these multiple sources some chatacters
-// may be known by multiple names. The trasformation as above always returns
-// top the one the user had originally used.
-// There are two main extras to explain here:
-// (1) If one symbol-name forms a suffix of another then the conversion
-//     to a symbol will first use the longest name possible. The next ALT-x
-//     will cycle through progressively shorter matches before returning
-//     to the textual input. A concrete example will be "oline" which
-//     can also be interporeted as oli"ne".
-// (2) If the single character generated from an original name has several
-//     possible names recorded then if the sequence of ALT-x keys are
-//     uninterrupted then the one originally entered is returned to. But
-//     if any other keystrokes intervene than the character will be converted
-//     to a canonical name even if the user had started with something else,
-//     but in that case further ALT-x input will cycle through alternate
-//     names and only when those have all been shown will the system go
-//     back to the sinle4 character.
+// If the first ALT-x is to the right of a word or a hex number and
+// that has a proper interpretation as a valid character then the
+// character should appear. There can be ambiguity when one character name
+// is a suffix or another and between 6 and 4 digit hex values (I only
+// handle just those lengths) so subsequent ALT-x operations cycle through
+// the possibilities and in due course return to the original word.
+// The first character shown will be the one with the longest matching name
+// in a user's ".unicode" file. Then any shorter matches from that file.
+// Then in order of decreasing length known words and hex numbers.
 //
-// Implicit in the above is that if a single character before the cursor
-// is outside the Basic Latin Block and it has one or more recorded names
-// then ALT-x replaces it with one of its names and can cycle through any
-// others.
+// So VeryLongString => {C1} -> Very{C2} => VeryLong{C3} => VeryLongString
+// if {C1}, {C2} and {C2} are characters corresponding to parts of the
+// input. Similarly
+//   xy102030 => {C1} => xy{C2} => xy10{C3} => xy102030
+// where {C2} and {C3} are characters with the codepoints as given in hex.
 //
-// If there are hex digits before the cursor then the longest match would
-// grab six of them and the next shorter will grab 4. And in each case
-// use those as a codepoint provided it is in range and not a surrogate.
-// If there are character names those also join in. So the input 0211ee
-// will cycle through U+0211ee, 01U+11ee and 0211&ee; which is 0211U+2147
-// the final part being a Double-Struck Italic Small E. This should be
-// just treating sequences of digits as if they are names. It makes it
-// possible for the user to enter any codepoint they want.
-// Consistent with this, use of ALT-x following a single character can
-// include a string of hex digits as one if its "names". A consequence
-// is that eg if you wanted to know the codepoint for Omega you could
-// key in OmageALT-x then the screed displays it as a character. Then say
-// left and right using the arrow keys. Now Alt-x converts the symbol back
-// into the text "Omega" but a second ALT-x turns it into 03a9 bacause the
-// symbol is U+03a9.
+// If on the first ALT-x the character before the cursor is U+003e or
+// above there may be several names associated with that code (eg
+// a user abbreviation, and HTML entity name and a TeX keyword}.
+// The sequence is then
+//  {C1} => name1 => name2 => hexcode => {C1}
 //
-// Now there is the issue of overlays and diacritical marks, They are
-// stored combined with the spacing symbol that they decorate. I will
-// use a notation Cabc for a base character C with combining marks a, b
-// and c. If combining marke are poresent this is a "complex character".
-// If you type ALT-x ahead of a complex character Cxyz the behaviour will
-// be as follows:
-// (.) If Cabc has a known name then the first choice conversion will
-//     be to that name.
-// (.) If Cabc is not named or as a second choice when ALT-x is used again
-//     ie text buffer gets expanded to hold "Cab c" with the final combining
-//     mark separated off. And then behaviour is as for just "c" which will
-//     be replaces by a name or a hex value.   
-// To fit in with this if you enter either a name or a hex code that turns
-// into a combining mark then as it turns into a character it merges with
-// the predecessor. I think this is behaving as if the conversion between
-// names and characters treats Cabc as C a b c with the packing as a
-// single token merely an aspect of how it is represented in the buffer.
-// Well delete-backward must remove just the last combining mark, while
-// delete-forward removes the entire symbol. INserting a combining character
-// should never leave it by itself in the buffer - it must merge in with
-// a prior character. Well MAYBE as a kindness if you insert a combining
-// character at the start of a line things behave as if you had first
-// inserted a blank.
-//
-// To make a number of the more common cases easier to use I will
-// introduce names as follows:
-//   All of the official Unicode names but rendered as eg #macron_above
-//   Shorthands: #grave, #acute, #circumflex, and an uncertain number more.
-//
+// Now there is the issue of overlays and diacritical marks,
+// These are treated for the purposes of these transformations as if
+// just before the above transitions any final combining mark is extracted
+// to stand as its own unit for transformation (so the item before it is
+// left stripped of that mark), and at the end of any transformation a
+// trailing combining mark is merged into the preceeding stmbol.
 
-void convert(string32& line, int& caretpos)
-{
-    string32 input_word;;
-    string32 output_word;
-// When this function is called (triggered by ALT-x) the cursor will be
-// to the right of some text, and that text can be modified. The most
-// important case is when the text is a word that names a character.
-// on which case the word will be replaced by that character.
-// To illustrate this the material that will appear will be described
-// using HTML notation.
-//
-//     alpha       => &alpha;
-//     Ascr        => &Ascr;      mathematical script capital A
-//     oline       => &oline;     match longest recognised word
-//                                and it may really be oli&ne;
-//     frac12      => (1/2)       but note it could be fr&ac12;
-//
-//     &alpha;     => nnnn        4 digit codepoint, eg   03b1
-//     &Ascr;      => nnnnnn      6 digit codepoint, eg 01d49c
-//
-// I then want to close the cycle with eg
-//     03ba        => alpha
-//     01d49c      => Ascr
-//
-// There are a collection of awkward cases with ambiguities due to prefixing
-// and to start with I still want the "longest match" rule to apply, 
-// To resolve those I may want transformations of the following form:
-//     &oline;     => oli&ne;
-//     oli&ne;     => oli2260     code for &ne;
-//     oli2260     => 203e        code for &oline;
-//     203e        => oline
-// so that the cycle is close via a range of possibilities.
-//
-//     Ascr        => &Ascr;
-//     &Ascr;      => 01&d496;
-// (&d496; is a Mathematical Bold Italic Small U which does not
-// have a neat textual name as an HTML entity, but could still be wanted).
-// If it had an entity name MBIu then we woold next see
-//     01&d496;    => 01MBIu
-//     01MBIu      => 0xd496
-// but since it does not we skip a step...
-//     01&d496;    => 01d496
-//
-//     &0100ac;    => 01&00ac;  (that is 01&not;)
-//     01&not;     => 0100&ac;  (0100 followed by "inverted lazy s")
-//     0100&ac;    => <mathematical bold italic small u>
-//                 => &0100ac;
-// where the step in <> is only used if there is an entity name to use.
-// Well if enough TeX symbols are supported there may be!
-//
-// So try to formulate the rules.
-// (1) find the string ending at the cursor that is the first of these found:
-//     1.1:   a "complex character"
-//     1.2:   any single (spacing) unicode character with code > U+007f
-//     1.3:   letter a-z, A-Z followed by letters/digits (ie a word) 
-//     1.4:   6 hex digits starting with 01 to 10
-//     1.4:   4 hex digits
-//
-// 1.1: Split off the final combining char of the complex and rewrite as
-//      the simpler base and digits for the combing mark.
-// 1.2: Replace the character with its numeric code as either 4 or 6 digits. 
-// 1.3: if the name denotes a recognised entity replace it with the character.
-//      if not try with the next shorter string.
-//      If you would end up creating a combining character and there is
-//      a previous character on the line merge it in, otherwise do not
-//      make that coversion (ie go and try for a shorter name).
-//      if no replacement is found treat final char as in 1.5.
-// 1.4:
-// 1.5: A numeric code is on the screen. I make this the complex case.
-//
-// 2.1: A six digit code ....
+std::string hexify(uint32_t n)
+{   if (n <= 0xffff) return std::format("{:04x}", n);
+    else return std::format("{:06x}", n);
+}
 
-// HEY let's only do the really simple cases for this first cut, and come
-// back to being clever later on...
-
-
-
-// BUG REPORT FROM PREVIOUS VERSION:
-//   epsilon -> {\epsilon} -> e{\psi} -> e03c8 -> 03b5 -> epsi -> {\epsilon}
-// and the "lon" gets lost when the string "psi" is spotted.
-
+void TextEditor::convert(string32& line, int& caretpos)
+{   if (uniConvActive)
+    {   if (startedAsName) continueName(line, caretpos);
+        else continueCode(line, caretpos);
+    }
+    if (caretpos == 0)
+    {   beep();         // An empty line will not match anything.
+        return;
+    }
+    uint32_t ch = line[caretpos - 1];
+    if (ch >= 0x7e)
+    {   converted_names = lookup_code(ch);
+        std::string replacement;
+        if (converted_names.size() != 0)
+        {   replacement = converted_names[0];
+            converted_names.erase(converted_names.begin());
+            uniConvActive = true;
+            startedAsName = false;
+            inHex = false;
+        }
+        else
+        {   replacement = hexify(ch);
+            converted_names.erase(converted_names.begin());
+            uniConvActive = true;
+            startedAsName = false;
+            inHex = true;
+        }
+        term_replace_chars_backwards(line, caretpos, 1, L(replacement));
+        return;
+    }
 #ifdef DEBUG
     fprintf(logfile, "unicodeConvert with cx=%d\n", caretpos);
 #endif
@@ -516,20 +510,83 @@ void convert(string32& line, int& caretpos)
     int i = caretpos - longest_name;
     if (i < 0) i = 0;   // only go back as far as the start of the line.
     uint32_t c;
-    for (;;)
-    {   input_word = line.substr(i, caretpos-i);
-        c = lookup_name(input_word);
-        if (c != -1u) break;
-        i++;
-        if (i == caretpos) break;
+// I start by checking if a user custom name matches at any length. If
+// it does that will be my first choice.
+    input_word = line.substr(i, caretpos-i);
+    while (input_word.length() != 0)
+    {   c = lookup_user_name(input_word);
+        input_word.erase(0, 1);
+        if (c != -1u)
+        {   output_word = string32(1, c);
+            uniConvActive = true;
+            startedAsName = true;
+            userNames = true;
+            term_replace_chars_backwards(line, caretpos, caretpos-i,
+                                         output_word);
+// I leave input_word as the word originally present when ALT-x was
+// pressed and output_word as what has just been placed in the buffer.
+            return;
+        }
     }
-    if (c != -1u)
-    {   output_word = string32(1, c);
-        term_replace_chars_backwards(line, caretpos, caretpos-i, output_word);
-        return;
+// If none of the custom names matched try my fixed database.
+    i = caretpos - longest_name;
+    if (i < 0) i = 0;   // only go back as far as the start of the line.
+    input_word = line.substr(i, caretpos-i);
+    while (input_word.length() != 0)
+    {   c = lookup_name(input_word);
+        input_word.erase(0, 1);
+        if (c != -1u)
+        {   output_word = string32(1, c);
+            uniConvActive = true;
+            startedAsName = true;
+            userNames = false;
+            term_replace_chars_backwards(line, caretpos, caretpos-i,
+                                          output_word);
+            return;
+        }
     }
-// Do not change the buffer at all.
+// If the word before the mark does not match anything then beep and do
+// not alter the text.
     beep();
+}
+
+void TextEditor::continueName(string32& line, int& caretpos)
+{
+// Here if userNames is true I need to search for ay suffix of
+// input_word that is alse a user-specified name. Whern I get here the
+// item just before the cursor is a single character that had been
+// named by the word originally used.
+    uint32_t c = -1;
+    std::string replacement;
+    if (userNames)
+    {   while (input_word.length() != 0)
+        {   input_word.erase(0, 1);
+            c = lookup_user_name(input_word);
+            if (c != -1u)
+            {   line[caretpos-1] = c;
+                return;
+            }
+        }
+        userNames = false;
+        const int longest_name = 90;
+        int k = caretpos - longest_name - 1;
+        if (k < 0) k = 0;
+        input_word = line.substr(k, caretpos-k);
+    }
+    while (input_word.length() != 0)
+    {   input_word.erase(0, 1);
+        c = lookup_name(input_word);
+        if (c != -1u)
+        {   line[caretpos-1] = c;
+            return;
+        }
+    }
+    fprintf(logfile, "continueName\n");
+}
+
+void TextEditor::continueCode(string32& line, int& caretpos)
+{
+    fprintf(logfile, "continueCode\n");
 }
 
 void TextEditor::unicodeConvert()

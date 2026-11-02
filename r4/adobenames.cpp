@@ -31,7 +31,7 @@
 
 // $Id$
 
-#include "wvs.h"
+#include "r4.h"
 
 // Adobe publish the following material with the copyright notice
 // as included here. When it comes to the table, I have edited it so it

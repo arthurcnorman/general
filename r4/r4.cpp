@@ -1,4 +1,4 @@
-// wvs.cpp                                     Copyright 2026 Arthur Norman
+// r4.cpp                                      Copyright 2026 Arthur Norman
 
 /**************************************************************************
  * Copyright (C) 2026, Arthur Norman                                      *
@@ -31,8 +31,20 @@
 
 // $Id$
 
+// This is the "r4" editor. It uses key-bindings similar to a really
+// ancient version of Wordstar as used on a Z80 (ie not the more recent
+// windowed version). It is intended to support the editing of utf-8
+// files that contain characters from beyond the Basic Latin Block,
+// including cases of glyphs made up by combining a base character with
+// one or more diacritical/combining marks.
+// The name r4 is chosen so it is just two characters the are close
+// together on the keyboard, and also as a nod to my name "Arthur" which
+// with enough of a slur moves through "arfut" to "r4".
 
-#include "wvs.h"
+// This should build and run on Linux, Macintosh and Windows (with the
+// mingw32 compilers). It is JUST for use from a command prompt.
+
+#include "r4.h"
 
 #ifdef DEBUG
 FILE* logfile = std::fopen("log.log", "w");
@@ -64,7 +76,7 @@ TextEditor::TextEditor(const std::string& filename) : filename(filename)
     init_pair(fg_cyan,    COLOR_CYAN, COLOR_BLACK);
     init_pair(fg_white ,  COLOR_WHITE, COLOR_BLACK);
     attron(COLOR_PAIR(fg_white));
-    uniConv = false;
+    uniConvActive = false;
     wx = wy = cx = cy = 0;
         last_lexed_line = -1;
     startBlockLine = -1;
@@ -355,6 +367,7 @@ void TextEditor::makeCursorVisible()
     {   wy = cy = 2;
         if (wy < 0) wy = 0;
     }
+    if (cx > buffer[cy].size()) cx = buffer[cy].size();
 }
 
 void to_utf8(uint32_t ch, char*& p)
@@ -384,7 +397,7 @@ void to_utf8(uint32_t ch, char*& p)
 // If I am on a machine where wchar_t is 16 bits wode I need to
 // use utf16 encoding. Otherwise nothing much is needed.
 
-void to_utf(uint32_t ch, wchar_t*& p)
+void to_utf16(uint32_t ch, wchar_t*& p)
 {   if (sizeof(wchar_t) == 4)
     {   if (ch <= 0xffff) *p++ = ch;
         else
@@ -513,6 +526,14 @@ std::unordered_set<std::string> cxx_keywords =
     "xor_eq",
 };
 
+// If I am at the position of a mark that is set (and for the main
+// selection block the mark is deemed set for these purposes if the
+// other end of the block is not set!) I will want to interpose a <B>,
+// <K> or <0> to <9> in the display, but those are not to be viewed as
+// part of the text that is being edited. To cope with that when I
+// come to render a line I will make a copy of it with those extras
+// inserted, and that copy is just used for rendering.
+
 void TextEditor::renderLine(int screeny, int row, string32 line,
                             enum lexer_state state)
 {   move(screeny, 0);
@@ -600,6 +621,7 @@ void TextEditor::renderScreen()
 // It is always possible that the user re-sized the windows, so measure
 // its size each time I render.
     getmaxyx(stdscr, height, width);
+    int ccx = 0;
     for (int k = 0; k < height; k++)
     {   int i = wy + k;
         if (i >= buffer.size())
@@ -615,11 +637,39 @@ void TextEditor::renderScreen()
                 state = lexer_transition(state, c);
             state = lexer_transition(state, '\n');
             buffer_state[last_lexed_line+1] = state;
+            if (i == cy) ccx = cursorx;
         }
-        renderLine(k, i, buffer[i], buffer_state[i]);
+        renderLine(k, i, insertMarks(buffer[i]), buffer_state[i]);
     }
-    move(cy-wy, cx-wx);
+    move(cy-wy, ccx-wx);   // Column dodgy wrt <1> marks etc.
     refresh();
+}
+
+string32 TextEditor::insertMarks(string32 line)
+{   string32 r;
+    for (size_t i=0; i<line.length(); i++)
+    {   for (int m=0; m<10; m++)
+        {   if (markLine[m] == cy &&
+                markCol[m] == i)
+            {   r.push_back('<');
+                r.push_back('0' + m);
+                r.push_back('>');
+            }
+        }
+        if (startBlockLine==cy && startBlockCol==i && endBlockLine==-1)
+        {   r.push_back('<');
+            r.push_back('B');
+            r.push_back('>');
+        }
+        if (endBlockLine==cy && endBlockCol==i && startBlockLine==-1)
+        {   r.push_back('<');
+            r.push_back('K');
+            r.push_back('>');
+        }
+        if (cx == i) cursorx = r.length();
+        r.push_back(line[i]);
+    }
+    return r;
 }
 
 uint32_t command_character;
@@ -634,9 +684,9 @@ void TextEditor::processKeypress(uint32_t c, bool insert)
     {   c = (c & 0xfe000000) | std::tolower(c & 0x01ffffff);
     }
 // I want to treate consecutive uses of ALT-x specially, so I will
-// set uniConv to false on any other input - i.e. things that disrupt
+// set uniConvActive to false on any other input - i.e. things that disrupt
 // from being consecutive.
-    if (c != ('x' | TAG_ALT)) uniConv = false;
+    if (c != ('x' | TAG_ALT)) uniConvActive = false;
 #ifdef DEBUG
     fprintf(logfile, "Key = %x ", c);
     if (0x40 <= c && c < 0x7e) fprintf(logfile, " = %c\n", c);
@@ -680,9 +730,9 @@ void TextEditor::hideMenu()
 {
 }
 
-void TextEditor::j_menu()
-{   pending();
-}
+//void TextEditor::j_menu()
+//{   pending();
+//}
 
 void TextEditor::k_menu()
 {   timeout(500);
@@ -739,13 +789,11 @@ void TextEditor::insert_newline()
 
 void TextEditor::line_up()
 {   if (cy > 0) cy--;
-    if (cx > buffer[cy].size()) cx = buffer[cy].size();
     makeCursorVisible();
 }
 
 void TextEditor::line_down()
 {   if (cy < buffer.size() - 1) cy++;
-    if (cx > buffer[cy].size()) cx = buffer[cy].size();
     makeCursorVisible();
 }
 
@@ -759,7 +807,7 @@ void TextEditor::char_right()
     makeCursorVisible();
 }
 
-void TextEditor::page_up()
+void TextEditor::scroll_page_up()
 {
 // When I scroll here I will re-check the size of the window. I am
 // not at present clear how ncurses responds if the user resizes the
@@ -788,14 +836,13 @@ void TextEditor::page_up()
             cx = buffer[buffer.size()-1].length() - 1;
         }
     }
-    if (cx > buffer[cy].size()) cx = buffer[cy].size();
 #ifdef DEBUG
     fprintf(logfile, "moveby = %d set wy=%d cy = %d\n", moveby, wy, cy);
 #endif
     makeCursorVisible();
 }
 
-void TextEditor::page_down()
+void TextEditor::scroll_page_down()
 {   getmaxyx(stdscr, height, width);
     int moveby = height-1;
     if (moveby > wy)
@@ -806,18 +853,25 @@ void TextEditor::page_down()
     {   wy -= moveby;
         cy -= moveby;
     }
-    if (cx > buffer[cy].size()) cx = buffer[cy].size();
     makeCursorVisible();
 }
 
-void TextEditor::page_line_up()
+void TextEditor::scroll_up()
 {   int x, height;
     getmaxyx(stdscr, height, x);
-    if (wy < buffer.size()-height-2) wy++;
+    if (wy < buffer.size()-height-2)
+    {   wy++;
+        if (cy < buffer.size()-1) cy++;
+    }
+    makeCursorVisible();
 }
 
-void TextEditor::page_line_down()
-{   if (wy > 0) wy--;
+void TextEditor::scroll_down()
+{   if (wy > 0)
+    {   wy--;
+        if (cy > 0) cy--;
+    }
+    makeCursorVisible();
 }
 
 void TextEditor::delete_forward(int n)
@@ -936,19 +990,13 @@ void TextEditor::stop_command()
 {   pending();
 }
 
-void TextEditor::overwrite_mode()
+void TextEditor::flip_overwrite_mode()
 {   overwriteMode = !overwriteMode;
 }
 
-void TextEditor::scroll_line_down()
-{   pending();
-}
-
-void TextEditor::scroll_line_up()
-{   pending();
-}
-
 // ^Kn for n in the range 0 to 9 sets a marker at the current position
+// If you behave as if you are setting a mark but your position is already
+// where the mark is then that clears it.
 
 void TextEditor::flip_mark(int& y, int& x)
 {   if (cy == y && cx == x)  // already at that mark ..
@@ -1032,4 +1080,4 @@ void TextEditor::find()
 {   pending();
 }
 
-// end of wvs.cpp,
+// end of r4.cpp,

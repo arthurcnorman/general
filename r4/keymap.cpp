@@ -31,7 +31,7 @@
 
 // $Id$
 
-#include "wvs.h"
+#include "r4.h"
 
 TextEditor::funcMap TextEditor::keymap =
 {
@@ -39,7 +39,7 @@ TextEditor::funcMap TextEditor::keymap =
 
     {CTRL_KEY('a'),      &TextEditor::word_left},
     {CTRL_KEY('b'),      &TextEditor::pending},        // justify if in wrap
-    {CTRL_KEY('c'),      &TextEditor::page_up},
+    {CTRL_KEY('c'),      &TextEditor::scroll_page_up},
     {CTRL_KEY('d'),      &TextEditor::char_right},
     {CTRL_KEY('e'),      &TextEditor::line_up},
     {CTRL_KEY('f'),      &TextEditor::word_right},
@@ -58,15 +58,15 @@ TextEditor::funcMap TextEditor::keymap =
     {CTRL_KEY('o'),      &TextEditor::o_menu},
     {CTRL_KEY('p'),      &TextEditor::p_menu},
     {CTRL_KEY('q'),      &TextEditor::q_menu},
-    {CTRL_KEY('r'),      &TextEditor::page_down},
+    {CTRL_KEY('r'),      &TextEditor::scroll_page_down},
     {CTRL_KEY('s'),      &TextEditor::char_left},
     {CTRL_KEY('t'),      &TextEditor::delete_word},
     {CTRL_KEY('u'),      &TextEditor::stop_command},
-    {CTRL_KEY('v'),      &TextEditor::overwrite_mode},
-    {CTRL_KEY('w'),      &TextEditor::scroll_line_down},
+    {CTRL_KEY('v'),      &TextEditor::flip_overwrite_mode},
+    {CTRL_KEY('w'),      &TextEditor::scroll_down},
     {CTRL_KEY('x'),      &TextEditor::line_down},
     {CTRL_KEY('y'),      &TextEditor::pending},
-    {CTRL_KEY('z'),      &TextEditor::scroll_line_up},
+    {CTRL_KEY('z'),      &TextEditor::scroll_up},
     {0x7f,               &TextEditor::backspace},
                          
     {'a' | TAG_ALT,      &TextEditor::pending},
@@ -296,10 +296,10 @@ TextEditor::funcMap TextEditor::keymap =
     {KEY_CLEAR | TAG_FN,         &TextEditor::pending},        /* clear-screen or erase key */
     {KEY_EOS | TAG_FN,           &TextEditor::pending},        /* clear-to-end-of-screen key */
     {KEY_EOL | TAG_FN,           &TextEditor::pending},        /* clear-to-end-of-line key */
-    {KEY_SF | TAG_FN,            &TextEditor::page_up},        /* scroll-forward key */
-    {KEY_SR | TAG_FN,            &TextEditor::page_down},      /* scroll-backward key */
-    {KEY_NPAGE | TAG_FN,         &TextEditor::page_up},        /* next-page key */
-    {KEY_PPAGE | TAG_FN,         &TextEditor::page_down},      /* previous-page key */
+    {KEY_SF | TAG_FN,            &TextEditor::scroll_page_up}, /* scroll-forward key */
+    {KEY_SR | TAG_FN,            &TextEditor::scroll_page_down},/* scroll-backward key */
+    {KEY_NPAGE | TAG_FN,         &TextEditor::scroll_page_up}, /* next-page key */
+    {KEY_PPAGE | TAG_FN,         &TextEditor::scroll_page_down},/* previous-page key */
     {KEY_STAB | TAG_FN,          &TextEditor::pending},        /* set-tab key */
     {KEY_CTAB | TAG_FN,          &TextEditor::pending},        /* clear-tab key */
     {KEY_CATAB | TAG_FN,         &TextEditor::pending},        /* clear-all-tabs key */

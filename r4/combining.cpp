@@ -39,7 +39,7 @@
 // gives official information on all codepoints and keeping just the
 // items that have general class M*.
 
-#include "wvs.h"
+#include "r4.h"
 
 std::unordered_set<std::uint32_t> is_combining =
 {

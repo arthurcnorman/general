@@ -32,7 +32,7 @@
 
 // $Id$
 
-#include "wvs.h"
+#include "r4.h"
 
 
 // Here I have a table showing the names of TeX/LaTeX symbols. In TeX each
