@@ -689,8 +689,8 @@ void TextEditor::processKeypress(uint32_t c, bool insert)
     if (c != ('x' | TAG_ALT)) uniConvActive = false;
 #ifdef DEBUG
     fprintf(logfile, "Key = %x ", c);
-    if (0x40 <= c && c < 0x7e) fprintf(logfile, " = %c\n", c);
-    else if (c < 0x40) fprintf(logfile, " = ^%c\n", c | 0x40);
+    if (' ' <= c && c < 0x7e) fprintf(logfile, " = %c\n", c);
+    else if (c < ' ') fprintf(logfile, " = ^%c\n", c | 0x40);
     else fprintf(logfile, "\n");
 #endif
     if (keymap.count(c) > 0) (this->*keymap[c])();

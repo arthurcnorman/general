@@ -76,8 +76,21 @@ size_t utf32_to_wchar(wchar_t* dest, uint32_t* src, size_t len)
 // one or more combining marke, the last of those should be stripped
 // off and lest as a separate character. As it where "Cabc" -> "Cab  c".
 
+#ifdef DEBUG
+void debugLine(std::string s, string32 line)
+{   fprintf(logfile, "%s: ", s.c_str());
+    for (auto c : line)
+    {   if (c >= ' ' && c < 0x7e) fprintf(logfile, "[%c]", c);
+        else fprintf(logfile, "[%.8x]", c);
+    }
+    fprintf(logfile, "\n");
+}
+
+#endif
+
 void TextEditor::denormalise()
 {   if (cx == 0) return;         // Do nothing if at start of line.
+    debugLine("start denormalise", buffer[cy]);
     uint32_t c = buffer[cy][cx-1];
     if (c <= 0x0010ffff) return; // A simple character. 
     c -= 0x00110000;
@@ -104,6 +117,7 @@ void TextEditor::denormalise()
     delete_backward(1);
     buffer[cy].insert(cx, 1, c);
     buffer[cy].insert(cx, 1, final);
+    debugLine("end denormalise", buffer[cy]);
 }
 
 // Here if the character before the cursor is a combining one it should be
@@ -111,6 +125,7 @@ void TextEditor::denormalise()
 
 void TextEditor::normalise()
 {   if (cx == 0) return;
+    debugLine("begin normalise", buffer[cy]);
     uint32_t c = buffer[cy][cx-1];
     if (!is_combining.contains(c)) return; // A simple character.
 // As a special case if I try to normalise at the very start of a line
@@ -120,6 +135,7 @@ void TextEditor::normalise()
     {   buffer[cy].insert(0, 1, ' ');
         cx = 1;
     }
+    debugLine("end normalise", buffer[cy]);
 }
 
 static int digofhex(wchar_t ch)
@@ -323,6 +339,7 @@ std::uint32_t lookup_name(string32 s)
     if (html_names.count(s1) != 0)  return html_names[s1];
     if (tex_names.count(s1) != 0)   return tex_names[s1];
     if (adobe_names.count(s1) != 0) return adobe_names[s1];
+    if (combining_names.count(s1) != 0)   return combining_names[s1];
     if (ishexnum(s1))
     {   int32_t val = std::stoi(s1, nullptr, 16);
 // I will disallow numbers that are either too large or that are in the
@@ -360,8 +377,6 @@ std::vector<std::string> lookup_code(std::uint32_t c)
         if (kv.second == c) vecinsert(v, kv.first);
     return v;
 }
-
-// 
 
 static void term_replace_chars_backwards(
     string32& line, int& caretpos,
@@ -460,7 +475,11 @@ std::string hexify(uint32_t n)
 }
 
 void TextEditor::convert(string32& line, int& caretpos)
-{   if (uniConvActive)
+{
+#ifdef DEBUG
+    debugLine("start of convert", line);
+#endif
+    if (uniConvActive)
     {   if (startedAsName) continueName(line, caretpos);
         else continueCode(line, caretpos);
     }
@@ -521,7 +540,8 @@ void TextEditor::convert(string32& line, int& caretpos)
             uniConvActive = true;
             startedAsName = true;
             userNames = true;
-            term_replace_chars_backwards(line, caretpos, caretpos-i,
+            term_replace_chars_backwards(line, caretpos,
+                                         caretpos-input_word.length()+1,
                                          output_word);
 // I leave input_word as the word originally present when ALT-x was
 // pressed and output_word as what has just been placed in the buffer.
@@ -534,14 +554,23 @@ void TextEditor::convert(string32& line, int& caretpos)
     input_word = line.substr(i, caretpos-i);
     while (input_word.length() != 0)
     {   c = lookup_name(input_word);
+#ifdef DEBUG
+        fprintf(logfile, "input_word = ");
+        for (auto ccc : input_word) fprintf(logfile, "%c", ccc);
+        fprintf(logfile, "\n");
+#endif
         input_word.erase(0, 1);
         if (c != -1u)
         {   output_word = string32(1, c);
             uniConvActive = true;
             startedAsName = true;
             userNames = false;
-            term_replace_chars_backwards(line, caretpos, caretpos-i,
+            term_replace_chars_backwards(line, caretpos,
+                                          caretpos-input_word.length()+1,
                                           output_word);
+#ifdef DEBUG
+            debugLine("end of convert", line);
+#endif
             return;
         }
     }
