@@ -1,11 +1,10 @@
-# Makefile for rf.
+# Makefile for r4.
 
-# "rf" is a program editor modelled after (antique) wordstar but
+# "r4" is a program editor modelled after (antique) wordstar but
 # providing support for Unicode text including use of combining
-# marks and discriticals. Its name if a pun on "ws" for wordstar,
-# which is the two keys to the left of "ed" (for editor). "rf" is
-# the pair of keys to the right, and so is clearly a step forward
-# in parts of the world that read in that direction. 
+# marks and discriticals.
+# My name is Arthur and when slurred that turns into arfur and thus
+# into r4. The resulting name is short and easy to type.
 
 ifeq ($(OS),Windows NT)
 CXX=x86_64-w64-mingw32-g++
@@ -18,23 +17,24 @@ OPTS=-O0 -g -DDEBUG=1
 
 CXXFLAGS=$(OPTS) -std=c++23
 
-SOURCES = rf.cpp uniconv.cpp keymap.cpp entities.cpp adobenames.cpp \
+SOURCES = 	r4.cpp \
+		uniconv.cpp keymap.cpp entities.cpp adobenames.cpp \
 		texnames.cpp combining.cpp \
 		unicode-1.cpp unicode-2.cpp unicode-3.cpp unicode-4.cpp
 
 OBJECTS=$(SOURCES:.cpp=.o)
 
-rf:	$(OBJECTS) $(SOURCES) rf.h
-	$(CXX) $(CXXFLAGS) $(OBJECTS) -l ncursesw -o rf
+r4:	$(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(OBJECTS) -l ncursesw -o r4
 
-$(OBJECTS):	%.o:	 %.cpp rf.h
+$(OBJECTS):	%.o:	 %.cpp r4.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm *.o *.exe rf *.tgz *.bak* *.old* *.tmp*
+	rm *.o *.exe r4 *.tgz *.bak* *.old* *.tmp*
 
 
-rf.tgz:	Makefile rf.h $(SOURCES)
-	tar cvfz rf.tgz Makefile rf.h $(SOURCES)
+r4.tgz:	Makefile r4.h $(SOURCES)
+	tar cvfz r4.tgz Makefile r4.h $(SOURCES)
 
 # end of Makefile
