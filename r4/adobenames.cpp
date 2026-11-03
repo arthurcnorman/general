@@ -31,7 +31,11 @@
 
 // $Id$
 
-#include "r4.h"
+#include <string>
+#include <cstdint>
+#include <unordered_map>
+
+using glyphMap = std::unordered_map<std::string, std::uint32_t>;
 
 // Adobe publish the following material with the copyright notice
 // as included here. When it comes to the table, I have edited it so it

@@ -39,7 +39,12 @@
 // gives official information on all codepoints and keeping just the
 // items that have general class M*.
 
-#include "r4.h"
+#include <string>
+#include <cstdint>
+#include <unordered_set>
+#include <unordered_map>
+
+using glyphMap = std::unordered_map<std::string, std::uint32_t>;
 
 std::unordered_set<std::uint32_t> is_combining =
 {

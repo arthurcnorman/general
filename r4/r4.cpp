@@ -82,8 +82,17 @@ TextEditor::TextEditor(const std::string& filename) : filename(filename)
     startBlockLine = -1;
     startBlockCol = -1;
     endBlockLine = -1;
+    columnMode = false;
     endBlockCol = -1;
-for (int i=0; i<10; i++)
+#if DEBUG
+// To see how it shows up!
+    startBlockLine = 4;
+    startBlockCol = 7;
+    endBlockLine = 8;
+    endBlockCol = 22;
+    columnMode = true;
+#endif
+    for (int i=0; i<10; i++)
     {   markLine[i] = -1;
         markCol[i] = -1;
     }
@@ -526,6 +535,20 @@ std::unordered_set<std::string> cxx_keywords =
     "xor_eq",
 };
 
+bool TextEditor::withinBlock(int row, int col)
+{   if (columnMode)
+    {   if (row >= startBlockLine &&
+            row <= endBlockLine &&
+            col >= startBlockCol &&
+            col <= endBlockCol) return true;
+        else return false;
+    }
+    if (row < startBlockLine || row > endBlockLine) return false;
+    if (row == startBlockLine && col < startBlockCol) return false;
+    if (row == endBlockLine && col > endBlockCol) return false;
+    return true;
+}
+
 // If I am at the position of a mark that is set (and for the main
 // selection block the mark is deemed set for these purposes if the
 // other end of the block is not set!) I will want to interpose a <B>,
@@ -584,21 +607,8 @@ void TextEditor::renderLine(int screeny, int row, string32 line,
             if (cxx_keywords.contains(k)) inKeyword = true;
         }
         if (inKeyword) colour = fg_green;
-        bool inBlock = false;
-        if (columnMode)
-        {   if (row >= startBlockLine &&
-                row <= endBlockLine &&
-                col >= startBlockCol &&
-                col <= endBlockCol) inBlock = true;
-            else inBlock = false;
-        }
-        else
-        {   if (row == startBlockLine && col == startBlockCol)
-                inBlock = true;
-            if (row == endBlockLine && col == endBlockCol)
-                inBlock = false;
-        }
-        if (inBlock) attrs = A_REVERSE;
+        if (withinBlock(row, col)) attrs = A_REVERSE;
+        else attrs = 0;
         cc.attr = attrs;
         cc.ext_color = colour;
         move(screeny, col);
@@ -622,8 +632,8 @@ void TextEditor::renderScreen()
 // its size each time I render.
     getmaxyx(stdscr, height, width);
     int ccx = 0;
-    for (int k = 0; k < height; k++)
-    {   int i = wy + k;
+    for (int y = 0; y < height; y++)
+    {   int i = wy + y;
         if (i >= buffer.size())
         {   clearLine(i, width);
             continue;
@@ -637,31 +647,49 @@ void TextEditor::renderScreen()
                 state = lexer_transition(state, c);
             state = lexer_transition(state, '\n');
             buffer_state[last_lexed_line+1] = state;
-            if (i == cy) ccx = cursorx;
+            if (y == cy) ccx = cursorx;
         }
-        renderLine(k, i, insertMarks(buffer[i]), buffer_state[i]);
+        renderLine(y, i, insertMarks(i), buffer_state[i]);
     }
     move(cy-wy, ccx-wx);   // Column dodgy wrt <1> marks etc.
     refresh();
 }
 
-string32 TextEditor::insertMarks(string32 line)
-{   string32 r;
+// The selection block is invalid either if one of its endpoints is
+// unset or if the start is after the end, of if we are in column
+// mode and the start is to the right of the end.
+
+bool TextEditor::invalidBlock()
+{   if (startBlockLine == -1 ||
+        endBlockLine == -1 ||
+        startBlockCol == -1 ||
+        endBlockCol == -1) return true;
+    if (startBlockLine > endBlockLine) return true;
+    if (startBlockLine == endBlockLine || columnMode)
+        return startBlockCol > endBlockCol;
+    return false;
+}
+
+// Here y is the line in the document to be processed.
+
+string32 TextEditor::insertMarks(int y)
+{   string32 line = buffer[y];
+    string32 r;
     for (size_t i=0; i<line.length(); i++)
     {   for (int m=0; m<10; m++)
-        {   if (markLine[m] == cy &&
+        {   if (markLine[m] == y &&
                 markCol[m] == i)
             {   r.push_back('<');
                 r.push_back('0' + m);
                 r.push_back('>');
             }
         }
-        if (startBlockLine==cy && startBlockCol==i && endBlockLine==-1)
+        if (startBlockLine==y && startBlockCol==i && invalidBlock())
         {   r.push_back('<');
             r.push_back('B');
             r.push_back('>');
         }
-        if (endBlockLine==cy && endBlockCol==i && startBlockLine==-1)
+        if (endBlockLine==y && endBlockCol==i && invalidBlock())
         {   r.push_back('<');
             r.push_back('K');
             r.push_back('>');
@@ -676,12 +704,25 @@ uint32_t command_character;
 
 void TextEditor::processKeypress(uint32_t c, bool insert)
 {   command_character = c;
+#ifdef DEBUG
+    fprintf(logfile, "Key = %x ", c);
+    if (' ' <= c && c < 0x7e) fprintf(logfile, " = %c\n", c);
+    else if (c < ' ') fprintf(logfile, " = ^%c\n", c | 0x40);
+    else fprintf(logfile, "\n");
+    fflush(logfile);
+#endif
 // With ALT or after a menu key ^J, ^K, ^O, ^P, ^Q I will ignore the
 // case of simple letters. So eg ^KX and ^Kx will be treated the same way,
-// as will ALT-X and ALT-x. 
-    if ((c & (TAG_ALT|TAG_J|TAG_K|TAG_O|TAG_P|TAG_Q)) != 0 &&
-        (c & 0x01ffffff) < 0x7f)
-    {   c = (c & 0xfe000000) | std::tolower(c & 0x01ffffff);
+// as will ALT-X and ALT-x. I will also ignore CTRL because that may
+// still be pressed.
+    if ((c & (TAG_ALT|TAG_K|TAG_O|TAG_P|TAG_Q)) != 0 &&
+        (c & 0x001fffff) < 0x7f)
+    {   if ((c & 0x7f) < ' ') c |= 0x40;
+        c = (c & 0xfe000000) | std::tolower(c & 0x7f);
+#ifdef DEBUG
+        fprintf(logfile, "becomes %x = %c\n", c&0x7f, c&0x7f);
+        fflush(logfile);
+#endif
     }
 // I want to treate consecutive uses of ALT-x specially, so I will
 // set uniConvActive to false on any other input - i.e. things that disrupt
@@ -692,6 +733,7 @@ void TextEditor::processKeypress(uint32_t c, bool insert)
     if (' ' <= c && c < 0x7e) fprintf(logfile, " = %c\n", c);
     else if (c < ' ') fprintf(logfile, " = ^%c\n", c | 0x40);
     else fprintf(logfile, "\n");
+    fflush(logfile);
 #endif
     if (keymap.count(c) > 0) (this->*keymap[c])();
     else if (insert)
@@ -1080,4 +1122,4 @@ void TextEditor::find()
 {   pending();
 }
 
-// end of r4.cpp,
+// end of r4.cpp

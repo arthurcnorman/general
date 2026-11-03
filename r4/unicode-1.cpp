@@ -46,7 +46,12 @@
 // g++16 memory occupancy (including use of swap space) grows to o little
 // around 25 GB while compiling this. 
 
-#include "r4.h"
+
+#include <string>
+#include <cstdint>
+#include <unordered_map>
+
+using glyphMap = std::unordered_map<std::string, std::uint32_t>;
 
 #define SWAP(a, b) {b, a}
 

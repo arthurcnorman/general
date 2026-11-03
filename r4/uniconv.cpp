@@ -336,9 +336,14 @@ std::uint32_t lookup_name(string32 s)
     {   if (ch >= 0x80) return -1;
         s1.push_back((char)ch);
     }
+// Goodness gracious! What a lot of name-tables I have to search here.
     if (html_names.count(s1) != 0)  return html_names[s1];
     if (tex_names.count(s1) != 0)   return tex_names[s1];
     if (adobe_names.count(s1) != 0) return adobe_names[s1];
+    if (unicode_1.count(s1) != 0)   return unicode_1[s1];
+    if (unicode_2.count(s1) != 0)   return unicode_2[s1];
+    if (unicode_3.count(s1) != 0)   return unicode_3[s1];
+    if (unicode_4.count(s1) != 0)   return unicode_4[s1];
     if (combining_names.count(s1) != 0)   return combining_names[s1];
     if (ishexnum(s1))
     {   int32_t val = std::stoi(s1, nullptr, 16);

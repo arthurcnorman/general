@@ -1,4 +1,3 @@
-
 // texnames.cpp                                Copyright 2026 Arthur Norman
 
 /**************************************************************************
@@ -32,7 +31,11 @@
 
 // $Id$
 
-#include "r4.h"
+#include <string>
+#include <cstdint>
+#include <unordered_map>
+
+using glyphMap = std::unordered_map<std::string, std::uint32_t>;
 
 
 // Here I have a table showing the names of TeX/LaTeX symbols. In TeX each

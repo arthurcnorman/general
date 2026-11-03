@@ -68,7 +68,7 @@ TextEditor::funcMap TextEditor::keymap =
     {CTRL_KEY('y'),      &TextEditor::pending},
     {CTRL_KEY('z'),      &TextEditor::scroll_up},
     {0x7f,               &TextEditor::backspace},
-                         
+
     {'a' | TAG_ALT,      &TextEditor::pending},
     {'b' | TAG_ALT,      &TextEditor::pending},
     {'c' | TAG_ALT,      &TextEditor::pending},
@@ -95,7 +95,7 @@ TextEditor::funcMap TextEditor::keymap =
     {'x' | TAG_ALT,      &TextEditor::unicodeConvert},
     {'y' | TAG_ALT,      &TextEditor::pending},
     {'z' | TAG_ALT,      &TextEditor::pending},
-                         
+
     {'0' | TAG_K,        &TextEditor::set_mark},
     {'1' | TAG_K,        &TextEditor::set_mark},
     {'2' | TAG_K,        &TextEditor::set_mark},
@@ -135,6 +135,7 @@ TextEditor::funcMap TextEditor::keymap =
     {'z' | TAG_K,        &TextEditor::pending},
 
 
+#if 0
     {'a' | TAG_J,        &TextEditor::pending},
     {'b' | TAG_J,        &TextEditor::pending},
     {'c' | TAG_J,        &TextEditor::pending},
@@ -161,7 +162,8 @@ TextEditor::funcMap TextEditor::keymap =
     {'x' | TAG_J,        &TextEditor::pending},
     {'y' | TAG_J,        &TextEditor::pending},
     {'z' | TAG_J,        &TextEditor::pending},
-                         
+#endif
+
     {'a' | TAG_O,        &TextEditor::pending},
     {'b' | TAG_O,        &TextEditor::pending},
     {'c' | TAG_O,        &TextEditor::pending},   // centre on line
@@ -188,7 +190,7 @@ TextEditor::funcMap TextEditor::keymap =
     {'x' | TAG_O,        &TextEditor::pending},   // release margins
     {'y' | TAG_O,        &TextEditor::pending},
     {'z' | TAG_O,        &TextEditor::pending},
-                         
+
     {'a' | TAG_P,        &TextEditor::pending},
     {'b' | TAG_P,        &TextEditor::pending},
     {'c' | TAG_P,        &TextEditor::pending},
@@ -215,7 +217,7 @@ TextEditor::funcMap TextEditor::keymap =
     {'x' | TAG_P,        &TextEditor::pending},
     {'y' | TAG_P,        &TextEditor::pending},
     {'z' | TAG_P,        &TextEditor::pending},
-                         
+
     {'0' | TAG_Q,        &TextEditor::goto_mark},
     {'1' | TAG_Q,        &TextEditor::goto_mark},
     {'2' | TAG_Q,        &TextEditor::goto_mark},
@@ -253,7 +255,7 @@ TextEditor::funcMap TextEditor::keymap =
     {'x' | TAG_Q,        &TextEditor::pending},
     {'y' | TAG_Q,        &TextEditor::pending},
     {'z' | TAG_Q,        &TextEditor::pending},
-                         
+
 
 
 // The following is extracted for ncurses.h and is probably a comprehensive

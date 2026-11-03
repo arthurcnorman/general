@@ -68,11 +68,11 @@ inline constexpr int CTRL_KEY(uint32_t k)
 inline const uint32_t TAG_ALT = 0x02000000;
 inline const uint32_t TAG_FN  = 0x04000000;
 
-inline const uint32_t TAG_J   = 0x08000000;
-inline const uint32_t TAG_K   = 0x09000000;
-inline const uint32_t TAG_O   = 0x0a000000;
-inline const uint32_t TAG_P   = 0x0b000000;
-inline const uint32_t TAG_Q   = 0x0c000000;
+//inline const uint32_t TAG_J   = 0x08000000;
+inline const uint32_t TAG_K   = 0x10000000;
+inline const uint32_t TAG_O   = 0x20000000;
+inline const uint32_t TAG_P   = 0x40000000;
+inline const uint32_t TAG_Q   = 0x80000000;
 
 inline const uint32_t ESC      = 0x001b;
 inline const uint32_t BAD_UTF8 = 0x25a0;   // BLACK SQUARE
@@ -131,6 +131,7 @@ public:
     int startBlockLine, startBlockCol;
     int endBlockLine, endBlockCol;
     bool columnMode = false;
+    bool withinBlock(int row, int col);
     int markLine[10], markCol[10];
 
 // Code that send data from the buffer to ncurses.
@@ -189,8 +190,9 @@ public:
     void delete_forward(int n);
     void delete_backward(int n);
     void join_lines();
-    void flip_mark(int& y, int& x);      // Set or clear a mark.
-    string32 insertMarks(string32 line); // put in explicit <K> etc as needed.
+    void flip_mark(int& y, int& x);   // Set or clear a mark.
+    string32 insertMarks(int y);      // put in explicit <K> etc as needed.
+    bool invalidBlock();
     void pending();
 
 // Now all the edit actions that are supported.
