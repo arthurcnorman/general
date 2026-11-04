@@ -559,8 +559,7 @@ bool TextEditor::withinBlock(int row, int col)
 
 void TextEditor::renderLine(int screeny, int row, string32 line,
                             enum lexer_state state)
-{   move(screeny, 0);
-    int col;
+{   int col;
     bool inKeyword = false;
     for (col=0; col<line.length(); col++)
     {   move(screeny, 0);
@@ -631,13 +630,19 @@ void TextEditor::renderScreen()
 // It is always possible that the user re-sized the windows, so measure
 // its size each time I render.
     getmaxyx(stdscr, height, width);
-    int ccx = 0;
+    cursorx = 0; // This should be set to a proper value when I render the
+                 // line that has the cursor on it. 
     for (int y = 0; y < height; y++)
     {   int i = wy + y;
+// If a line is beyond the text=buffer display it as blank. I need to
+// write in spaces in case there was text left over from some earlier
+// stage eg when the screen has scrolled.
         if (i >= buffer.size())
         {   clearLine(i, width);
             continue;
         }
+// I want to bring lexer info for this line up to date and that can involve
+// scanning several previous lines.
         while (i > last_lexed_line &&
                last_lexed_line < (int)buffer.size()-2)
         {   last_lexed_line++;
@@ -647,11 +652,16 @@ void TextEditor::renderScreen()
                 state = lexer_transition(state, c);
             state = lexer_transition(state, '\n');
             buffer_state[last_lexed_line+1] = state;
-            if (y == cy) ccx = cursorx;
         }
+// I make a copy of the line such that if any mark say mark number 3 is
+// on it I put in the text <3> where that mark appears. If the cursor
+// is on the line I set cursorx to its position (allowing for the screen
+// space used by that insertion). Thus after I have rendered the
+// entire page the curso needs to be displayed as if it was at (cy, cursorx)
+// rather than at (cy, cx).
         renderLine(y, i, insertMarks(i), buffer_state[i]);
     }
-    move(cy-wy, ccx-wx);   // Column dodgy wrt <1> marks etc.
+    move(cy-wy, cursorx-wx);   // Column dodgy wrt <1> marks etc.
     refresh();
 }
 
@@ -694,7 +704,7 @@ string32 TextEditor::insertMarks(int y)
             r.push_back('K');
             r.push_back('>');
         }
-        if (cx == i) cursorx = r.length();
+        if (cy == y && cx == i) cursorx = r.length();
         r.push_back(line[i]);
     }
     return r;
@@ -705,7 +715,7 @@ uint32_t command_character;
 void TextEditor::processKeypress(uint32_t c, bool insert)
 {   command_character = c;
 #ifdef DEBUG
-    fprintf(logfile, "Key = %x ", c);
+    fprintf(logfile, "line 708 Key = %x ", c);
     if (' ' <= c && c < 0x7e) fprintf(logfile, " = %c\n", c);
     else if (c < ' ') fprintf(logfile, " = ^%c\n", c | 0x40);
     else fprintf(logfile, "\n");
@@ -729,7 +739,7 @@ void TextEditor::processKeypress(uint32_t c, bool insert)
 // from being consecutive.
     if (c != ('x' | TAG_ALT)) uniConvActive = false;
 #ifdef DEBUG
-    fprintf(logfile, "Key = %x ", c);
+    fprintf(logfile, "line 732 Key = %x ", c);
     if (' ' <= c && c < 0x7e) fprintf(logfile, " = %c\n", c);
     else if (c < ' ') fprintf(logfile, " = ^%c\n", c | 0x40);
     else fprintf(logfile, "\n");
@@ -813,7 +823,31 @@ void TextEditor::p_menu()
 }
 
 void TextEditor::q_menu()
-{
+{   timeout(500);
+    uint32_t c = mygetch();
+    timeout(-1);
+    if (c != ERR)
+    {   processKeypress(c | TAG_Q, false);
+        return;
+    }
+// Here we waited half a second and nothing has been typed, so I will
+// display a menu and then wait for ever.
+    const char* menu[] =
+    {   "^Q - these are the available commands:",
+        "-----------------------------Q U I C K   M E N U-------------------------------",
+        "------Cursor  Movement------|--Delete--|----Miscellaneous-----|---Other Menus--",
+        "           E screen top     |Y line  rt|F Find text in file   | (from Main only",
+        "  S line begin   D line end |DEL lin lf|A find And replace    |^J Help  ^K Bloc",
+        "           X screen bot     |H   undel |I variable tab        |^Q Quick ^P CtlC",
+        "move to:--------------------|----------|Q Repeat command or   |^O Onscreen",
+        " R top of text     V last find or block|  key  until  space   |Space bar return",
+        " C bottom of text  L line number       |  bar  or other key   |you to Main Menu",
+        "-------------------------------------------------------------------------------"
+    };
+    displayMenu(menu);
+    c = mygetch();
+    hideMenu();
+    processKeypress(c | TAG_Q, false);
 }
 
 void TextEditor::insert_newline()
