@@ -68,7 +68,7 @@ inline constexpr int CTRL_KEY(uint32_t k)
 inline const uint32_t TAG_ALT = 0x02000000;
 inline const uint32_t TAG_FN  = 0x04000000;
 
-//inline const uint32_t TAG_J   = 0x08000000;
+//inline const uint32_t TAG_J = 0x08000000;
 inline const uint32_t TAG_K   = 0x10000000;
 inline const uint32_t TAG_O   = 0x20000000;
 inline const uint32_t TAG_P   = 0x40000000;
@@ -108,11 +108,11 @@ enum
 
 using string32 = std::basic_string<uint32_t>;
 
-class TextEditor
+class R4
 {
 public:
-    TextEditor(const std::string& filename);
-    ~TextEditor();
+    R4(const std::string& filename);
+    ~R4();
     void run();
 
 // The main test buffer and a parallel one that records the lexical
@@ -120,11 +120,19 @@ public:
     std::vector<string32> buffer;
     std::vector<enum lexer_state> buffer_state;
 
+// There are things I sometimes need to display as the top few lines
+// on the screen...
+    const char** top_lines;
+
 // Positions:
     int cx=0, cy=0;            // cursor position
     int wx=0, wy=0;            // top left corner of window
     int height, width;         // size of window
     int cursorx;               // Helps cx after eg <1> or <B> has been shown.
+
+    int left_margin;
+    int right_margin;
+    int tab_width;
 
 // Positions in the buffer are given the value (-1, -1) when they are
 // not set. Here I have a "selected block" and ten marks.
@@ -156,7 +164,7 @@ public:
     int mygetch();
     bool overwriteMode = false;
     void processKeypress(uint32_t c, bool insert=true);
-    using funcMap = std::unordered_map<wchar_t, void (TextEditor::*)()>;
+    using funcMap = std::unordered_map<wchar_t, void (R4::*)()>;
     static funcMap keymap;
 
 // A pile of stuff regarding conversion between names and characters that
@@ -190,6 +198,20 @@ public:
     void delete_forward(int n);
     void delete_backward(int n);
     void join_lines();
+
+// If you have a line with some marks on it, eg <2>, and you insert or
+// delete characters before the mark(s) or split or join lines than
+// the recorded position of marks must be changed. Similarly if you
+// insert or delete a line then the y-coordinate of any marks further down
+// the file than that will need review.
+    void marks_after_insert();
+    void marks_after_newline();
+    void marks_after_join_line();
+    void marks_after_delete_forward();
+    void marks_after_delete_back();
+    void marks_after_add_line();
+    void marks_after_remove_line();
+
     void flip_mark(int& y, int& x);   // Set or clear a mark.
     string32 insertMarks(int y);      // put in explicit <K> etc as needed.
     bool invalidBlock();
@@ -205,6 +227,15 @@ public:
 
     void word_left();
     void word_right();
+
+    void start_of_line();
+    void end_of_line();
+    void top_of_screen();
+    void bottom_of_screen();
+    void start_of_text();
+    void end_of_text();
+
+    void last_find_or_block();
 
     void scroll_page_up();  // move document leaving cursor fixed on screen.
     void scroll_page_down();
@@ -251,8 +282,10 @@ public:
     void insert_return();
     void stop_command();
     void redraw_screen();
+    void goto_line();
     void find();
     void find_and_replace();
+
 };
 
 using glyphMap = std::unordered_map<std::string, std::uint32_t>;

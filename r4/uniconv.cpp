@@ -88,7 +88,7 @@ void debugLine(std::string s, string32 line)
 
 #endif
 
-void TextEditor::denormalise()
+void R4::denormalise()
 {   if (cx == 0) return;         // Do nothing if at start of line.
     debugLine("start denormalise", buffer[cy]);
     uint32_t c = buffer[cy][cx-1];
@@ -116,14 +116,17 @@ void TextEditor::denormalise()
 // pair {c, final}
     delete_backward(1);
     buffer[cy].insert(cx, 1, c);
+    cx++;
     buffer[cy].insert(cx, 1, final);
+    marks_after_insert();
+    cx++;
     debugLine("end denormalise", buffer[cy]);
 }
 
 // Here if the character before the cursor is a combining one it should be
 // merged in with whatever came befote it.
 
-void TextEditor::normalise()
+void R4::normalise()
 {   if (cx == 0) return;
     debugLine("begin normalise", buffer[cy]);
     uint32_t c = buffer[cy][cx-1];
@@ -133,6 +136,7 @@ void TextEditor::normalise()
 // it so it has something to combine with.
     if (cx == 0)
     {   buffer[cy].insert(0, 1, ' ');
+        marks_after_insert();
         cx = 1;
     }
     debugLine("end normalise", buffer[cy]);
@@ -479,7 +483,7 @@ std::string hexify(uint32_t n)
     else return std::format("{:06x}", n);
 }
 
-void TextEditor::convert(string32& line, int& caretpos)
+void R4::convert(string32& line, int& caretpos)
 {
 #ifdef DEBUG
     debugLine("start of convert", line);
@@ -584,7 +588,7 @@ void TextEditor::convert(string32& line, int& caretpos)
     beep();
 }
 
-void TextEditor::continueName(string32& line, int& caretpos)
+void R4::continueName(string32& line, int& caretpos)
 {
 // Here if userNames is true I need to search for ay suffix of
 // input_word that is alse a user-specified name. Whern I get here the
@@ -618,12 +622,12 @@ void TextEditor::continueName(string32& line, int& caretpos)
     fprintf(logfile, "continueName\n");
 }
 
-void TextEditor::continueCode(string32& line, int& caretpos)
+void R4::continueCode(string32& line, int& caretpos)
 {
     fprintf(logfile, "continueCode\n");
 }
 
-void TextEditor::unicodeConvert()
+void R4::unicodeConvert()
 {   convert(buffer[cy], cx);
 #ifdef DEBUG
     fprintf(logfile, "after update cx = %d\n", cx);

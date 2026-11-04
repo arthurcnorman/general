@@ -50,7 +50,7 @@
 FILE* logfile = std::fopen("log.log", "w");
 #endif
 
-TextEditor::TextEditor(const std::string& filename) : filename(filename)
+R4::R4(const std::string& filename) : filename(filename)
 {   setlocale(LC_ALL, "");
     initscr();
     raw();
@@ -64,7 +64,7 @@ TextEditor::TextEditor(const std::string& filename) : filename(filename)
 //
 // Colours:
 //   plain text    white on black
-//   comments      blue on black
+//   comments      cyan on black
 //   strings       red on black
 //   characters    red on black
 //   keyword       green on black
@@ -77,8 +77,9 @@ TextEditor::TextEditor(const std::string& filename) : filename(filename)
     init_pair(fg_white ,  COLOR_WHITE, COLOR_BLACK);
     attron(COLOR_PAIR(fg_white));
     uniConvActive = false;
+    getmaxyx(stdscr, height, width);
     wx = wy = cx = cy = 0;
-        last_lexed_line = -1;
+    last_lexed_line = -1;
     startBlockLine = -1;
     startBlockCol = -1;
     endBlockLine = -1;
@@ -96,24 +97,27 @@ TextEditor::TextEditor(const std::string& filename) : filename(filename)
     {   markLine[i] = -1;
         markCol[i] = -1;
     }
-    refresh();
+    left_margin = 0;
+    right_margin = width - 6;
+    tab_width = 8;
     loadFile();
+    refresh();
 }
 
-TextEditor::~TextEditor()
+R4::~R4()
 {   endwin();
 }
 
 
-void TextEditor::run()
+void R4::run()
 {   while (true)
     {   renderScreen();
         processKeypress(mygetch(), true);
     }
 }
 
-void TextEditor::clearLine(int y, int w)
-{   move(y, 0);
+void R4::clearLine(int y, int w)
+{   move(y+2, 0);
     for (int x=0; x<w; x++) addch(' ');
     if (last_lexed_line >= y) last_lexed_line = y-1;
 }
@@ -253,7 +257,7 @@ enum lexer_state lexer_transition(lexer_state state, std::uint32_t c)
 // with the ALT ket pressed will get returned as two characters, ESC and
 // then the letter.
 
-int TextEditor::mygetch8()
+int R4::mygetch8()
 {   int c = getch();
     if (c == WEOF) return c;
     if (c < 0x80) return c;
@@ -293,7 +297,7 @@ int TextEditor::mygetch8()
     else return BAD_UTF8;
 }
 
-int TextEditor::mygetch()
+int R4::mygetch()
     {   int c = mygetch8();
         if (c == WEOF) return c;
         if (c == 0x1b)
@@ -313,14 +317,14 @@ int TextEditor::mygetch()
 // my own "extra wide string" style (which uses one item even for
 // glyphs made up using multiply combining characters).
 
-void TextEditor::loadFile()
+void R4::loadFile()
 {   std::ifstream file(filename, std::ifstream::in);
     if (file.is_open())
     {   std::string rawline;
         string32 line;
         while (getline(file, rawline))
         {   line = L(rawline);
-            if (line.size()>0 && line[0]==0xfeff)
+            if (line.length()>0 && line[0]==0xfeff)
                 line.erase(0, 1);  // Get rid of BOM if present.
             buffer.push_back(line);
             buffer_state.push_back(lexer_base);
@@ -356,7 +360,7 @@ void make_backup(std::string filename)
     }
 }
 
-void TextEditor::saveFile()
+void R4::saveFile()
 {   make_backup(filename);
     std::ofstream file(filename, std::ofstream::out);
 // I do my own conversion to utf8 so the output stream is opened as
@@ -369,14 +373,14 @@ void TextEditor::saveFile()
     file.close();
 }
 
-void TextEditor::makeCursorVisible()
+void R4::makeCursorVisible()
 {   if (last_lexed_line >= cy) last_lexed_line = cy - 1;
     if (cy >= wy + height) wy = cy - 2;
     else if (cy < wy)
     {   wy = cy = 2;
         if (wy < 0) wy = 0;
     }
-    if (cx > buffer[cy].size()) cx = buffer[cy].size();
+    if (cx > buffer[cy].length()) cx = buffer[cy].length();
 }
 
 void to_utf8(uint32_t ch, char*& p)
@@ -535,17 +539,17 @@ std::unordered_set<std::string> cxx_keywords =
     "xor_eq",
 };
 
-bool TextEditor::withinBlock(int row, int col)
+bool R4::withinBlock(int row, int col)
 {   if (columnMode)
     {   if (row >= startBlockLine &&
             row <= endBlockLine &&
             col >= startBlockCol &&
-            col <= endBlockCol) return true;
+            col < endBlockCol) return true;
         else return false;
     }
     if (row < startBlockLine || row > endBlockLine) return false;
     if (row == startBlockLine && col < startBlockCol) return false;
-    if (row == endBlockLine && col > endBlockCol) return false;
+    if (row == endBlockLine && col >= endBlockCol) return false;
     return true;
 }
 
@@ -557,8 +561,8 @@ bool TextEditor::withinBlock(int row, int col)
 // come to render a line I will make a copy of it with those extras
 // inserted, and that copy is just used for rendering.
 
-void TextEditor::renderLine(int screeny, int row, string32 line,
-                            enum lexer_state state)
+void R4::renderLine(int screeny, int row, string32 line,
+                    enum lexer_state state)
 {   int col;
     bool inKeyword = false;
     for (col=0; col<line.length(); col++)
@@ -588,17 +592,17 @@ void TextEditor::renderLine(int screeny, int row, string32 line,
                  state == lexer_char_esc) colour = fg_red;
         else if (state == lexer_slash_comment ||
                  state == lexer_slash_star_comment ||
-                 state == lexer_star) colour = fg_blue;
+                 state == lexer_star) colour = fg_cyan;
         if (state == lexer_slash &&
             col+1 < line.length() &&
-            (line[col+1] == '*' || line[col+1] == '/')) colour = fg_blue;
+            (line[col+1] == '*' || line[col+1] == '/')) colour = fg_cyan;
         if (state == lexer_base &&
-            oldstate == lexer_star) colour = fg_blue;
+            oldstate == lexer_star) colour = fg_cyan;
         if (state == lexer_base &&
             (oldstate == lexer_string || oldstate == lexer_char))
             colour = fg_red;
         if (state == lexer_base &&
-            oldstate == lexer_star) colour = fg_blue;
+            oldstate == lexer_star) colour = fg_cyan;
         if (state == lexer_base &&
             (col == 0 ||
              (line[col-1] > 0x7f || !std::isalnum(line[col-1]))))
@@ -625,14 +629,14 @@ void TextEditor::renderLine(int screeny, int row, string32 line,
     }
 }
 
-void TextEditor::renderScreen()
+void R4::renderScreen()
 {
 // It is always possible that the user re-sized the windows, so measure
 // its size each time I render.
     getmaxyx(stdscr, height, width);
     cursorx = 0; // This should be set to a proper value when I render the
                  // line that has the cursor on it. 
-    for (int y = 0; y < height; y++)
+    for (int y = 0; y < height-2; y++)
     {   int i = wy + y;
 // If a line is beyond the text=buffer display it as blank. I need to
 // write in spaces in case there was text left over from some earlier
@@ -659,9 +663,33 @@ void TextEditor::renderScreen()
 // space used by that insertion). Thus after I have rendered the
 // entire page the curso needs to be displayed as if it was at (cy, cursorx)
 // rather than at (cy, cx).
-        renderLine(y, i, insertMarks(i), buffer_state[i]);
+        renderLine(y+2, i, insertMarks(i), buffer_state[i]);
     }
-    move(cy-wy, cursorx-wx);   // Column dodgy wrt <1> marks etc.
+// Then there are possibly some initial lines that need to be filled in.
+    std::string line1 = format("\"{}\"", filename);
+    line1 = std::format(
+        "EDITING {:30s}  LINE={: <6d} CHAR={: <4d}  {:s}",
+        line1, cy, cx,
+        (overwriteMode ? "REPLACE MODE" : " INSERT MODE"));
+    while (line1.length() < width) line1.push_back(' ');
+    std::string line2 = "";
+    for (int i=0; i<width && i<=right_margin; i++)
+    {   int chh = '-';
+        if (i == left_margin) chh = '>';
+        else if (i == right_margin) chh = 'R';
+        else if ((i - left_margin)%tab_width == 0) chh = '!';
+        line2.push_back(chh);
+    }
+    while (line2.length() < width) line2.push_back(' ');
+    move(0, 0);
+    addstr(line1.c_str());
+    move(1, 0);
+    attrset(A_REVERSE);
+    addstr(line2.c_str());
+    attrset(0);
+//    if (top_lines != nullptr)
+
+    move(cy-wy+2, cursorx-wx);
     refresh();
 }
 
@@ -669,7 +697,7 @@ void TextEditor::renderScreen()
 // unset or if the start is after the end, of if we are in column
 // mode and the start is to the right of the end.
 
-bool TextEditor::invalidBlock()
+bool R4::invalidBlock()
 {   if (startBlockLine == -1 ||
         endBlockLine == -1 ||
         startBlockCol == -1 ||
@@ -682,7 +710,7 @@ bool TextEditor::invalidBlock()
 
 // Here y is the line in the document to be processed.
 
-string32 TextEditor::insertMarks(int y)
+string32 R4::insertMarks(int y)
 {   string32 line = buffer[y];
     string32 r;
     for (size_t i=0; i<line.length(); i++)
@@ -707,12 +735,13 @@ string32 TextEditor::insertMarks(int y)
         if (cy == y && cx == i) cursorx = r.length();
         r.push_back(line[i]);
     }
+    if (cy == y && cx == line.length()) cursorx = r.length();
     return r;
 }
 
 uint32_t command_character;
 
-void TextEditor::processKeypress(uint32_t c, bool insert)
+void R4::processKeypress(uint32_t c, bool insert)
 {   command_character = c;
 #ifdef DEBUG
     fprintf(logfile, "line 708 Key = %x ", c);
@@ -748,11 +777,12 @@ void TextEditor::processKeypress(uint32_t c, bool insert)
     if (keymap.count(c) > 0) (this->*keymap[c])();
     else if (insert)
     {   buffer[cy].insert(cx, 1, c);
+        marks_after_insert();
         cx++;
     }
 }
 
-TextEditor* tt;
+R4* tt;
 
 int main(int argc, char* argv[])
 {   if (argc != 2)
@@ -760,33 +790,33 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    TextEditor editor(argv[1]);
+    R4 editor(argv[1]);
     tt = &editor;
     editor.run();
 
     return 0;
 }
 
-void TextEditor::pending()
+void R4::pending()
 {
 #ifdef DEBUG
     fprintf(logfile, "Pending/Unimplemented op %x\n", command_character);
 #endif
 }
 
-void TextEditor::displayMenu(const char* menu[])
-{
+void R4::displayMenu(const char* menu[])
+{   top_lines = menu;
 }
 
-void TextEditor::hideMenu()
-{
+void R4::hideMenu()
+{   top_lines = nullptr;
 }
 
-//void TextEditor::j_menu()
+//void R4::j_menu()
 //{   pending();
 //}
 
-void TextEditor::k_menu()
+void R4::k_menu()
 {   timeout(500);
     uint32_t c = mygetch();
     timeout(-1);
@@ -814,15 +844,15 @@ void TextEditor::k_menu()
     processKeypress(c | TAG_K, false);
 }
 
-void TextEditor::o_menu()
+void R4::o_menu()
 {   pending();
 }
 
-void TextEditor::p_menu()
+void R4::p_menu()
 {   pending();
 }
 
-void TextEditor::q_menu()
+void R4::q_menu()
 {   timeout(500);
     uint32_t c = mygetch();
     timeout(-1);
@@ -850,11 +880,14 @@ void TextEditor::q_menu()
     processKeypress(c | TAG_Q, false);
 }
 
-void TextEditor::insert_newline()
+void R4::insert_newline()
 {
 // Here I will need to truncate the current line and move its tail
 // to for the next line.
     string32 tail = buffer[cy].substr(cx);
+// If there are marks on the part of the line after the current cursor
+// then they will need to be moved to the next line
+    marks_after_newline();
     delete_to_eol();
     if (last_lexed_line >= cy) last_lexed_line = cy-1;
     buffer.insert(buffer.begin()+cy+1, tail);
@@ -863,27 +896,36 @@ void TextEditor::insert_newline()
     cy++;
 }
 
-void TextEditor::line_up()
+void R4::line_up()
 {   if (cy > 0) cy--;
     makeCursorVisible();
 }
 
-void TextEditor::line_down()
+void R4::line_down()
 {   if (cy < buffer.size() - 1) cy++;
     makeCursorVisible();
 }
 
-void TextEditor::char_left()
+void R4::char_left()
 {   if (cx > 0) cx--;
+    else if (cx == 0 && cy != 0)
+    {   cy--;
+        cx = buffer[cy].length();
+    }
     makeCursorVisible();
 }
 
-void TextEditor::char_right()
-{   if (cx < buffer[cy].size()) cx++;
+void R4::char_right()
+{   if (cx < buffer[cy].length()) cx++;
+    else if (cx == buffer[cy].length() &&
+             cy != buffer.size())
+    {   cy++;
+        cx = 0;
+    }
     makeCursorVisible();
 }
 
-void TextEditor::scroll_page_up()
+void R4::scroll_page_up()
 {
 // When I scroll here I will re-check the size of the window. I am
 // not at present clear how ncurses responds if the user resizes the
@@ -918,7 +960,7 @@ void TextEditor::scroll_page_up()
     makeCursorVisible();
 }
 
-void TextEditor::scroll_page_down()
+void R4::scroll_page_down()
 {   getmaxyx(stdscr, height, width);
     int moveby = height-1;
     if (moveby > wy)
@@ -932,7 +974,7 @@ void TextEditor::scroll_page_down()
     makeCursorVisible();
 }
 
-void TextEditor::scroll_up()
+void R4::scroll_up()
 {   int x, height;
     getmaxyx(stdscr, height, x);
     if (wy < buffer.size()-height-2)
@@ -942,7 +984,7 @@ void TextEditor::scroll_up()
     makeCursorVisible();
 }
 
-void TextEditor::scroll_down()
+void R4::scroll_down()
 {   if (wy > 0)
     {   wy--;
         if (cy > 0) cy--;
@@ -950,18 +992,27 @@ void TextEditor::scroll_down()
     makeCursorVisible();
 }
 
-void TextEditor::delete_forward(int n)
-{   buffer[cy].erase(cx+1, n);
+void R4::delete_forward(int n)
+{   marks_after_delete_forward();
+    buffer[cy].erase(cx+1, n);
 }
 
-void TextEditor::delete_backward(int n)
-{   if (n > cx) beep();
+void R4::delete_backward(int n)
+{   marks_after_delete_back();
+    if (n > cx)
+    {   beep();
+        n = cx;
+    }
     cx -= n;
     buffer[cy].erase(cx, n);
 }
 
-void TextEditor::join_lines()
-{   if (cy == 0) beep();
+void R4::join_lines()
+{   if (cy == 0)
+    {   beep();
+        return;
+    }
+    marks_after_join_line();
     cx = buffer[cy-1].length();
     for (auto c : buffer[cy])
         buffer[cy-1].push_back(c);
@@ -970,7 +1021,7 @@ void TextEditor::join_lines()
     cy--;
 }
 
-void TextEditor::backspace()
+void R4::backspace()
 {   if (cx == 0)
     {   if (cy == 0) beep();
         else join_lines();
@@ -978,7 +1029,7 @@ void TextEditor::backspace()
     else delete_backward(1);
 }
 
-void TextEditor::delete_char()
+void R4::delete_char()
 {   size_t n = buffer[cy].length();
     if (cx == n-1)
     {   n = buffer.size();
@@ -992,30 +1043,30 @@ void TextEditor::delete_char()
     else delete_forward(1);
 }
 
-void TextEditor::delete_to_eol()
+void R4::delete_to_eol()
 {   if (cx+1 < buffer[cy].length())
         delete_forward(buffer[cy].length() - cx - 1);
 }
 
-void TextEditor::delete_line()
+void R4::delete_line()
 {   buffer.erase(buffer.begin()+cy);
     buffer_state.erase(buffer_state.begin()+cy);
     cx = 0;
 }
 
 
-void TextEditor::flip_column_mode()
+void R4::flip_column_mode()
 {   columnMode = !columnMode;
 }
 
-void TextEditor::write_file()
+void R4::write_file()
 {
 #ifdef DEBUG
     fprintf(logfile, "write file\n");
 #endif
 }
 
-void TextEditor::save_file()
+void R4::save_file()
 {
 #ifdef DEBUG
     fprintf(logfile, "save file\n");
@@ -1023,50 +1074,109 @@ void TextEditor::save_file()
     saveFile();
 }
 
-void TextEditor::save_and_exit()
+void R4::save_and_exit()
 {   save_file();
     endwin();
     exit(0);
 }
 
-void TextEditor::quit_editor()
+void R4::quit_editor()
 {   endwin();
     exit(0);
 }
 
-void TextEditor::word_left()
+void R4::word_left()
+{   string32 line = buffer[cy];
+    if (cx == 0)
+    {   char_left();         // will move to end of previous line
+        return;
+    }
+    cx--;
+    while (cx < line.length() &&
+           line[cx] <= 0x7e &&
+           std::isspace(line[cx])) cx--;
+    while (cx < line.length() &&
+           (line[cx] > 0x7e ||
+            !std::isspace(line[cx]))) cx--;
+    cx++;
+    makeCursorVisible();
+}
+
+void R4::word_right()
+{   string32 line = buffer[cy];
+    if (cx == line.length())
+    {   char_right();         // will move to start of next line
+        return;
+    }
+    cx++;
+    while (cx < line.length() &&
+           (line[cx] > 0x7e ||
+            !std::isspace(line[cx]))) cx++;
+    while (cx < line.length() &&
+           line[cx] <= 0x7e &&
+           std::isspace(line[cx])) cx++;
+    makeCursorVisible();
+}
+
+void R4::start_of_line()
+{   cx = 0;
+    makeCursorVisible();
+}
+
+void R4::end_of_line()
+{   cx = buffer[cy].length();
+    makeCursorVisible();
+}
+
+void R4::top_of_screen()
+{   cy = wy;
+    if (cx > buffer[cy].length()) cx = buffer[cy].length();
+    makeCursorVisible();
+}
+
+void R4::bottom_of_screen()
+{   cy = wy + height - 2;
+    if (cx > buffer[cy].length()) cx = buffer[cy].length();
+    makeCursorVisible();
+}
+
+void R4::start_of_text()
+{   cx = 0;
+    cy = 0;
+    makeCursorVisible();
+}
+
+void R4::end_of_text()
+{   cy = buffer.size()-1;
+    cx = buffer[cy].length();
+    makeCursorVisible();
+}
+
+void R4::undelete()
 {   pending();
 }
 
-void TextEditor::word_right()
+void R4::tab()
 {   pending();
 }
 
-void TextEditor::undelete()
+void R4::repeat_last_find()
 {   pending();
 }
 
-void TextEditor::tab()
+void R4::insert_return()
 {   pending();
 }
 
-void TextEditor::repeat_last_find()
+void R4::delete_word()
 {   pending();
 }
 
-void TextEditor::insert_return()
+void R4::stop_command()
 {   pending();
 }
 
-void TextEditor::delete_word()
-{   pending();
-}
-
-void TextEditor::stop_command()
-{   pending();
-}
-
-void TextEditor::flip_overwrite_mode()
+void R4::flip_overwrite_mode()
 {   overwriteMode = !overwriteMode;
 }
 
@@ -1074,7 +1184,7 @@ void TextEditor::flip_overwrite_mode()
 // If you behave as if you are setting a mark but your position is already
 // where the mark is then that clears it.
 
-void TextEditor::flip_mark(int& y, int& x)
+void R4::flip_mark(int& y, int& x)
 {   if (cy == y && cx == x)  // already at that mark ..
     {   y = -1;              // .. so cancel it
         x = -1;
@@ -1084,12 +1194,47 @@ void TextEditor::flip_mark(int& y, int& x)
     x = cx;
 }
 
-void TextEditor::set_mark()
+// If yuo have marks, <B>, <K> or <0> to <9> on a line that is changed
+// they need to remain (as best possible) referring to the character they
+// did before the alteration. So this applies if the marhs are to the right
+// of an insert or deletion, and special treatment happens when the
+// edit involved inserting or removing a newline. Here I have stubs that
+// I intend to come back and flesh out later.
+
+void R4::marks_after_insert()
+{
+}
+
+void R4::marks_after_newline()
+{
+}
+
+void R4::marks_after_join_line()
+{
+}
+
+void R4::marks_after_delete_forward()
+{
+}
+
+void R4::marks_after_delete_back()
+{
+}
+
+void R4::marks_after_add_line()
+{
+}
+
+void R4::marks_after_remove_line()
+{
+}
+
+void R4::set_mark()
 {   int n = command_character & 0xf;
     flip_mark(markLine[n], markCol[n]);
 }
 
-void TextEditor::goto_mark()
+void R4::goto_mark()
 {   int n = command_character & 0xf;
     if (markLine[n] == -1)
     {   beep();                // Mark not set
@@ -1100,11 +1245,11 @@ void TextEditor::goto_mark()
     makeCursorVisible();
 }
 
-void TextEditor::set_start_block()
+void R4::set_start_block()
 {   flip_mark(startBlockLine, startBlockCol);
 }
 
-void TextEditor::goto_start_block()
+void R4::goto_start_block()
 {   if (startBlockLine == -1)
     {   beep();                // Mark not set
         return;
@@ -1114,11 +1259,11 @@ void TextEditor::goto_start_block()
     makeCursorVisible();
 }
 
-void TextEditor::set_end_block()
+void R4::set_end_block()
 {   flip_mark(endBlockLine, endBlockCol);
 }
 
-void TextEditor::goto_end_block()
+void R4::goto_end_block()
 {   if (endBlockLine == -1)
     {   beep();                // Mark not set
         return;
@@ -1128,31 +1273,39 @@ void TextEditor::goto_end_block()
     makeCursorVisible();
 }
 
-void TextEditor::copy_block()
+void R4::copy_block()
 {   pending();
 }
 
-void TextEditor::insert_from_file()
+void R4::insert_from_file()
 {   pending();
 }
 
-void TextEditor::move_block()
+void R4::move_block()
 {   pending();
 }
 
-void TextEditor::delete_block()
+void R4::delete_block()
 {   pending();
 }
 
-void TextEditor::redraw_screen()
+void R4::redraw_screen()
 {   pending();
 }
 
-void TextEditor::find_and_replace()
+void R4::find_and_replace()
 {   pending();
 }
 
-void TextEditor::find()
+void R4::goto_line()
+{   pending();
+}
+
+void R4::find()
+{   pending();
+}
+
+void R4::last_find_or_block()
 {   pending();
 }
 
