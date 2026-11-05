@@ -45,9 +45,9 @@ size_t wchar_to_utf32(uint32_t* dest, wchar_t* src, size_t len)
 {   size_t r = 0;
     for (size_t i=0; i<len; i++)
     {   uint32_t c = *src++;
-        if (c >= 0xd800 && c <- 0xdbff)
+        if (c >= 0xd800 && c <= 0xdbff)
         {   c = 0x10000 +
-                (c & 0x3ff)<<10 |
+                ((c & 0x3ff)<<10) |
                 (*src++ & 0x3ff);
             i++;
         }
@@ -556,6 +556,7 @@ void R4::convert(string32& line, int& caretpos)
 // That will make it easy to undo the adjustment.
             return;
         }
+        word_text.erase(0, 1);
     }
 // If none of the custom names matched try my fixed database.
     i = caretpos - longest_name;
@@ -580,6 +581,7 @@ void R4::convert(string32& line, int& caretpos)
 #endif
             return;
         }
+        word_text.erase(0, 1);
     }
 // If the word before the mark does not match anything then beep and do
 // not alter the text.

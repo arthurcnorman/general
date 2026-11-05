@@ -9,7 +9,7 @@
 ifeq ($(OS),Windows NT)
 CXX=x86_64-w64-mingw32-g++
 else
-CXX=g++
+CXX=clang++
 endif
 
 OPTS=-O0 -g -DDEBUG=1
