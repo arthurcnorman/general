@@ -68,7 +68,7 @@ inline constexpr int CTRL_KEY(uint32_t k)
 inline const uint32_t TAG_ALT = 0x02000000;
 inline const uint32_t TAG_FN  = 0x04000000;
 
-//inline const uint32_t TAG_J = 0x08000000;
+inline const uint32_t TAG_J   = 0x08000000;
 inline const uint32_t TAG_K   = 0x10000000;
 inline const uint32_t TAG_O   = 0x20000000;
 inline const uint32_t TAG_P   = 0x40000000;
@@ -255,8 +255,8 @@ public:
     void delete_line();
 
 // Wordstar uses s ^J menu key, but with the way I use ncurses that seems
-// to alias against the enter key...
-//  void j_menu();
+// to alias against the enter key... So I use ALT-J instead.
+    void j_menu();
     void k_menu();          // User hit *K 
     void o_menu();
     void p_menu();

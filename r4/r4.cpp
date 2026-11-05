@@ -683,11 +683,11 @@ void R4::renderScreen()
     }
     while (line2.length() < width) line2.push_back(' ');
     move(0, 0);
-    addstr(line1.c_str());
+    attrset(fg_magenta);
+    for (auto c : line1) addch(c);
     move(1, 0);
-    attrset(A_REVERSE);
+    attrset(A_REVERSE | fg_magenta);
     addstr(line2.c_str());
-    attrset(fg_yellow);
     if (top_lines != nullptr)
     {   int y = 0;
         for (const char**p = top_lines; *p!=nullptr; p++)
@@ -834,9 +834,34 @@ void R4::hideMenu()
 {   top_lines = nullptr;
 }
 
-//void R4::j_menu()
-//{   pending();
-//}
+void R4::j_menu()
+{   timeout(1000);
+    uint32_t c = mygetch();
+    timeout(-1);
+    if (c != ERR)
+    {   processKeypress(c | TAG_J, false);
+        return;
+    }
+// Here we waited a second and nothing has been typed, so I will
+// display a menu and then wait for ever.
+    const char* menu[] =
+    {   "These are the subjects on which help is available:",
+        "-----------------------------H E L P-------------------------------------------",
+        "H    -  set help level          P     -  control characters in text",
+        "T    -  the tab key             0-9   -  place markers",
+        "F, A -  Find and Replace        B, K  -  block operations",
+        "R    -  the Ruler line          ^     -  split screen",
+        "Press one of the above keys for information on that subject,",
+        "or press space to continue editing your file.",
+        "-------------------------------------------------------------------------------",
+        nullptr
+    };
+    displayMenu(menu);
+    renderScreen();
+    c = mygetch();
+    hideMenu();
+    processKeypress(c | TAG_J, false);
+}
 
 void R4::k_menu()
 {   timeout(1000);
@@ -846,14 +871,14 @@ void R4::k_menu()
     {   processKeypress(c | TAG_K, false);
         return;
     }
-// Here we waited half a second and nothing has been typed, so I will
+// Here we waited a second and nothing has been typed, so I will
 // display a menu and then wait for ever.
     const char* menu[] =
     {   "^K - these are the commands available:",
         "-----------------------------B L O C K   M E N U-------------------------------",
         "---Saving Files---|--Block Operations--|---File Operations----|---Other Menus--",
         " X Save and exit  |B  Begin   K  End   | R Read from file     | (from Main only",
-        " Q Abandon edits  |H  Hide / Display   | W Write block to file|^J Help  ^K Bloc",
+        " Q Abandon edits  |H  Hide / Display   | W Write block to file|altJ Help^K Bloc",
         " S Save and reedit|C  Copy    Y  Delete|                      |^Q Quick ^P CtlC",
         " D Done, save     |V  Move             | ^ Split Screen       |^O Onscreen",
         "--Place  Markers--|N  Column   on (OFF)| M obey Meta file     |Space bar return",
@@ -884,7 +909,7 @@ void R4::q_menu()
     {   processKeypress(c | TAG_Q, false);
         return;
     }
-// Here we waited half a second and nothing has been typed, so I will
+// Here we waited a second and nothing has been typed, so I will
 // display a menu and then wait for ever.
     const char* menu[] =
     {   "^Q - these are the available commands:",
