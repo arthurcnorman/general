@@ -387,22 +387,22 @@ std::vector<std::string> lookup_code(std::uint32_t c)
     return v;
 }
 
-static void term_replace_chars_backwards(
-    string32& line, int& caretpos,
-    int n, string32 s)
+void R4::term_replace_chars_backward()
 {
-// Replace n characters that are before the caret with bytes from the
-// string32 s. 
-#ifdef DEBUG
-    fprintf(logfile, "replace_back(%d)\n", n); 
-#endif
-    if (n > caretpos) return; // not enough chars to delete - should never happen.
-    caretpos -= n;
-    line.erase(caretpos, n);
-    line.insert(caretpos, s);
-    caretpos += s.size();
+// the characters before the caret position in line are expected to
+// match orig, and what I do here is to delete those abd then insert
+// the replacemeent text passed as final. Although in the first use of this
+// orig is expected to be made up of characters from the Basic Latin Block
+// I will allow for "complex" characters in case that is useful later, and
+// also because it is not much harder. The replacement material could equally
+// contain complex characters and one special case is when the replacement
+// test consists of an isolated combining character that the has to be merged
+// into whatever preceeds it.
+    for (auto c : word_text)
+        delete_backward(1);
+    for (auto c : replacement_text)
+        insert_char(c);
 }
-
 
 // This next function is a bit horrid. If sizeof(wchar_t)==2 I need to use
 // utf16 packing with surrogate pairs for some things. If that
@@ -514,7 +514,9 @@ void R4::convert(string32& line, int& caretpos)
             startedAsName = false;
             inHex = true;
         }
-        term_replace_chars_backwards(line, caretpos, 1, L(replacement));
+        word_text = string32(1, ch);
+        replacement_text = L(replacement);
+        term_replace_chars_backward();
         return;
     }
 #ifdef DEBUG
@@ -540,43 +542,39 @@ void R4::convert(string32& line, int& caretpos)
     uint32_t c;
 // I start by checking if a user custom name matches at any length. If
 // it does that will be my first choice.
-    input_word = line.substr(i, caretpos-i);
-    while (input_word.length() != 0)
-    {   c = lookup_user_name(input_word);
-        input_word.erase(0, 1);
+    word_text = line.substr(i, caretpos-i);
+    while (word_text.length() != 0)
+    {   c = lookup_user_name(word_text);
         if (c != -1u)
-        {   output_word = string32(1, c);
+        {   replacement_text = string32(1, c);
             uniConvActive = true;
             startedAsName = true;
             userNames = true;
-            term_replace_chars_backwards(line, caretpos,
-                                         caretpos-input_word.length()+1,
-                                         output_word);
-// I leave input_word as the word originally present when ALT-x was
-// pressed and output_word as what has just been placed in the buffer.
+            term_replace_chars_backward();
+// I leave word_text as the word originally present when ALT-x was
+// pressed and replacement_text as what has just been placed in the buffer.
+// That will make it easy to undo the adjustment.
             return;
         }
     }
 // If none of the custom names matched try my fixed database.
     i = caretpos - longest_name;
     if (i < 0) i = 0;   // only go back as far as the start of the line.
-    input_word = line.substr(i, caretpos-i);
-    while (input_word.length() != 0)
-    {   c = lookup_name(input_word);
+    word_text = line.substr(i, caretpos-i);
+    while (word_text.length() != 0)
+    {   c = lookup_name(word_text);
 #ifdef DEBUG
-        fprintf(logfile, "input_word = ");
-        for (auto ccc : input_word) fprintf(logfile, "%c", ccc);
+        fprintf(logfile, "word_text = ");
+        for (auto ccc : word_text) fprintf(logfile, "%c", ccc);
         fprintf(logfile, "\n");
 #endif
-        input_word.erase(0, 1);
+        word_text.erase(0, 1);
         if (c != -1u)
-        {   output_word = string32(1, c);
+        {   replacement_text = string32(1, c);
             uniConvActive = true;
             startedAsName = true;
             userNames = false;
-            term_replace_chars_backwards(line, caretpos,
-                                          caretpos-input_word.length()+1,
-                                          output_word);
+            term_replace_chars_backward();
 #ifdef DEBUG
             debugLine("end of convert", line);
 #endif
@@ -591,15 +589,15 @@ void R4::convert(string32& line, int& caretpos)
 void R4::continueName(string32& line, int& caretpos)
 {
 // Here if userNames is true I need to search for ay suffix of
-// input_word that is alse a user-specified name. Whern I get here the
+// word_text that is alse a user-specified name. Whern I get here the
 // item just before the cursor is a single character that had been
 // named by the word originally used.
     uint32_t c = -1;
     std::string replacement;
     if (userNames)
-    {   while (input_word.length() != 0)
-        {   input_word.erase(0, 1);
-            c = lookup_user_name(input_word);
+    {   while (word_text.length() != 0)
+        {   word_text.erase(0, 1);
+            c = lookup_user_name(word_text);
             if (c != -1u)
             {   line[caretpos-1] = c;
                 return;
@@ -609,11 +607,11 @@ void R4::continueName(string32& line, int& caretpos)
         const int longest_name = 90;
         int k = caretpos - longest_name - 1;
         if (k < 0) k = 0;
-        input_word = line.substr(k, caretpos-k);
+        word_text = line.substr(k, caretpos-k);
     }
-    while (input_word.length() != 0)
-    {   input_word.erase(0, 1);
-        c = lookup_name(input_word);
+    while (word_text.length() != 0)
+    {   word_text.erase(0, 1);
+        c = lookup_name(word_text);
         if (c != -1u)
         {   line[caretpos-1] = c;
             return;

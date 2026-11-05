@@ -180,11 +180,16 @@ public:
     void convert(string32& line, int& caretpos);
     void continueName(string32& line, int& caretpos);
     void continueCode(string32& line, int& caretpos);
-    string32 input_word;
-    string32 output_word;
-    string32 removed;
-    string32 inserted;
-
+// When handling ALT-x I with the case "charnameALTx" I will have word_text
+// set to "charname" amd replacement_text to whatever ihas been replaced
+// with. So applying the conversion deleted word_text from just before
+// the cursor and inserts replacement_text in its place. When I want to
+// try for a next possiblity I can delete replacement_text and insert
+// word_text and the input line is back in its original state. And I can
+// tell where to search next by using the length of word_text.
+    string32 word_text;
+    string32 replacement_text;
+    void term_replace_chars_backward();
 // Character combinations involving overlays and diacriticals need
 // special treatment in just a few places.
     void normalise();
@@ -194,6 +199,7 @@ public:
 // which I activate if an operation that is not yet implemented is
 // called for.
     void insert_newline();
+    void insert_char(uint32_t c);
     void addch8(int c);
     void delete_forward(int n);
     void delete_backward(int n);

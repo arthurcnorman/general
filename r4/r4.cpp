@@ -100,6 +100,7 @@ R4::R4(const std::string& filename) : filename(filename)
     left_margin = 0;
     right_margin = width - 6;
     tab_width = 8;
+    top_lines = nullptr;
     loadFile();
     refresh();
 }
@@ -686,9 +687,22 @@ void R4::renderScreen()
     move(1, 0);
     attrset(A_REVERSE);
     addstr(line2.c_str());
+    attrset(fg_yellow);
+    if (top_lines != nullptr)
+    {   int y = 0;
+        for (const char**p = top_lines; *p!=nullptr; p++)
+        {   move(y, 0);
+            addstr(*p);
+            for (int i=std::strlen(*p); i<width; i++) addch(' ');
+            y++;
+        }
+    }
+// In some cases I may also want to set the low couple of lines to info
+// about possible consequences of ALT-x.
+// ...
+// ...
+// ...
     attrset(0);
-//    if (top_lines != nullptr)
-
     move(cy-wy+2, cursorx-wx);
     refresh();
 }
@@ -797,6 +811,14 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+// Insert a character before the cursor.
+
+void R4::insert_char(uint32_t c)
+{   buffer[cy].insert(cx, 1, c);
+    marks_after_insert();
+    cx++;
+}
+
 void R4::pending()
 {
 #ifdef DEBUG
@@ -817,7 +839,7 @@ void R4::hideMenu()
 //}
 
 void R4::k_menu()
-{   timeout(500);
+{   timeout(1000);
     uint32_t c = mygetch();
     timeout(-1);
     if (c != ERR)
@@ -836,9 +858,11 @@ void R4::k_menu()
         " D Done, save     |V  Move             | ^ Split Screen       |^O Onscreen",
         "--Place  Markers--|N  Column   on (OFF)| M obey Meta file     |Space bar return",
         "0-9 Set/hide # 0-9|F  Fold    G unfold |                      |you to Main Menu",
-        "-------------------------------------------------------------------------------"
+        "-------------------------------------------------------------------------------",
+        nullptr
     };
     displayMenu(menu);
+    renderScreen();
     c = mygetch();
     hideMenu();
     processKeypress(c | TAG_K, false);
@@ -853,7 +877,7 @@ void R4::p_menu()
 }
 
 void R4::q_menu()
-{   timeout(500);
+{   timeout(1000);
     uint32_t c = mygetch();
     timeout(-1);
     if (c != ERR)
@@ -872,9 +896,11 @@ void R4::q_menu()
         "move to:--------------------|----------|Q Repeat command or   |^O Onscreen",
         " R top of text     V last find or block|  key  until  space   |Space bar return",
         " C bottom of text  L line number       |  bar  or other key   |you to Main Menu",
-        "-------------------------------------------------------------------------------"
+        "-------------------------------------------------------------------------------",
+        nullptr
     };
     displayMenu(menu);
+    renderScreen();
     c = mygetch();
     hideMenu();
     processKeypress(c | TAG_Q, false);
