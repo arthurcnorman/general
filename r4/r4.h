@@ -508,4 +508,26 @@ inline constexpr string32 L(const std::string a)
 {   return L(a.c_str());
 }
 
+// The following is useful for tracing and debugging.
+
+inline void display(const char* label, string32 s)
+{   fprintf(logfile, "%s", label);
+    for (auto c : s)
+    {   if (c < ' ') fprintf(logfile, "^%c", c | 0x40);
+        else if (c < 0x7e) fprintf(logfile, "%c", c);
+        else  if (c <= 0x0000ffff) fprintf(logfile, "U+%04.4x", c);
+        else  if (c <= 0x0010ffff) fprintf(logfile, "U+%06.6x", c);
+        else
+        {   cchar_t ww = ccharmap[c];
+            int prefix = '{';
+            for (int i=0; i<CCHARW_MAX && ww.chars[i]!=0; i++)
+            {   fprintf(logfile, "%c%x ", prefix, ww.chars[i]);
+                prefix = ':';
+            }
+            fprintf(logfile, "}");
+        }
+    }
+    fprintf(logfile, "\n");
+}
+
 // end of r4.h

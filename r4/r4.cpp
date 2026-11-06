@@ -757,13 +757,6 @@ uint32_t command_character;
 
 void R4::processKeypress(uint32_t c, bool insert)
 {   command_character = c;
-#ifdef DEBUG
-    fprintf(logfile, "line 708 Key = %x ", c);
-    if (' ' <= c && c < 0x7e) fprintf(logfile, " = %c\n", c);
-    else if (c < ' ') fprintf(logfile, " = ^%c\n", c | 0x40);
-    else fprintf(logfile, "\n");
-    fflush(logfile);
-#endif
 // With ALT or after a menu key ^J, ^K, ^O, ^P, ^Q I will ignore the
 // case of simple letters. So eg ^KX and ^Kx will be treated the same way,
 // as will ALT-X and ALT-x. I will also ignore CTRL because that may
@@ -772,22 +765,11 @@ void R4::processKeypress(uint32_t c, bool insert)
         (c & 0x001fffff) < 0x7f)
     {   if ((c & 0x7f) < ' ') c |= 0x40;
         c = (c & 0xfe000000) | std::tolower(c & 0x7f);
-#ifdef DEBUG
-        fprintf(logfile, "becomes %x = %c\n", c&0x7f, c&0x7f);
-        fflush(logfile);
-#endif
     }
 // I want to treate consecutive uses of ALT-x specially, so I will
 // set uniConvActive to false on any other input - i.e. things that disrupt
 // from being consecutive.
     if (c != ('x' | TAG_ALT)) uniConvActive = false;
-#ifdef DEBUG
-    fprintf(logfile, "line 732 Key = %x ", c);
-    if (' ' <= c && c < 0x7e) fprintf(logfile, " = %c\n", c);
-    else if (c < ' ') fprintf(logfile, " = ^%c\n", c | 0x40);
-    else fprintf(logfile, "\n");
-    fflush(logfile);
-#endif
     if (keymap.count(c) > 0) (this->*keymap[c])();
     else if (insert)
     {   buffer[cy].insert(cx, 1, c);
@@ -815,6 +797,7 @@ int main(int argc, char* argv[])
 
 void R4::insert_char(uint32_t c)
 {   buffer[cy].insert(cx, 1, c);
+    normalise();   // If I just inserted a combining mark I need to tidy up
     marks_after_insert();
     cx++;
 }

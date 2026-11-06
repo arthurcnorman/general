@@ -35,11 +35,10 @@
 #include "r4.h"
 
 // If you have a "complex" character just before the cursor then
-// denormalise will split it into its base and the kast of its
-// combining marks.
-
-
-// The following two are only relevant if we have sizeof(char_t)==4.
+// denormalise will split it into its base and the last of its
+// combining marks. Note that the ncurses type "cchar_t" holds an array
+// of wchar_t, and on Windows that is in utf-16 while most of what I
+// do here is in utf32 - so I need to be able to convert.
 
 size_t wchar_to_utf32(uint32_t* dest, wchar_t* src, size_t len)
 {   size_t r = 0;
@@ -61,13 +60,15 @@ size_t utf32_to_wchar(wchar_t* dest, uint32_t* src, size_t len)
 {   size_t r = 0;
     for (size_t i=0; i<len; i++)
     {   uint32_t c = *src++;
-        if (sizeof(wchar_t)==4 && c > 0xffff)
+        if (sizeof(wchar_t)==4 && c > 0xffff && r < CCHARW_MAX-1)
         {   *dest++ = 0xd800 | ((c-0x10000)>>10);
             r++;
             c = 0xdc00 | (c & 0x3ff);
         }
-        *dest++ = c;
-        r++;
+        if (r < CCHARW_MAX)
+        {   *dest++ = c;
+            r++;
+        }
     }
     return r;
 }
@@ -76,21 +77,9 @@ size_t utf32_to_wchar(wchar_t* dest, uint32_t* src, size_t len)
 // one or more combining marke, the last of those should be stripped
 // off and lest as a separate character. As it where "Cabc" -> "Cab  c".
 
-#ifdef DEBUG
-void debugLine(std::string s, string32 line)
-{   fprintf(logfile, "%s: ", s.c_str());
-    for (auto c : line)
-    {   if (c >= ' ' && c < 0x7e) fprintf(logfile, "[%c]", c);
-        else fprintf(logfile, "[%.8x]", c);
-    }
-    fprintf(logfile, "\n");
-}
-
-#endif
-
 void R4::denormalise()
 {   if (cx == 0) return;         // Do nothing if at start of line.
-    debugLine("start denormalise", buffer[cy]);
+    display("start denormalise", buffer[cy]);
     uint32_t c = buffer[cy][cx-1];
     if (c <= 0x0010ffff) return; // A simple character. 
     c -= 0x00110000;
@@ -120,7 +109,7 @@ void R4::denormalise()
     buffer[cy].insert(cx, 1, final);
     marks_after_insert();
     cx++;
-    debugLine("end denormalise", buffer[cy]);
+    display("end denormalise", buffer[cy]);
 }
 
 // Here if the character before the cursor is a combining one it should be
@@ -128,8 +117,9 @@ void R4::denormalise()
 
 void R4::normalise()
 {   if (cx == 0) return;
-    debugLine("begin normalise", buffer[cy]);
-    uint32_t c = buffer[cy][cx-1];
+    display("begin normalise: ", buffer[cy]);
+    uint32_t c = buffer[cy][cx];
+    fprintf(logfile, "potential combining char = %x\n", c);
     if (!is_combining.contains(c)) return; // A simple character.
 // As a special case if I try to normalise at the very start of a line
 // and I have a combining mark I will forcibly insert a space before
@@ -139,7 +129,33 @@ void R4::normalise()
         marks_after_insert();
         cx = 1;
     }
-    debugLine("end normalise", buffer[cy]);
+    display("need to merge: ", buffer[cy]);
+    uint32_t mergeWith = buffer[cy][cx-1];
+    cchar_t newchar;
+    std::memset(&newchar, 0, sizeof(newchar));
+    uint32_t ww[CCHARW_MAX];
+    memset(&ww, 0, sizeof(ww));
+    size_t n;
+    if (mergeWith <= 0x0010ffff)
+    {   ww[0] = mergeWith;
+        n = 1;
+    }
+    else
+    {   cchar_t cc = ccharmap[c];
+        std::memcpy(&newchar, &cc, sizeof(cchar_t)); // copy any attributes
+        n = wchar_to_utf32(ww, cc.chars, CCHARW_MAX);
+    }
+// Now w is an arrayt of 32-bit characters. Either just one if the preceeding
+// character has been a simple one or the base plus any existing overlays
+// if it had been complicated.
+    int i = 0;
+    while (i < CCHARW_MAX && ww[i] != 0) i++;
+    if (i == CCHARW_MAX) beep();  // The cchar_t is already full
+    else ww[i] = c;
+    utf32_to_wchar(newchar.chars, ww, CCHARW_MAX);
+    buffer[cy][cx-1] = lookup_composite(newchar);
+    delete_backward(1);    
+    display("end normalise: ", buffer[cy]);
 }
 
 static int digofhex(wchar_t ch)
@@ -398,10 +414,15 @@ void R4::term_replace_chars_backward()
 // contain complex characters and one special case is when the replacement
 // test consists of an isolated combining character that the has to be merged
 // into whatever preceeds it.
-    for (auto c : word_text)
-        delete_backward(1);
-    for (auto c : replacement_text)
-        insert_char(c);
+    fprintf(logfile, "term_replace_chars_backward\n");
+    display("word: ", word_text);
+    display("replacement: ", replacement_text);
+    display("line: ", buffer[cy]);
+    fprintf(logfile, "\n");
+    for (uint32_t c : word_text) delete_backward(1);
+    display("after delete: ", buffer[cy]);
+    for (auto c : replacement_text) insert_char(c);
+    display("result: ", buffer[cy]);
 }
 
 // This next function is a bit horrid. If sizeof(wchar_t)==2 I need to use
@@ -486,7 +507,7 @@ std::string hexify(uint32_t n)
 void R4::convert(string32& line, int& caretpos)
 {
 #ifdef DEBUG
-    debugLine("start of convert", line);
+    display("start of convert", line);
 #endif
     if (uniConvActive)
     {   if (startedAsName) continueName(line, caretpos);
@@ -564,21 +585,12 @@ void R4::convert(string32& line, int& caretpos)
     word_text = line.substr(i, caretpos-i);
     while (word_text.length() != 0)
     {   c = lookup_name(word_text);
-#ifdef DEBUG
-        fprintf(logfile, "word_text = ");
-        for (auto ccc : word_text) fprintf(logfile, "%c", ccc);
-        fprintf(logfile, "\n");
-#endif
-        word_text.erase(0, 1);
         if (c != -1u)
         {   replacement_text = string32(1, c);
             uniConvActive = true;
             startedAsName = true;
             userNames = false;
             term_replace_chars_backward();
-#ifdef DEBUG
-            debugLine("end of convert", line);
-#endif
             return;
         }
         word_text.erase(0, 1);
