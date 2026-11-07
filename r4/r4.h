@@ -177,7 +177,7 @@ public:
     bool userNames;
     std::vector<std::string> converted_names;
     bool inHex;
-    void convert(string32& line, int& caretpos);
+    void convert();
     void continueName(string32& line, int& caretpos);
     void continueCode(string32& line, int& caretpos);
 // When handling ALT-x I with the case "charnameALTx" I will have word_text
@@ -213,8 +213,8 @@ public:
     void marks_after_insert();
     void marks_after_newline();
     void marks_after_join_line();
-    void marks_after_delete_forward();
-    void marks_after_delete_back();
+    void marks_after_delete_forward(int n);
+    void marks_after_delete_back(int n);
     void marks_after_add_line();
     void marks_after_remove_line();
 
@@ -350,34 +350,46 @@ extern std::unordered_set<uint32_t> is_combining;
 
 inline std::unordered_map<std::uint32_t, cchar_t> ccharmap;
 
-inline uint64_t lookup_composite(cchar_t& cc)
-{   uint64_t hash = 0;
+inline uint64_t lookup_composite(cchar_t cc)
+{   uint32_t hash = 0;
+fprintf(logfile, "lookup composite %x %x %x\n", cc.chars[0], cc.chars[1], cc.chars[2]);
     for (auto c : cc.chars)
-        hash = (314159*hash + c) % 0xffffffffffeeffcd + 0x00110000;
+        hash = (314159U*hash + c) % 0xffeefff3U + 0x00110000U;
 // The multiplier 314159 happens to be prime but is basically picked
-// in a pretty arbitrary way. The number I work modulo is a prime and
-// is such that the residue plus 0x00110000 is in the range I am allowed
-// to use to represent complex characters. I am expecting very light
-// loading in the hash scheme used here and so do not expect the competence
-// of hashing to be terribly important! The value -(uint32_t)1 wull never
-// be used because the hash modulus is small enough, so I can use that
-// value as a marker.
+// in a pretty arbitrary way. The number I take remainder by is a prime
+// and if small enough that the hash value I end up with is in the
+// range 0x00110000 to 0xfffffffe. Ie a value that can not clash with
+// genuine single Unicode characters and that leave -1U available for
+// use as a marker.
+// I am expecting very light loading in the hash scheme used here and so
+// do not expect the competence of hashing to be terribly important!
+// The hash table is notionally of size around 4000000000 and the values
+// to be stored are the unique composite glyphs that a particular
+// document happens to use, along with any variants on same that still
+// involve a combining mark but where one or more final marks have been
+// removed.
+// I note that some composed characters are used in the table of HTML
+// entities. Eg xxx is represened by U+xxxx plus U+xxxx. That seems to
+// amount to a massive 64 cases.
     for (;;)
     {   if (ccharmap.count(hash) == 0) // not found: insert in table.
         {   ccharmap[hash] = cc;
+fprintf(logfile, "cchar %x %x %x put at %x \n", cc.chars[0], cc.chars[1], cc.chars[2], hash);
             return hash;
         }
         cchar_t& w = ccharmap[hash];   // probe.
         bool match = true;
         for (int i=0; i<CCHARW_MAX; i++)
             if (cc.chars[i] != w.chars[i]) match = false;
-        if (match) return hash;        // found.
+        if (match) return hash;        // found because already present.
 // The leading character in the cchar_t should be a spacing character
 // and I might as well use that as the stride when I probe the hash
-// table. Well against the pathalogical vase that it had been set to
-// zero I OR in another bit.
-        hash = hash + (cc.chars[0] | 0x10000);
-        hash = hash % 0xffffffffffeeffcd + 0x00110000;
+// table. Well against the pathalogical case that it had been set to
+// zero it makes sense to OR in another bit, and I rather randomly pick
+// 0x10000. Because my hash tables is a prime size and non-zero stride
+// will be OK.
+        hash = hash + (cc.chars[0] | 0x10000U);
+        hash = hash % 0xffeefff3U + 0x00110000U;
     }
 }
 
@@ -423,6 +435,8 @@ inline constexpr std::string S(string32 a)
     }
     return r;
 }
+
+extern std::string SS(string32 a);
 
 inline constexpr std::string S(std::uint32_t* p)
 {   return S(string32(p));
@@ -518,16 +532,23 @@ inline void display(const char* label, string32 s)
         else  if (c <= 0x0000ffff) fprintf(logfile, "U+%04.4x", c);
         else  if (c <= 0x0010ffff) fprintf(logfile, "U+%06.6x", c);
         else
-        {   cchar_t ww = ccharmap[c];
-            int prefix = '{';
+        {   fprintf(logfile, "{%.8x:", c);
+            cchar_t ww = ccharmap[c];
+            int prefix = '|';
             for (int i=0; i<CCHARW_MAX && ww.chars[i]!=0; i++)
-            {   fprintf(logfile, "%c%x ", prefix, ww.chars[i]);
+            {   fprintf(logfile, "%c%x", prefix, ww.chars[i]);
                 prefix = ':';
             }
             fprintf(logfile, "}");
         }
     }
     fprintf(logfile, "\n");
+}
+
+inline void display(const char* label, string32 s, const char* tag, int n)
+{   char b[100];
+    snprintf(b, sizeof(b), "%s %d  %s", tag, n, label);
+    display(b, s);
 }
 
 // end of r4.h

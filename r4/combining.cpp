@@ -2646,6 +2646,7 @@ glyphMap combining_names =
     {"#circumflex",                                                          0x0302},
     {"#combining_tilde",                                                     0x0303},
     {"#combining_macron",                                                    0x0304},
+    {"#macron",                                                              0x0304},
     {"#combining_overline",                                                  0x0305},
     {"#overline",                                                            0x0305},
     {"#combining_dot_above",                                                 0x0307},

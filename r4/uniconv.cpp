@@ -73,13 +73,66 @@ size_t utf32_to_wchar(wchar_t* dest, uint32_t* src, size_t len)
     return r;
 }
 
+// Here if the character before the cursor is a combining one it should be
+// merged in with whatever came befote it.
+
+void R4::normalise()
+{   if (cx == 0) return;
+    display("begin normalise: ", buffer[cy], "cx = ", cx);
+    uint32_t c = buffer[cy][cx-1];
+    fprintf(logfile, "potential combining char = %x\n", c);
+    if (!is_combining.contains(c)) return; // A simple character.
+// Now remove the combining mark from the line.
+    marks_after_delete_back(1);
+    buffer[cy].erase(cx-1, 1);
+    cx--;
+    display("combing char removed I hope: ", buffer[cy], "cx = ", cx);
+// As a special case if I try to normalise at the very start of a line
+// and I have a combining mark I will forcibly insert a space before
+// it so it has something to combine with.
+    if (cx == 0)
+    {   buffer[cy].insert(0, 1, ' ');
+        marks_after_insert();
+        cx = 1;
+    }
+    display("need to merge char into: ", buffer[cy], "cx = ", cx);
+    uint32_t mergeWith = buffer[cy][cx-1];
+    cchar_t newchar;
+    std::memset(&newchar, 0, sizeof(newchar));
+    uint32_t ww[CCHARW_MAX];
+    memset(&ww, 0, sizeof(ww));
+    size_t n;
+    fprintf(logfile, "mergeWith = %x\n", mergeWith);
+    if (mergeWith <= 0x0010ffff)
+    {   ww[0] = mergeWith;
+        n = 1;
+    }
+    else
+    {   cchar_t cc = ccharmap[mergeWith];
+        fprintf(logfile, "composite char is %x %x %x\n", cc.chars[0], cc.chars[1], cc.chars[2]);
+        std::memcpy(&newchar, &cc, sizeof(cchar_t)); // copy any attributes
+        n = wchar_to_utf32(ww, cc.chars, CCHARW_MAX);
+        fprintf(logfile, "composite char expands as %x %x %x\n", ww[0], ww[1], ww[2]);
+    }
+// Now w is an array of 32-bit characters. Either just one if the preceeding
+// character has been a simple one or the base plus any existing overlays
+// if it had been complicated.
+    int i = 0;
+    while (i < CCHARW_MAX && ww[i] != 0) i++;
+    if (i == CCHARW_MAX) beep();  // The cchar_t is already full
+    else ww[i] = c;
+    utf32_to_wchar(newchar.chars, ww, CCHARW_MAX);
+    buffer[cy][cx-1] = lookup_composite(newchar);
+    display("end normalise: ", buffer[cy], "cx = ", cx);
+}
+
 // If the character before the cursor is "complex", i.e. it involves
 // one or more combining marke, the last of those should be stripped
 // off and lest as a separate character. As it where "Cabc" -> "Cab  c".
 
 void R4::denormalise()
 {   if (cx == 0) return;         // Do nothing if at start of line.
-    display("start denormalise", buffer[cy]);
+    display("start denormalise", buffer[cy], "cx = ", cx);
     uint32_t c = buffer[cy][cx-1];
     if (c <= 0x0010ffff) return; // A simple character. 
     c -= 0x00110000;
@@ -109,53 +162,7 @@ void R4::denormalise()
     buffer[cy].insert(cx, 1, final);
     marks_after_insert();
     cx++;
-    display("end denormalise", buffer[cy]);
-}
-
-// Here if the character before the cursor is a combining one it should be
-// merged in with whatever came befote it.
-
-void R4::normalise()
-{   if (cx == 0) return;
-    display("begin normalise: ", buffer[cy]);
-    uint32_t c = buffer[cy][cx];
-    fprintf(logfile, "potential combining char = %x\n", c);
-    if (!is_combining.contains(c)) return; // A simple character.
-// As a special case if I try to normalise at the very start of a line
-// and I have a combining mark I will forcibly insert a space before
-// it so it has something to combine with.
-    if (cx == 0)
-    {   buffer[cy].insert(0, 1, ' ');
-        marks_after_insert();
-        cx = 1;
-    }
-    display("need to merge: ", buffer[cy]);
-    uint32_t mergeWith = buffer[cy][cx-1];
-    cchar_t newchar;
-    std::memset(&newchar, 0, sizeof(newchar));
-    uint32_t ww[CCHARW_MAX];
-    memset(&ww, 0, sizeof(ww));
-    size_t n;
-    if (mergeWith <= 0x0010ffff)
-    {   ww[0] = mergeWith;
-        n = 1;
-    }
-    else
-    {   cchar_t cc = ccharmap[c];
-        std::memcpy(&newchar, &cc, sizeof(cchar_t)); // copy any attributes
-        n = wchar_to_utf32(ww, cc.chars, CCHARW_MAX);
-    }
-// Now w is an arrayt of 32-bit characters. Either just one if the preceeding
-// character has been a simple one or the base plus any existing overlays
-// if it had been complicated.
-    int i = 0;
-    while (i < CCHARW_MAX && ww[i] != 0) i++;
-    if (i == CCHARW_MAX) beep();  // The cchar_t is already full
-    else ww[i] = c;
-    utf32_to_wchar(newchar.chars, ww, CCHARW_MAX);
-    buffer[cy][cx-1] = lookup_composite(newchar);
-    delete_backward(1);    
-    display("end normalise: ", buffer[cy]);
+    display("end denormalise", buffer[cy], "cx = ", cx);
 }
 
 static int digofhex(wchar_t ch)
@@ -405,24 +412,17 @@ std::vector<std::string> lookup_code(std::uint32_t c)
 
 void R4::term_replace_chars_backward()
 {
-// the characters before the caret position in line are expected to
-// match orig, and what I do here is to delete those abd then insert
-// the replacemeent text passed as final. Although in the first use of this
+// The characters before the caret position in line are expected to
+// match word_text, and what I do here is to delete those and then insert
+// the from replacement_text. Although in the first use of this
 // orig is expected to be made up of characters from the Basic Latin Block
 // I will allow for "complex" characters in case that is useful later, and
 // also because it is not much harder. The replacement material could equally
 // contain complex characters and one special case is when the replacement
 // test consists of an isolated combining character that the has to be merged
 // into whatever preceeds it.
-    fprintf(logfile, "term_replace_chars_backward\n");
-    display("word: ", word_text);
-    display("replacement: ", replacement_text);
-    display("line: ", buffer[cy]);
-    fprintf(logfile, "\n");
     for (uint32_t c : word_text) delete_backward(1);
-    display("after delete: ", buffer[cy]);
     for (auto c : replacement_text) insert_char(c);
-    display("result: ", buffer[cy]);
 }
 
 // This next function is a bit horrid. If sizeof(wchar_t)==2 I need to use
@@ -504,20 +504,20 @@ std::string hexify(uint32_t n)
     else return std::format("{:06x}", n);
 }
 
-void R4::convert(string32& line, int& caretpos)
-{
+void R4::convert()
+{   string32& line = buffer[cy]; 
 #ifdef DEBUG
-    display("start of convert", line);
+    display("start of convert ", line, "cx = ", cx);
 #endif
     if (uniConvActive)
-    {   if (startedAsName) continueName(line, caretpos);
-        else continueCode(line, caretpos);
+    {   if (startedAsName) continueName(line, cx);
+        else continueCode(line, cx);
     }
-    if (caretpos == 0)
+    if (cx == 0)
     {   beep();         // An empty line will not match anything.
         return;
     }
-    uint32_t ch = line[caretpos - 1];
+    uint32_t ch = line[cx - 1];
     if (ch >= 0x7e)
     {   converted_names = lookup_code(ch);
         std::string replacement;
@@ -541,29 +541,24 @@ void R4::convert(string32& line, int& caretpos)
         return;
     }
 #ifdef DEBUG
-    fprintf(logfile, "unicodeConvert with cx=%d\n", caretpos);
+    display("unicodeConvert ", buffer[cy], " cx=", cx);
 #endif
-    if (caretpos == 0)
+    if (cx == 0)
     {   beep();
         return;
     }
-#ifdef DEBUG
-    for (auto c : line)
-        fprintf(logfile, "[%c]", c < 0x80 ? c : '@');
-    fprintf(logfile, "\n"); fflush(logfile);
-#endif
 // Among the names I see for Unicode combining characters I observe
 // "#egyptian_hieroglyph_modifier_damaged_at_bottom_start_and_top_end"
 // and I need to look at enough characters that I will pick up that! I
 // "BOX DRAWINGS LIGHT DIAGONAL UPPER CENTRE TO MIDDLE RIGHT AND MIDDLE LEFT TO LOWER CENTRE"
 // is not (yet?) a name that I recognize but is is 89 letters long.
     const int longest_name = 90;
-    int i = caretpos - longest_name;
+    int i = cx - longest_name;
     if (i < 0) i = 0;   // only go back as far as the start of the line.
     uint32_t c;
 // I start by checking if a user custom name matches at any length. If
 // it does that will be my first choice.
-    word_text = line.substr(i, caretpos-i);
+    word_text = line.substr(i, cx-i);
     while (word_text.length() != 0)
     {   c = lookup_user_name(word_text);
         if (c != -1u)
@@ -580,9 +575,9 @@ void R4::convert(string32& line, int& caretpos)
         word_text.erase(0, 1);
     }
 // If none of the custom names matched try my fixed database.
-    i = caretpos - longest_name;
+    i = cx - longest_name;
     if (i < 0) i = 0;   // only go back as far as the start of the line.
-    word_text = line.substr(i, caretpos-i);
+    word_text = line.substr(i, cx-i);
     while (word_text.length() != 0)
     {   c = lookup_name(word_text);
         if (c != -1u)
@@ -640,11 +635,9 @@ void R4::continueCode(string32& line, int& caretpos)
 }
 
 void R4::unicodeConvert()
-{   convert(buffer[cy], cx);
+{   convert();
 #ifdef DEBUG
-    fprintf(logfile, "after update cx = %d\n", cx);
-    for (wchar_t c : buffer[cy]) fprintf(logfile, "[%x]", c);
-    fprintf(logfile, "\n");
+    display("after update: ", buffer[cy], "cx = ", cx);
 #endif
 }
 

@@ -429,7 +429,7 @@ void to_utf16(uint32_t ch, wchar_t*& p)
 std::string simple_word(string32 line, int col)
 {   std::string r = "";
     while (col < line.length())
-    {   int32_t c = line[col++];
+    {   uint32_t c = line[col++];
         if (c > 0x7f || !std::isalnum(c)) break;
         r.push_back((char)c);
     }
@@ -797,9 +797,10 @@ int main(int argc, char* argv[])
 
 void R4::insert_char(uint32_t c)
 {   buffer[cy].insert(cx, 1, c);
-    normalise();   // If I just inserted a combining mark I need to tidy up
+    display("After inserting char: ", buffer[cy]);
     marks_after_insert();
     cx++;
+    normalise();   // If I just inserted a combining mark I need to tidy up
 }
 
 void R4::pending()
@@ -1027,12 +1028,12 @@ void R4::scroll_down()
 }
 
 void R4::delete_forward(int n)
-{   marks_after_delete_forward();
+{   marks_after_delete_forward(n);
     buffer[cy].erase(cx+1, n);
 }
 
 void R4::delete_backward(int n)
-{   marks_after_delete_back();
+{   marks_after_delete_back(n);
     if (n > cx)
     {   beep();
         n = cx;
@@ -1247,11 +1248,11 @@ void R4::marks_after_join_line()
 {
 }
 
-void R4::marks_after_delete_forward()
+void R4::marks_after_delete_forward(int n)
 {
 }
 
-void R4::marks_after_delete_back()
+void R4::marks_after_delete_back(int n)
 {
 }
 
@@ -1341,6 +1342,10 @@ void R4::find()
 
 void R4::last_find_or_block()
 {   pending();
+}
+
+std::string SS(string32 s)
+{   return S(s);
 }
 
 // end of r4.cpp
