@@ -531,7 +531,6 @@ void R4::convert()
         }
         else
         {   replacement = hexify(ch);
-            converted_names.erase(converted_names.begin());
             uniConvActive = true;
             startedAsName = false;
             inHex = true;
@@ -652,9 +651,35 @@ void R4::continueName(string32& line, int& caretpos)
 
 void R4::continueCode(string32& line, int& caretpos)
 {
-#ifdef DENUG
-    fprintf(logfile, "continueCode\n");
-#endif
+// here I had started with a single character and I mapped it
+// onto a name. There may be multiple names, so I set up a vector
+// convertedNames and I will have used the first of those. When I
+// run out of names I will convert to hex. inHex is true if that is
+// what I have reached. First put the buffer back as it had
+// been before I did anything.
+    std::swap(word_text, replacement_text);
+    term_replace_chars_backward();
+    std::swap(word_text, replacement_text);
+    if (inHex)
+    {   uniConvActive = false;   // reached the end of the cycle.
+        return;
+    }
+    std::string replacement;
+    if (converted_names.size() != 0)
+    {   replacement = converted_names[0];
+        converted_names.erase(converted_names.begin());
+        uniConvActive = true;
+        startedAsName = false;
+        inHex = false;
+    }
+    else
+    {   replacement = hexify(line[caretpos-1]);
+        uniConvActive = true;
+        startedAsName = false;
+        inHex = true;
+    }
+    replacement_text = L(replacement);
+    term_replace_chars_backward();
 }
 
 void R4::unicodeConvert()
