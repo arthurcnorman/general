@@ -50,6 +50,20 @@
 FILE* logfile = std::fopen("log.log", "w");
 #endif
 
+enum My_colours
+{  COLOR_PINK      = 8,
+   COLOR_PALE_BLUE,
+   COLOR_PALE_YELLOW
+};
+
+
+enum My_pairs
+{  fg_pink         = 8,
+   fg_pale_blue,
+   fg_pale_yellow
+};
+
+
 R4::R4(const std::string& filename) : filename(filename)
 {   setlocale(LC_ALL, "");
     initscr();
@@ -61,6 +75,10 @@ R4::R4(const std::string& filename) : filename(filename)
     int pair_id = PAIR_NUMBER(blank);
     short foreground, background;
     pair_content(pair_id, &foreground, &background);
+    init_color(COLOR_PINK, 999, 700, 700); 
+    init_color(COLOR_PALE_BLUE, 600, 600, 999); 
+    init_color(COLOR_PALE_YELLOW, 999, 999, 700); 
+
 //
 // Colours:
 //   plain text    white on black
@@ -68,6 +86,9 @@ R4::R4(const std::string& filename) : filename(filename)
 //   strings       red on black
 //   characters    red on black
 //   keyword       green on black
+
+
+
     init_pair(fg_red,     COLOR_RED, COLOR_BLACK);
     init_pair(fg_green,   COLOR_GREEN, COLOR_BLACK);
     init_pair(fg_yellow,  COLOR_YELLOW, COLOR_BLACK);
@@ -75,6 +96,12 @@ R4::R4(const std::string& filename) : filename(filename)
     init_pair(fg_magenta, COLOR_MAGENTA, COLOR_BLACK);
     init_pair(fg_cyan,    COLOR_CYAN, COLOR_BLACK);
     init_pair(fg_white ,  COLOR_WHITE, COLOR_BLACK);
+
+    init_pair(fg_pink ,         COLOR_PINK, COLOR_BLACK);
+    init_pair(fg_pale_blue ,    COLOR_PALE_BLUE, COLOR_BLACK);
+    init_pair(fg_pale_yellow ,  COLOR_PALE_YELLOW, COLOR_BLACK);
+
+
     attron(COLOR_PAIR(fg_white));
     uniConvActive = false;
     getmaxyx(stdscr, height, width);
@@ -590,10 +617,10 @@ void R4::renderLine(int screeny, int row, string32 line,
         if (state == lexer_string ||
             state == lexer_string_esc) colour = fg_red;
         else if (state == lexer_char ||
-                 state == lexer_char_esc) colour = fg_red;
+                 state == lexer_char_esc) colour = fg_pink;
         else if (state == lexer_slash_comment ||
                  state == lexer_slash_star_comment ||
-                 state == lexer_star) colour = fg_cyan;
+                 state == lexer_star) colour = fg_pale_blue;
         if (state == lexer_slash &&
             col+1 < line.length() &&
             (line[col+1] == '*' || line[col+1] == '/')) colour = fg_cyan;
@@ -683,7 +710,7 @@ void R4::renderScreen()
     }
     while (line2.length() < width) line2.push_back(' ');
     move(0, 0);
-    attrset(fg_magenta);
+    attrset(fg_pale_yellow);
     for (auto c : line1) addch(c);
     move(1, 0);
     attrset(A_REVERSE | fg_magenta);
@@ -801,13 +828,6 @@ void R4::insert_char(uint32_t c)
     marks_after_insert();
     cx++;
     normalise();   // If I just inserted a combining mark I need to tidy up
-}
-
-void R4::pending()
-{
-#ifdef DEBUG
-    fprintf(logfile, "Pending/Unimplemented op %x\n", command_character);
-#endif
 }
 
 void R4::displayMenu(const char* menu[])
@@ -968,7 +988,7 @@ void R4::scroll_page_up()
 // will try to cope.
     getmaxyx(stdscr, height, width);
     int moveby = height-1;
-// If scrolling down would bring the bottom of the screen beyond the
+// If scrolling down would bring the bottom of the screen beyond the
 // end of the buffer then do not move so far. Ie the furthest you can scroll
 // is such as to make the end of the document just visible.
     if (wy + moveby + height >= buffer.size())
@@ -1328,15 +1348,55 @@ void R4::redraw_screen()
 {   pending();
 }
 
+void R4::find()
+{
+// Dialog goes...
+//    Top line blank, next line "Find? ", third line blank.
+// on ENTER the third line becomes
+//    "Options (? for info)? "
+// and if the option "?" is specified you get 6 more lines then a
+// blank one...
+//        Find? "xxxx_xxxx"
+//        Options (? for info)? "?"
+//        number - find Nth occurence of string
+//        B      - search backwards
+//        U      - ignore upper/lower case differences
+//        W      - find whole words only
+//               ^JF for details of wild cards, newlines etc. in search strings
+//        Options?
+// and altJf displays
+//  'FIND'  and  'FIND AND REPLACE':
+//  To find a string in the text, type ^QF, then the string that you wish to find,
+//  then two carriage returns. This will find the next occurence of the string
+//  after the cursor. The second carriage return means 'default options'.
+//    In the find string the following characters have special meanings:
+//      ^A    Matches any character
+//      ^S    Matches any non-alphanumeric character
+//      ^N    Matches a newline in the text
+//      ^Oc   for a given character c, matches any character EXCEPT c
+//  To place these or any other control characters in the find string,
+//  precede it with ^P - otherwise it is a command to the editor.
+//  To any question, use ^H to restore the previous entry.
+//    ^QA (find And replace) will also prompt for a replacement string.
+//  The find string will be located and the editor will ask if you want the
+//  replacement to occur.
+//    Both commands also prompt for options - try using the command for details.
+//    ^L will repeat the previous find or replace operation.
+//    ^QV will move the cursor to its position before the last find or replace.
+//      This can be useful if you mistype the find string.
+//    ^U will interrupt a search at any time.
+//  -----------------------------------------------------------(press any key)-----
+
+
+
+   pending();
+}
+
 void R4::find_and_replace()
 {   pending();
 }
 
 void R4::goto_line()
-{   pending();
-}
-
-void R4::find()
 {   pending();
 }
 
@@ -1346,6 +1406,13 @@ void R4::last_find_or_block()
 
 std::string SS(string32 s)
 {   return S(s);
+}
+
+void R4::pending()
+{
+#ifdef DEBUG
+    fprintf(logfile, "Pending/Unimplemented op %x\n", command_character);
+#endif
 }
 
 // end of r4.cpp
