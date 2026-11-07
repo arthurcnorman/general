@@ -305,26 +305,20 @@ public:
     string32 cmd_line;
     string32 saved_line;
     int cmd_cx;
-    bool cmd_process(uint32_t ch)
+    bool cmd_process(uint32_t ch);
     void cmd_insert_char(uint32_t c);
+    void cmd_tab();
     void cmd_delete_forward(int n);
     void cmd_delete_backward(int n);
-    void cmd_word_left();
-    void cmd_char_right();
-    void cmd_word_right();
-    void cmd_delete_char();
-    void cmd_undelete();
-    void cmd_tab();
-    void cmd_delete_word();
-    void cmd_backspace();
-    void cmd_unicodeConvert();
     void cmd_char_left();
     void cmd_char_right();
+    void cmd_word_left();
+    void cmd_word_right();
     void cmd_backspace();
     void cmd_delete_char();
-
-
-
+    void cmd_undelete();
+    void cmd_delete_word();
+    void cmd_unicodeConvert();
 };
 
 using glyphMap = std::unordered_map<std::string, std::uint32_t>;

@@ -988,7 +988,7 @@ void R4::scroll_page_up()
 // will try to cope.
     getmaxyx(stdscr, height, width);
     int moveby = height-1;
-// If scrolling down would bring the bottom of the screen beyond the
+// If scrolling down would bring the bottom of the screen beyond the
 // end of the buffer then do not move so far. Ie the furthest you can scroll
 // is such as to make the end of the document just visible.
     if (wy + moveby + height >= buffer.size())
