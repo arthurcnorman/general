@@ -292,6 +292,39 @@ public:
     void find();
     void find_and_replace();
 
+// Now there are what are in effect versions of the above that are
+// used for handling a single line that the user is entering text either
+// as a search string, or as the replacement text it must be mapped onto,
+// or just to respond to a question of some sort. These will work using
+// cmd_line and cmd_cx as context, but probably because I have not
+// structured code elsewhere tidily enough I may need (on a temporary basis
+// while using these) to set up the main buffer/cx etc set of variables
+// to refer to this....
+
+    bool cmd_active;
+    string32 cmd_line;
+    string32 saved_line;
+    int cmd_cx;
+    bool cmd_process(uint32_t ch)
+    void cmd_insert_char(uint32_t c);
+    void cmd_delete_forward(int n);
+    void cmd_delete_backward(int n);
+    void cmd_word_left();
+    void cmd_char_right();
+    void cmd_word_right();
+    void cmd_delete_char();
+    void cmd_undelete();
+    void cmd_tab();
+    void cmd_delete_word();
+    void cmd_backspace();
+    void cmd_unicodeConvert();
+    void cmd_char_left();
+    void cmd_char_right();
+    void cmd_backspace();
+    void cmd_delete_char();
+
+
+
 };
 
 using glyphMap = std::unordered_map<std::string, std::uint32_t>;

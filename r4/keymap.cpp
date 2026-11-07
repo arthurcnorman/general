@@ -370,4 +370,34 @@ R4::funcMap R4::keymap =
     {KEY_RESIZE | TAG_FN,        &R4::pending},        /* Terminal resize event */
 };
 
+// Now information about the keys that are accepted while entering a
+// search string or replacement text or options. There are few enough that
+// use of a switch block rather than a lookup table seems most sense.
+#if 0
+
+bool R4::cmd_process(uint32_t ch)
+{   switch (ch)
+    {
+    case CTRL_KEY('a'):              R4::cmd_word_left(); break;
+    case CTRL_KEY('d'):              R4::cmd_char_right(); break;
+    case CTRL_KEY('f'):              R4::cmd_word_right(); break;
+    case CTRL_KEY('g'):              R4::cmd_delete_char(); break;
+    case CTRL_KEY('h'):              R4::cmd_undelete(); break;
+    case CTRL_KEY('i'):              R4::cmd_tab(); break;
+    case CTRL_KEY('j'):              return true;
+    case CTRL_KEY('s'):              R4::cmd_char_left(); break;
+    case CTRL_KEY('t'):              R4::cmd_delete_word(); break;
+    case 0x7f:                       R4::cmd_backspace(); break;
+    case 'x' | TAG_ALT:              R4::cmd_unicodeConvert(); break;
+    case KEY_LEFT | TAG_FN:          R4::cmd_char_left(); break;
+    case KEY_RIGHT | TAG_FN:         R4::cmd_char_right(); break;
+    case KEY_BACKSPACE | TAG_FN:     R4::cmd_backspace(); break;
+    case KEY_DC | TAG_FN:            R4::cmd_delete_char(); break;
+    case KEY_ENTER | TAG_FN:         return true;
+    default:                         return false
+    }
+}
+
+#endif
+
 // end of keymap.cpp
