@@ -525,7 +525,9 @@ inline constexpr string32 L(const std::string a)
 // The following is useful for tracing and debugging.
 
 inline void display(const char* label, string32 s)
-{   fprintf(logfile, "%s", label);
+{
+#ifdef DEBUG
+    fprintf(logfile, "%s", label);
     for (auto c : s)
     {   if (c < ' ') fprintf(logfile, "^%c", c | 0x40);
         else if (c < 0x7e) fprintf(logfile, "%c", c);
@@ -543,12 +545,16 @@ inline void display(const char* label, string32 s)
         }
     }
     fprintf(logfile, "\n");
+#endif
 }
 
 inline void display(const char* label, string32 s, const char* tag, int n)
-{   char b[100];
+{
+#ifdef DEBUG
+    char b[100];
     snprintf(b, sizeof(b), "%s %d  %s", tag, n, label);
     display(b, s);
+#endif
 }
 
 // end of r4.h

@@ -38,7 +38,9 @@
 // denormalise will split it into its base and the last of its
 // combining marks. Note that the ncurses type "cchar_t" holds an array
 // of wchar_t, and on Windows that is in utf-16 while most of what I
-// do here is in utf32 - so I need to be able to convert.
+// do here is in utf32 - so I need to be able to convert to and from
+// that form because whatever machine I am on I keep my text buffer
+// using 32-bit characters.
 
 size_t wchar_to_utf32(uint32_t* dest, wchar_t* src, size_t len)
 {   size_t r = 0;
@@ -80,7 +82,9 @@ void R4::normalise()
 {   if (cx == 0) return;
     display("begin normalise: ", buffer[cy], "cx = ", cx);
     uint32_t c = buffer[cy][cx-1];
+#ifdef DENUG
     fprintf(logfile, "potential combining char = %x\n", c);
+#endif
     if (!is_combining.contains(c)) return; // A simple character.
 // Now remove the combining mark from the line.
     marks_after_delete_back(1);
@@ -102,17 +106,23 @@ void R4::normalise()
     uint32_t ww[CCHARW_MAX];
     memset(&ww, 0, sizeof(ww));
     size_t n;
+#ifdef DENUG
     fprintf(logfile, "mergeWith = %x\n", mergeWith);
+#endif
     if (mergeWith <= 0x0010ffff)
     {   ww[0] = mergeWith;
         n = 1;
     }
     else
     {   cchar_t cc = ccharmap[mergeWith];
+#ifdef DENUG
         fprintf(logfile, "composite char is %x %x %x\n", cc.chars[0], cc.chars[1], cc.chars[2]);
+#endif
         std::memcpy(&newchar, &cc, sizeof(cchar_t)); // copy any attributes
         n = wchar_to_utf32(ww, cc.chars, CCHARW_MAX);
+#ifdef DENUG
         fprintf(logfile, "composite char expands as %x %x %x\n", ww[0], ww[1], ww[2]);
+#endif
     }
 // Now w is an array of 32-bit characters. Either just one if the preceeding
 // character has been a simple one or the base plus any existing overlays
@@ -415,24 +425,16 @@ void R4::term_replace_chars_backward()
 // The characters before the caret position in line are expected to
 // match word_text, and what I do here is to delete those and then insert
 // the from replacement_text. Although in the first use of this
-// orig is expected to be made up of characters from the Basic Latin Block
-// I will allow for "complex" characters in case that is useful later, and
-// also because it is not much harder. The replacement material could equally
-// contain complex characters and one special case is when the replacement
-// test consists of an isolated combining character that the has to be merged
-// into whatever preceeds it.
+// word_text is expected to be made up of characters from the Basic Latin
+// Block I will allow for "complex" characters in case that is useful later,
+// and also because it is not much harder. The replacement material could
+// equally contain complex characters and one special case is when the
+// replacement test consists of an isolated combining character that then
+// has to be merged into whatever preceeds it.
     for (uint32_t c : word_text) delete_backward(1);
     for (auto c : replacement_text) insert_char(c);
 }
 
-// This next function is a bit horrid. If sizeof(wchar_t)==2 I need to use
-// utf16 packing with surrogate pairs for some things. If that
-// happens the link between positions in the string and columns on the screen
-// goes awry. For now I will ignore that since it only hits if I am on
-// windows and I have characters beyond U+FFFF. But in due course I may
-// want to adjust probably be having functions that I used to map
-// index positions within the string to where full characters start.
- 
 static void make_wchar(wchar_t* s, int c)
 {   c &= 0x001fffff;
     if (sizeof(wchar_t) == 4 || c <= 0xffff)
@@ -506,12 +508,11 @@ std::string hexify(uint32_t n)
 
 void R4::convert()
 {   string32& line = buffer[cy]; 
-#ifdef DEBUG
     display("start of convert ", line, "cx = ", cx);
-#endif
     if (uniConvActive)
     {   if (startedAsName) continueName(line, cx);
         else continueCode(line, cx);
+        return;
     }
     if (cx == 0)
     {   beep();         // An empty line will not match anything.
@@ -540,9 +541,7 @@ void R4::convert()
         term_replace_chars_backward();
         return;
     }
-#ifdef DEBUG
     display("unicodeConvert ", buffer[cy], " cx=", cx);
-#endif
     if (cx == 0)
     {   beep();
         return;
@@ -557,9 +556,11 @@ void R4::convert()
     if (i < 0) i = 0;   // only go back as far as the start of the line.
     uint32_t c;
 // I start by checking if a user custom name matches at any length. If
-// it does that will be my first choice.
+// it does that will be my first choice. I will not want to allow for
+// matches of length 1 -- even though the Adobe list includes all
+// the letters of the alphabet.
     word_text = line.substr(i, cx-i);
-    while (word_text.length() != 0)
+    while (word_text.length() > 1)
     {   c = lookup_user_name(word_text);
         if (c != -1u)
         {   replacement_text = string32(1, c);
@@ -578,7 +579,7 @@ void R4::convert()
     i = cx - longest_name;
     if (i < 0) i = 0;   // only go back as far as the start of the line.
     word_text = line.substr(i, cx-i);
-    while (word_text.length() != 0)
+    while (word_text.length() > 1)
     {   c = lookup_name(word_text);
         if (c != -1u)
         {   replacement_text = string32(1, c);
@@ -597,48 +598,68 @@ void R4::convert()
 
 void R4::continueName(string32& line, int& caretpos)
 {
-// Here if userNames is true I need to search for ay suffix of
-// word_text that is alse a user-specified name. Whern I get here the
+// Here if userNames is true I need to search for a suffix of
+// word_text that is alse a user-specified name. When I get here the
 // item just before the cursor is a single character that had been
-// named by the word originally used.
+// named by the word originally used. Anyway what I do first is
+// I restore the text buffer to where it was just before the last
+// substitution.
+    std::swap(word_text, replacement_text);
+    term_replace_chars_backward();
+    std::swap(word_text, replacement_text);
+// Word_text was the match I had found, so lost its first char so I can
+// look for another.
+    word_text.erase(0, 1);
     uint32_t c = -1;
     std::string replacement;
     if (userNames)
-    {   while (word_text.length() != 0)
-        {   word_text.erase(0, 1);
-            c = lookup_user_name(word_text);
+    {   while (word_text.length() > 1)
+        {   c = lookup_user_name(word_text);
             if (c != -1u)
-            {   line[caretpos-1] = c;
+            {   replacement_text = string32(1, c);
+                uniConvActive = true;
+                startedAsName = true;
+                userNames = true;                 // still!!
+                term_replace_chars_backward();
                 return;
             }
+            word_text.erase(0, 1);
         }
-        userNames = false;
+// Here there were no more user abbreviations to use... so try for
+// system ones, starting again with the longest.
         const int longest_name = 90;
-        int k = caretpos - longest_name - 1;
-        if (k < 0) k = 0;
-        word_text = line.substr(k, caretpos-k);
+        int i = cx - longest_name;
+        if (i < 0) i = 0;   // only go back as far as the start of the line.
+        word_text = line.substr(i, cx-i);
+        userNames = false;
     }
-    while (word_text.length() != 0)
-    {   word_text.erase(0, 1);
-        c = lookup_name(word_text);
+    while (word_text.length() > 1)
+    {   c = lookup_name(word_text);
         if (c != -1u)
-        {   line[caretpos-1] = c;
+        {   replacement_text = string32(1, c);
+            uniConvActive = true;
+            startedAsName = true;
+            userNames = false;
+            term_replace_chars_backward();
             return;
         }
+        word_text.erase(0, 1);
     }
-    fprintf(logfile, "continueName\n");
+// After all conversions to extended characters have been tried just
+// leave back where things started.
+    uniConvActive = false;
 }
 
 void R4::continueCode(string32& line, int& caretpos)
 {
+#ifdef DENUG
     fprintf(logfile, "continueCode\n");
+#endif
 }
 
 void R4::unicodeConvert()
 {   convert();
-#ifdef DEBUG
     display("after update: ", buffer[cy], "cx = ", cx);
-#endif
 }
 
 // end of uniconv.cpp
