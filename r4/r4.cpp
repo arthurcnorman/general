@@ -47,8 +47,18 @@
 #include "r4.h"
 
 #ifdef DEBUG
-FILE* logfile = std::fopen("log.log", "w");
+// This is a function to get around initialisation order issues for
+// static data.
+
+FILE* logfile()
+{   static FILE* ff = std::fopen("log.log", "w");
+    return ff;
+}
 #endif
+
+// Provided I am on a modern terminal (and these days I expect I
+// always will be) I can have different colours. I set up a few here
+// to remind myself what is possible.
 
 enum My_colours
 {  COLOR_PINK      = 8,
@@ -56,13 +66,64 @@ enum My_colours
    COLOR_PALE_YELLOW
 };
 
-
 enum My_pairs
 {  fg_pink         = 8,
    fg_pale_blue,
    fg_pale_yellow
 };
 
+// I am going to want std::unordered_multimap built using all the
+// tables of characters that I have. They are all statically initialised
+// in various separate compilation units and so to be certain that they
+// are ready for when I need them I have to wrap the one here in a
+// class constructor.
+
+// The table here maps from any string of length from 3 to 11 onto the
+// set of all names that start that way.
+
+class Predictions
+{
+public:
+    std::unordered_multimap<std::string, std::string> M;
+    Predictions()
+    {   glyphMap tables[] =
+        {   html_names,
+            tex_names,
+            adobe_names,
+            combining_names,
+            unicode_1,
+            unicode_2,
+            unicode_3,
+            unicode_4
+        };
+        for (auto m : tables)
+        {   for (auto kv : html_names)
+            {   std::string s = kv.first;
+                for (int len=3; len<12; len++)
+                if (s.length() >= len)
+                    M.insert(std::pair(s.substr(0, len), s));
+            }
+        } 
+    }
+};
+
+// This lets me map any prefix with from 3 to 11 characters into the set
+// of known words that it could start. I will use this to offer hints
+// to the user about what ALT-x might do for them.
+
+Predictions P();
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <pwd.h>
+
+const char *homedir =
+    ([](){
+        const char* r = getenv("HOME");              // for Linux etc
+        if (r == nullptr) r = getenv("USERPROFILE"); // for Windows
+        if (r == nullptr) r = getpwuid(getuid())->pw_dir;
+        if (r == nullptr) r = ".";
+        return r; })();
 
 R4::R4(const std::string& filename) : filename(filename)
 {   setlocale(LC_ALL, "");
@@ -827,7 +888,8 @@ void R4::insert_char(uint32_t c)
     display("After inserting char: ", buffer[cy]);
     marks_after_insert();
     cx++;
-    normalise();   // If I just inserted a combining mark I need to tidy up
+// If I just inserted a combining mark I need to tidy up
+    normalise(buffer[cy], cx);
 }
 
 void R4::displayMenu(const char* menu[])
@@ -1010,7 +1072,7 @@ void R4::scroll_page_up()
         }
     }
 #ifdef DEBUG
-    fprintf(logfile, "moveby = %d set wy=%d cy = %d\n", moveby, wy, cy);
+    fprintf(logfile(), "moveby = %d set wy=%d cy = %d\n", moveby, wy, cy);
 #endif
     makeCursorVisible();
 }
@@ -1052,6 +1114,8 @@ void R4::delete_forward(int n)
     buffer[cy].erase(cx+1, n);
 }
 
+// This one deletes whole n glyphs without regard to whether they
+// are built up using combining chars.
 void R4::delete_backward(int n)
 {   marks_after_delete_back(n);
     if (n > cx)
@@ -1081,7 +1145,10 @@ void R4::backspace()
     {   if (cy == 0) beep();
         else join_lines();
     }
-    else delete_backward(1);
+    else
+    {   denormalise(buffer[cy], cx);
+        delete_backward(1);
+    }
 }
 
 void R4::delete_char()
@@ -1117,14 +1184,14 @@ void R4::flip_column_mode()
 void R4::write_file()
 {
 #ifdef DEBUG
-    fprintf(logfile, "write file\n");
+    fprintf(logfile(), "write file\n");
 #endif
 }
 
 void R4::save_file()
 {
 #ifdef DEBUG
-    fprintf(logfile, "save file\n");
+    fprintf(logfile(), "save file\n");
 #endif
     saveFile();
 }
@@ -1276,6 +1343,10 @@ void R4::marks_after_delete_back(int n)
 {
 }
 
+void R4::marks_after_replace(int oldx, int x)
+{
+}
+
 void R4::marks_after_add_line()
 {
 }
@@ -1411,7 +1482,7 @@ std::string SS(string32 s)
 void R4::pending()
 {
 #ifdef DEBUG
-    fprintf(logfile, "Pending/Unimplemented op %x\n", command_character);
+    fprintf(logfile(), "Pending/Unimplemented op %x\n", command_character);
 #endif
 }
 

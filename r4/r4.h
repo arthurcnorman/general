@@ -58,7 +58,7 @@
 #include <ncursesw/ncurses.h>
 
 #ifdef DEBUG
-extern FILE* logfile;
+extern FILE* logfile();
 #endif
 
 inline constexpr int CTRL_KEY(uint32_t k)
@@ -177,7 +177,7 @@ public:
     bool userNames;
     std::vector<std::string> converted_names;
     bool inHex;
-    void convert();
+    void convert(string32& line, int& x);
     void continueName(string32& line, int& caretpos);
     void continueCode(string32& line, int& caretpos);
 // When handling ALT-x I with the case "charnameALTx" I will have word_text
@@ -189,11 +189,11 @@ public:
 // tell where to search next by using the length of word_text.
     string32 word_text;
     string32 replacement_text;
-    void term_replace_chars_backward();
+    void replace_chars_backward(string32& line, int& x);
 // Character combinations involving overlays and diacriticals need
 // special treatment in just a few places.
-    void normalise();
-    void denormalise();
+    void normalise(string32& line, int& x);
+    void denormalise(string32& line, int& x);
 
 // Helper functions for the main editing operations. including "pending()"
 // which I activate if an operation that is not yet implemented is
@@ -215,6 +215,7 @@ public:
     void marks_after_join_line();
     void marks_after_delete_forward(int n);
     void marks_after_delete_back(int n);
+    void marks_after_replace(int oldx, int x);
     void marks_after_add_line();
     void marks_after_remove_line();
 
@@ -379,7 +380,8 @@ inline std::unordered_map<std::uint32_t, cchar_t> ccharmap;
 
 inline uint64_t lookup_composite(cchar_t cc)
 {   uint32_t hash = 0;
-fprintf(logfile, "lookup composite %x %x %x\n", cc.chars[0], cc.chars[1], cc.chars[2]);
+    fprintf(logfile(), "lookup composite %x %x %x\n",
+                       cc.chars[0], cc.chars[1], cc.chars[2]);
     for (auto c : cc.chars)
         hash = (314159U*hash + c) % 0xffeefff3U + 0x00110000U;
 // The multiplier 314159 happens to be prime but is basically picked
@@ -401,7 +403,8 @@ fprintf(logfile, "lookup composite %x %x %x\n", cc.chars[0], cc.chars[1], cc.cha
     for (;;)
     {   if (ccharmap.count(hash) == 0) // not found: insert in table.
         {   ccharmap[hash] = cc;
-fprintf(logfile, "cchar %x %x %x put at %x \n", cc.chars[0], cc.chars[1], cc.chars[2], hash);
+            fprintf(logfile(), "cchar %x %x %x put at %x \n",
+                               cc.chars[0], cc.chars[1], cc.chars[2], hash);
             return hash;
         }
         cchar_t& w = ccharmap[hash];   // probe.
@@ -554,24 +557,24 @@ inline constexpr string32 L(const std::string a)
 inline void display(const char* label, string32 s)
 {
 #ifdef DEBUG
-    fprintf(logfile, "%s", label);
+    fprintf(logfile(), "%s", label);
     for (auto c : s)
-    {   if (c < ' ') fprintf(logfile, "^%c", c | 0x40);
-        else if (c < 0x7e) fprintf(logfile, "%c", c);
-        else  if (c <= 0x0000ffff) fprintf(logfile, "U+%04.4x", c);
-        else  if (c <= 0x0010ffff) fprintf(logfile, "U+%06.6x", c);
+    {   if (c < ' ') fprintf(logfile(), "^%c", c | 0x40);
+        else if (c < 0x7e) fprintf(logfile(), "%c", c);
+        else  if (c <= 0x0000ffff) fprintf(logfile(), "U+%04.4x", c);
+        else  if (c <= 0x0010ffff) fprintf(logfile(), "U+%06.6x", c);
         else
-        {   fprintf(logfile, "{%.8x:", c);
+        {   fprintf(logfile(), "{%.8x:", c);
             cchar_t ww = ccharmap[c];
             int prefix = '|';
             for (int i=0; i<CCHARW_MAX && ww.chars[i]!=0; i++)
-            {   fprintf(logfile, "%c%x", prefix, ww.chars[i]);
+            {   fprintf(logfile(), "%c%x", prefix, ww.chars[i]);
                 prefix = ':';
             }
-            fprintf(logfile, "}");
+            fprintf(logfile(), "}");
         }
     }
-    fprintf(logfile, "\n");
+    fprintf(logfile(), "\n");
 #endif
 }
 

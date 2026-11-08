@@ -43,6 +43,29 @@ $(SOURCES:.cpp=.o):	%.o:	 %.cpp r4.h
 $(TABLES:.cpp=.o):	%.o:	 %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+
+# If I am NOT building on Windows I will attempt a cross-build for that
+# world, using ".obj" as suffix for object files and ".exe" for the
+# executable. This will only work if you have the ncurses library with its
+# header files etc installed on the platform you are working on, and on
+# Linux it looks as if that generally needs ncurses to be cross-built
+# from source.
+
+ifneq ($(OS),Windows NT)
+
+WOBJECTS=$(SOURCES:.cpp=.obj) $(TABLES:.cpp=.obj)
+
+r4.exe:	$(WOBJECTS)
+	x86_64-w64-mingw32-g++ $(CXXFLAGS) $(WOBJECTS) -l ncursesw -o r4.exe
+
+$(SOURCES:.cpp=.obj):	%.obj:	%.cpp r4.h
+	x86_64-w64-mingw32-g++ $(CXXFLAGS) -c $< -o $@
+
+$(TABLES:.cpp=.obj):	%.obj:	 %.cpp
+	x86_64-w64-mingw32-g++ $(CXXFLAGS) -c $< -o $@
+
+endif
+
 clean:
 	rm *.o *.exe r4 *.tgz *.bak* *.old* *.tmp*
 
