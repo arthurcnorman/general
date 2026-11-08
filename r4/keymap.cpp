@@ -33,7 +33,7 @@
 
 #include "r4.h"
 
-R4::funcMap R4::keymap =
+funcMap R4::keymap =
 {
     {WEOF,               &R4::quit_editor},
 

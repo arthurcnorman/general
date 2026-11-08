@@ -108,6 +108,24 @@ enum
 
 using string32 = std::basic_string<uint32_t>;
 
+// The various sorts of unordered maps and sets used here can not
+// easily be used to set up their data at compile time because
+// internally they need memory allocation, and any data allocated during
+// compile-time constexpr evaluation can not persist into the outside
+// result. However because the cases here are ones where I know just
+// what the types are and because I will be able to provide a parameter
+// that characterises how big tables have to be I will be able to make
+// constexpr replacements - and if I use cuckoo hashing I will be able
+// to guarantee that access happens in at most two probes, and also that
+// the tash tables do not need excessive over-provision of space. But that
+// is for later!!!
+
+class R4;
+using funcMap = std::unordered_map<wchar_t, void (R4::*)()>;
+using glyphMap = std::unordered_map<std::string, std::uint32_t>;
+using combSet = std::unordered_set<uint32_t>;
+using cplxMap = std::unordered_map<std::uint32_t, cchar_t>;
+
 class R4
 {
 public:
@@ -123,6 +141,8 @@ public:
 // There are things I sometimes need to display as the top few lines
 // on the screen...
     const char** top_lines;
+    bool dialog;
+    std::string input_line;
 
 // Positions:
     int cx=0, cy=0;            // cursor position
@@ -164,7 +184,6 @@ public:
     int mygetch();
     bool overwriteMode = false;
     void processKeypress(uint32_t c, bool insert=true);
-    using funcMap = std::unordered_map<wchar_t, void (R4::*)()>;
     static funcMap keymap;
 
 // A pile of stuff regarding conversion between names and characters that
@@ -322,7 +341,6 @@ public:
     void cmd_unicodeConvert();
 };
 
-using glyphMap = std::unordered_map<std::string, std::uint32_t>;
 extern glyphMap html_names;
 extern glyphMap tex_names;
 extern glyphMap adobe_names;
@@ -338,7 +356,7 @@ extern const char* code_to_name(std::uint32_t code);
 // This is a table that lets me identify codepoints that denote
 // combining/diacritical marks.
 
-extern std::unordered_set<uint32_t> is_combining;
+extern combSet is_combining;
 
 // The way I will handle "complex characters" is intended to be
 // aligned with ncurses. Such a character will be represented as
@@ -376,7 +394,7 @@ extern std::unordered_set<uint32_t> is_combining;
 // Other non-spacing or perhaps double-width characters are also probably
 // a bit of a pain!
 
-inline std::unordered_map<std::uint32_t, cchar_t> ccharmap;
+inline cplxMap ccharmap;
 
 inline uint64_t lookup_composite(cchar_t cc)
 {   uint32_t hash = 0;

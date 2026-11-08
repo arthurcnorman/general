@@ -126,7 +126,10 @@ const char *homedir =
         return r; })();
 
 R4::R4(const std::string& filename) : filename(filename)
-{   setlocale(LC_ALL, "");
+{
+#ifndef __CYGWIN__
+    setlocale(LC_ALL, "");
+#endif
     initscr();
     raw();
     noecho();
@@ -642,6 +645,20 @@ bool R4::withinBlock(int row, int col)
     return true;
 }
 
+// In the colour version of ncurses I want to insert characters this
+// way...
+
+void put_wch(int y, int& x, int ch, int color=fg_white, int attr=0)
+{   cchar_t cc;
+    std::memset(&cc, 0, sizeof(cc));
+    cc.chars[0] = ch;
+    cc.attr = attr;
+    cc.ext_color = color;
+    move(y, x);
+    add_wch(&cc);
+    x++;
+}
+
 // If I am at the position of a mark that is set (and for the main
 // selection block the mark is deemed set for these purposes if the
 // other end of the block is not set!) I will want to interpose a <B>,
@@ -706,16 +723,8 @@ void R4::renderLine(int screeny, int row, string32 line,
         move(screeny, col);
         add_wch(&cc);
     }
-    cchar_t cc;
-    std::memset(&cc, 0, sizeof(cc));
-    cc.chars[0] = ' ';
-    cc.attr = 0;
-    cc.ext_color = fg_white;
     while (col < width)
-    {   move(screeny, col);
-        add_wch(&cc);
-        col++;
-    }
+        put_wch(screeny, col, ' ');
 }
 
 void R4::renderScreen()
@@ -770,21 +779,33 @@ void R4::renderScreen()
         line2.push_back(chh);
     }
     while (line2.length() < width) line2.push_back(' ');
-    move(0, 0);
-    attrset(fg_pale_yellow);
-    for (auto c : line1) addch(c);
-    move(1, 0);
-    attrset(A_REVERSE | fg_magenta);
-    addstr(line2.c_str());
+    int x = 0;
+    for (auto c : line1)
+        put_wch(0, x, c, fg_pale_yellow);
+    x = 0;
+    for (auto c : line2)
+        put_wch(1, x, c, fg_pale_yellow, A_REVERSE);;
+// I may have some help info to display - in which case render it here.
     if (top_lines != nullptr)
     {   int y = 0;
         for (const char**p = top_lines; *p!=nullptr; p++)
-        {   move(y, 0);
-            addstr(*p);
-            for (int i=std::strlen(*p); i<width; i++) addch(' ');
+        {   int x = 0;
+            const char* s = *p;
+            while (*s != 0)
+                put_wch(y, x, *s++, fg_pink);
+            for (int i=std::strlen(*p); i<width; i++)
+                put_wch(y, x, ' ');
             y++;
         }
     }
+// I may be running a dialog to request input from the user. For now I
+// will just make that the very top line of the screen.
+    if (dialog)
+    {   x = 0;
+        for (auto c : input_line)
+            put_wch(0, x, c, fg_magenta);
+    }
+
 // In some cases I may also want to set the low couple of lines to info
 // about possible consequences of ALT-x.
 // ...
@@ -854,7 +875,7 @@ void R4::processKeypress(uint32_t c, bool insert)
     {   if ((c & 0x7f) < ' ') c |= 0x40;
         c = (c & 0xfe000000) | std::tolower(c & 0x7f);
     }
-// I want to treate consecutive uses of ALT-x specially, so I will
+// I want to treat consecutive uses of ALT-x specially, so I will
 // set uniConvActive to false on any other input - i.e. things that disrupt
 // from being consecutive.
     if (c != ('x' | TAG_ALT)) uniConvActive = false;
@@ -1457,10 +1478,17 @@ void R4::find()
 //      This can be useful if you mistype the find string.
 //    ^U will interrupt a search at any time.
 //  -----------------------------------------------------------(press any key)-----
-
-
-
-   pending();
+   input_line = "Find? ";
+   dialog = true;
+   renderScreen();
+   uint32_t ch;
+   for (;;)
+   {   ch = mygetch();
+       if (ch == ' ') break;
+       input_line.push_back(ch);
+       renderScreen();
+   }
+   dialog = false;
 }
 
 void R4::find_and_replace()
@@ -1475,7 +1503,7 @@ void R4::last_find_or_block()
 {   pending();
 }
 
-std::string SS(string32 s)
+std::string SS(string32 s) // Maybe useful for debugging.
 {   return S(s);
 }
 
