@@ -228,6 +228,8 @@ funcMap R4::keymap =
     {'a' | TAG_Q,        &R4::find_and_replace},
     {'b' | TAG_Q,        &R4::goto_start_block},
     {'c' | TAG_Q,        &R4::end_of_text},
+    {'s' | TAG_Q,        &R4::start_of_line},
+    {'d' | TAG_Q,        &R4::end_of_line},
     {'d' | TAG_Q,        &R4::end_of_line},
     {'e' | TAG_Q,        &R4::top_of_screen},
     {'f' | TAG_Q,        &R4::find},
@@ -373,31 +375,44 @@ funcMap R4::keymap =
 // Now information about the keys that are accepted while entering a
 // search string or replacement text or options. There are few enough that
 // use of a switch block rather than a lookup table seems most sense.
-#if 0
 
 bool R4::cmd_process(uint32_t ch)
 {   switch (ch)
     {
-    case CTRL_KEY('a'):              R4::cmd_word_left(); break;
-    case CTRL_KEY('d'):              R4::cmd_char_right(); break;
-    case CTRL_KEY('f'):              R4::cmd_word_right(); break;
-    case CTRL_KEY('g'):              R4::cmd_delete_char(); break;
-    case CTRL_KEY('h'):              R4::cmd_undelete(); break;
-    case CTRL_KEY('i'):              R4::cmd_tab(); break;
-    case CTRL_KEY('j'):              return true;
-    case CTRL_KEY('s'):              R4::cmd_char_left(); break;
-    case CTRL_KEY('t'):              R4::cmd_delete_word(); break;
-    case 0x7f:                       R4::cmd_backspace(); break;
-    case 'x' | TAG_ALT:              R4::cmd_unicodeConvert(); break;
-    case KEY_LEFT | TAG_FN:          R4::cmd_char_left(); break;
-    case KEY_RIGHT | TAG_FN:         R4::cmd_char_right(); break;
-    case KEY_BACKSPACE | TAG_FN:     R4::cmd_backspace(); break;
-    case KEY_DC | TAG_FN:            R4::cmd_delete_char(); break;
-    case KEY_ENTER | TAG_FN:         return true;
-    default:                         return false
+    case CTRL_KEY('a'):              R4::cmd_word_left();   return false;
+    case CTRL_KEY('d'):              R4::cmd_char_right();  return false;
+    case CTRL_KEY('f'):              R4::cmd_word_right();  return false;
+    case CTRL_KEY('g'):              R4::cmd_delete_char(); return false;
+    case CTRL_KEY('h'):              R4::cmd_undelete();    return false;
+    case CTRL_KEY('i'):              R4::cmd_tab();         return false;
+    case CTRL_KEY('j'):                                     return true;
+    case CTRL_KEY('s'):              R4::cmd_char_left();   return false;
+    case CTRL_KEY('t'):              R4::cmd_delete_word(); return false;
+    case 's' | TAG_Q:                R4::cmd_start_of_line();return false;
+    case 'd' | TAG_Q:                R4::cmd_end_of_line();  return false;
+    case 0x7f:                       R4::cmd_backspace();    return false;
+    case 'x' | TAG_ALT:              R4::cmd_unicodeConvert(); return false;
+    case KEY_LEFT | TAG_FN:          R4::cmd_char_left();      return false;
+    case KEY_RIGHT | TAG_FN:         R4::cmd_char_right();     return false;
+    case KEY_BACKSPACE | TAG_FN:     R4::cmd_backspace();      return false;
+    case KEY_DC | TAG_FN:            R4::cmd_delete_char();    return false;
+    case KEY_ENTER | TAG_FN:                                   return true;
+    default:                                                   break;
     }
+// The view I take is that control characters 
+    if (ch < ' ' || ch > 0x0010ffff) return true;
+// Also the special values that ncurses can return for dedicated and
+// function keys. Those values would alias with Unicode characters in the
+// range U+0100 to U+0200 and that is the block "Latin Extended-A" which has
+// many accented characters that one could easily imagine being present
+// on some European keyboards. This issue is one for ncurses and there is
+// probably little I can do about it! All should be well provided keyboard
+// input gets sent to me in utf-8 format because then the curses getch()
+// function will return its KEY_LEFT and the like in ways that let me
+// put in TAG_FN to keep the code distint from Latin Extended. Maybe there
+// is no need to worry?
+    cmd_insert_char(ch);
+    return false;
 }
-
-#endif
 
 // end of keymap.cpp

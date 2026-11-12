@@ -171,19 +171,11 @@ R4::R4(const std::string& filename) : filename(filename)
     getmaxyx(stdscr, height, width);
     wx = wy = cx = cy = 0;
     last_lexed_line = -1;
+    columnMode = false;
     startBlockLine = -1;
     startBlockCol = -1;
     endBlockLine = -1;
-    columnMode = false;
     endBlockCol = -1;
-#if DEBUG
-// To see how it shows up!
-    startBlockLine = 4;
-    startBlockCol = 7;
-    endBlockLine = 8;
-    endBlockCol = 22;
-    columnMode = true;
-#endif
     for (int i=0; i<10; i++)
     {   markLine[i] = -1;
         markCol[i] = -1;
@@ -803,7 +795,7 @@ void R4::renderScreen()
     if (dialog)
     {   x = 0;
         for (auto c : input_line)
-            put_wch(0, x, c, fg_magenta);
+            put_wch(0, x, c, x < prompt_length ? fg_magenta : fg_green);
     }
 
 // In some cases I may also want to set the low couple of lines to info
@@ -882,7 +874,7 @@ void R4::processKeypress(uint32_t c, bool insert)
     if (keymap.count(c) > 0) (this->*keymap[c])();
     else if (insert)
     {   buffer[cy].insert(cx, 1, c);
-        marks_after_insert();
+        if (!dialog) marks_after_insert();
         cx++;
     }
 }
@@ -907,10 +899,17 @@ int main(int argc, char* argv[])
 void R4::insert_char(uint32_t c)
 {   buffer[cy].insert(cx, 1, c);
     display("After inserting char: ", buffer[cy]);
-    marks_after_insert();
+    if (!dialog) marks_after_insert();
     cx++;
 // If I just inserted a combining mark I need to tidy up
     normalise(buffer[cy], cx);
+}
+
+void R4::cmd_insert_char(uint32_t c)
+{   input_line.insert(cmd_cx, 1, c);
+    cmd_cx++;
+// If I just inserted a combining mark I need to tidy up
+    normalise(input_line, cmd_cx);
 }
 
 void R4::displayMenu(const char* menu[])
@@ -1025,7 +1024,7 @@ void R4::insert_newline()
     string32 tail = buffer[cy].substr(cx);
 // If there are marks on the part of the line after the current cursor
 // then they will need to be moved to the next line
-    marks_after_newline();
+    if (!dialog) marks_after_newline();
     delete_to_eol();
     if (last_lexed_line >= cy) last_lexed_line = cy-1;
     buffer.insert(buffer.begin()+cy+1, tail);
@@ -1053,6 +1052,11 @@ void R4::char_left()
     makeCursorVisible();
 }
 
+void R4::cmd_char_left()
+{   if (cmd_cx > prompt_length) cmd_cx--;
+//    makeCursorVisible();
+}
+
 void R4::char_right()
 {   if (cx < buffer[cy].length()) cx++;
     else if (cx == buffer[cy].length() &&
@@ -1061,6 +1065,11 @@ void R4::char_right()
         cx = 0;
     }
     makeCursorVisible();
+}
+
+void R4::cmd_char_right()
+{   if (cmd_cx < input_line.length()) cmd_cx++;
+//    makeCursorVisible();
 }
 
 void R4::scroll_page_up()
@@ -1131,14 +1140,19 @@ void R4::scroll_down()
 }
 
 void R4::delete_forward(int n)
-{   marks_after_delete_forward(n);
+{   if (!dialog) marks_after_delete_forward(n);
     buffer[cy].erase(cx+1, n);
+}
+
+void R4::cmd_delete_forward(int n)
+{   input_line.erase(cmd_cx+1, n);
 }
 
 // This one deletes whole n glyphs without regard to whether they
 // are built up using combining chars.
+
 void R4::delete_backward(int n)
-{   marks_after_delete_back(n);
+{   if (!dialog) marks_after_delete_back(n);
     if (n > cx)
     {   beep();
         n = cx;
@@ -1147,12 +1161,18 @@ void R4::delete_backward(int n)
     buffer[cy].erase(cx, n);
 }
 
+void R4::cmd_delete_backward(int n)
+{   if (n > cmd_cx-prompt_length) n = cmd_cx;
+    cmd_cx -= n;
+    input_line.erase(cmd_cx, n);
+}
+
 void R4::join_lines()
 {   if (cy == 0)
     {   beep();
         return;
     }
-    marks_after_join_line();
+    if (!dialog) marks_after_join_line();
     cx = buffer[cy-1].length();
     for (auto c : buffer[cy])
         buffer[cy-1].push_back(c);
@@ -1172,6 +1192,12 @@ void R4::backspace()
     }
 }
 
+void R4::cmd_backspace()
+{   if (cmd_cx <= prompt_length) return;
+    denormalise(input_line, cmd_cx);
+    cmd_delete_backward(1);
+}
+
 void R4::delete_char()
 {   size_t n = buffer[cy].length();
     if (cx == n-1)
@@ -1184,6 +1210,12 @@ void R4::delete_char()
         }
     }
     else delete_forward(1);
+}
+
+void R4::cmd_delete_char()
+{   size_t n = input_line.length();
+    if (cx == n-1) return;
+    else cmd_delete_forward(1);
 }
 
 void R4::delete_to_eol()
@@ -1235,14 +1267,29 @@ void R4::word_left()
         return;
     }
     cx--;
-    while (cx < line.length() &&
+    while (cx >= 0 &&
            line[cx] <= 0x7e &&
            std::isspace(line[cx])) cx--;
-    while (cx < line.length() &&
+    while (cx >= 0 &&
            (line[cx] > 0x7e ||
             !std::isspace(line[cx]))) cx--;
     cx++;
     makeCursorVisible();
+}
+
+void R4::cmd_word_left()
+{   string32 line = input_line;
+    if (cmd_cx <= prompt_length)   // do nothing if at start.
+        return;
+    cmd_cx--;
+    while (cmd_cx >= prompt_length &&
+           input_line[cmd_cx] <= 0x7e &&
+           std::isspace(input_line[cmd_cx])) cmd_cx--;
+    while (cmd_cx >= prompt_length &&
+           (line[cx] > 0x7e ||
+            !std::isspace(input_line[cmd_cx]))) cmd_cx--;
+    cmd_cx++;
+//    makeCursorVisible();   I may need to do horizontal scrolling...
 }
 
 void R4::word_right()
@@ -1261,14 +1308,37 @@ void R4::word_right()
     makeCursorVisible();
 }
 
+void R4::cmd_word_right()
+{   string32 line = input_line;
+    if (cmd_cx == input_line.length()) return;
+    cmd_cx++;
+    while (cmd_cx < input_line.length() &&
+           (input_line[cmd_cx] > 0x7e ||
+            !std::isspace(input_line[cmd_cx]))) cmd_cx++;
+    while (cmd_cx < input_line.length() &&
+           input_line[cmd_cx] <= 0x7e &&
+           std::isspace(input_line[cmd_cx])) cmd_cx++;
+//    makeCursorVisible();
+}
+
 void R4::start_of_line()
 {   cx = 0;
     makeCursorVisible();
 }
 
+void R4::cmd_start_of_line()
+{   cmd_cx = prompt_length;
+//    makeCursorVisible();
+}
+
 void R4::end_of_line()
-{   cx = buffer[cy].length();
+{   cx = input_line.length();
     makeCursorVisible();
+}
+
+void R4::cmd_end_of_line()
+{   cmd_cx = input_line.length();
+//    makeCursorVisible();
 }
 
 void R4::top_of_screen()
@@ -1299,7 +1369,15 @@ void R4::undelete()
 {   pending();
 }
 
+void R4::cmd_undelete()
+{   pending();
+}
+
 void R4::tab()
+{   pending();
+}
+
+void R4::cmd_tab()
 {   pending();
 }
 
@@ -1312,6 +1390,10 @@ void R4::insert_return()
 }
 
 void R4::delete_word()
+{   pending();
+}
+
+void R4::cmd_delete_word()
 {   pending();
 }
 
@@ -1478,14 +1560,14 @@ void R4::find()
 //      This can be useful if you mistype the find string.
 //    ^U will interrupt a search at any time.
 //  -----------------------------------------------------------(press any key)-----
-   input_line = "Find? ";
+   input_line = L("Find? ");
+   prompt_length = input_line.length();
    dialog = true;
    renderScreen();
    uint32_t ch;
    for (;;)
    {   ch = mygetch();
-       if (ch == ' ') break;
-       input_line.push_back(ch);
+       if (cmd_process(ch)) break;
        renderScreen();
    }
    dialog = false;

@@ -141,8 +141,12 @@ public:
 // There are things I sometimes need to display as the top few lines
 // on the screen...
     const char** top_lines;
+
+// When I nee input from the user I see the dialog flag and then use
+// input_line where the first prompt_length chars are fixed (prompt). 
     bool dialog;
-    std::string input_line;
+    string32 input_line;
+    int prompt_length;
 
 // Positions:
     int cx=0, cy=0;            // cursor position
@@ -326,18 +330,24 @@ public:
     string32 saved_line;
     int cmd_cx;
     bool cmd_process(uint32_t ch);
-    void cmd_insert_char(uint32_t c);
-    void cmd_tab();
-    void cmd_delete_forward(int n);
-    void cmd_delete_backward(int n);
+
     void cmd_char_left();
     void cmd_char_right();
     void cmd_word_left();
     void cmd_word_right();
+    void cmd_start_of_line();
+    void cmd_end_of_line();
+
+    void cmd_insert_char(uint32_t c);
+    void cmd_tab();
+
+    void cmd_delete_forward(int n);
+    void cmd_delete_backward(int n);
     void cmd_backspace();
     void cmd_delete_char();
     void cmd_undelete();
     void cmd_delete_word();
+
     void cmd_unicodeConvert();
 };
 

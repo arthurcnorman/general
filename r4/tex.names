@@ -16,7 +16,7 @@
  *       with the distribution.                                           *
  *                                                                        *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS    *
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT      *
+ * ,   "AS IS,   " AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT      *
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS      *
  * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE         *
  * COPYRIGHT OWNERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,   *
@@ -29,64 +29,52 @@
  * DAMAGE.                                                                *
  *************************************************************************/
 
-// $Id$
-
-#include <string>
-#include <cstdint>
-#include <unordered_map>
-
-using glyphMap = std::unordered_map<std::string, std::uint32_t>;
-
+// $Id: 224cc69582a5ce556d8d0ab633bd2cc4c28ffe1f $
 
 // Here I have a table showing the names of TeX/LaTeX symbols. In TeX each
-// would be presented with an initial "\" but I do not show that here.
+// would be presented with an initial ,   "\,   " but I do not show that here.
 // Each is paired with a Unicode codepoint.
 
 // Right now this is a place-holder until I find a nice list of
 // TeX symbols that is shorter than the huge comprehensive one and that
 // provides me with unicode equivalents.
 
-glyphMap tex_names =
-{
-    {"Alpha",                 0x0391},
-    {"alpha",                 0x0381},
-    {"neg",                   0x00AC},
-    {"pm",                    0x00B1},
-    {"cdot",                  0x00B7},
-    {"to",                    0x2192},
-    {"Rightarrow",            0x21D2},
-    {"Leftrightarrow",        0x21D4},
-    {"forall",                0x2200},
-    {"partial",               0x2202},
-    {"exists",                0x2203},
-    {"emptyset",              0x2205},
-    {"nabla",                 0x2207},
-    {"in",                    0x2208},
-    {"notin",                 0x2209},
-    {"prod",                  0x220F},
-    {"sum",                   0x2211},
-    {"surd",                  0x221A},
-    {"infty",                 0x221E},
-    {"wedge",                 0x2227},
-    {"vee",                   0x2228},
-    {"cap",                   0x2229},
-    {"cup",                   0x222A},
-    {"int",                   0x222B},
-    {"approx",                0x2248},
-    {"neq",                   0x2260},
-    {"equiv",                 0x2261},
-    {"leq",                   0x2264},
-    {"geq",                   0x2265},
-    {"subset",                0x2282},
-    {"supset",                0x2283},
-    {"circ",                  0x00B0},
-    {"times",                 0x00D7},
-    {"lfloor",                0x230A},
-    {"rfloor",                0x230B},
-    {"lceil",                 0x2308},
-    {"rceil",                 0x2309}
-};
+    {0x0391,   "Alpha"},
+    {0x0381,   "alpha"},
+    {0x00AC,   "neg"},
+    {0x00B1,   "pm"},
+    {0x00B7,   "cdot"},
+    {0x2192,   "to"},
+    {0x21D2,   "Rightarrow"},
+    {0x21D4,   "Leftrightarrow"},
+    {0x2200,   "forall"},
+    {0x2202,   "partial"},
+    {0x2203,   "exists"},
+    {0x2205,   "emptyset"},
+    {0x2207,   "nabla"},
+    {0x2208,   "in"},
+    {0x2209,   "notin"},
+    {0x220F,   "prod"},
+    {0x2211,   "sum"},
+    {0x221A,   "surd"},
+    {0x221E,   "infty"},
+    {0x2227,   "wedge"},
+    {0x2228,   "vee"},
+    {0x2229,   "cap"},
+    {0x222A,   "cup"},
+    {0x222B,   "int"},
+    {0x2248,   "approx"},
+    {0x2260,   "neq"},
+    {0x2261,   "equiv"},
+    {0x2264,   "leq"},
+    {0x2265,   "geq"},
+    {0x2282,   "subset"},
+    {0x2283,   "supset"},
+    {0x00B0,   "circ"},
+    {0x00D7,   "times"},
+    {0x230A,   "lfloor"},
+    {0x230B,   "rfloor"},
+    {0x2308,   "lceil"},
+    {0x2309,   "rceil"},
 
-// end of texnames.cpp
-
-    
+// end of tex.names

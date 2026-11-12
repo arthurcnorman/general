@@ -7,9 +7,10 @@
 # into r4. The resulting name is short and easy to type.
 
 ifeq ($(OS),Windows NT)
-CXX=x86_64-w64-mingw32-g++
+CXX=x86_64-w64-mingw32-g++ -fconstexpr-ops-limit=100000000 -fdiagnostics-color=never
 else
-CXX=clang++
+CXX=clang++ -fconstexpr-steps=0 -fno-color-diagnostics 
+#CXX=g++ -fconstexpr-ops-limit=100000000 -fdiagnostics-color=never
 endif
 
 OPTS=-O0 -g -DDEBUG=1
