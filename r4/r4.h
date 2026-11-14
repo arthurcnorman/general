@@ -36,7 +36,6 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <filesystem>
-#include <string>
 #include <locale>
 #include <codecvt>
 #include <fstream>
@@ -45,12 +44,12 @@
 #include <cstdio>    
 #include <cctype>
 #include <cstdlib>
-#include <cstring>
-#include <cstdint>
 #include <cwctype>
 #include <cassert>
 
 #include <unistd.h>
+
+#include "cuckoo.h"
 
 #ifndef NCURSES_WIDECHAR
 #define NCURSES_WIDECHAR 1
@@ -408,8 +407,10 @@ inline cplxMap ccharmap;
 
 inline uint64_t lookup_composite(cchar_t cc)
 {   uint32_t hash = 0;
+#ifdef DEBUG
     fprintf(logfile(), "lookup composite %x %x %x\n",
                        cc.chars[0], cc.chars[1], cc.chars[2]);
+#endif
     for (auto c : cc.chars)
         hash = (314159U*hash + c) % 0xffeefff3U + 0x00110000U;
 // The multiplier 314159 happens to be prime but is basically picked
@@ -431,8 +432,10 @@ inline uint64_t lookup_composite(cchar_t cc)
     for (;;)
     {   if (ccharmap.count(hash) == 0) // not found: insert in table.
         {   ccharmap[hash] = cc;
+#ifdef DEBUG
             fprintf(logfile(), "cchar %x %x %x put at %x \n",
                                cc.chars[0], cc.chars[1], cc.chars[2], hash);
+#endif
             return hash;
         }
         cchar_t& w = ccharmap[hash];   // probe.

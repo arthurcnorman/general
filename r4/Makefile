@@ -6,43 +6,60 @@
 # My name is Arthur and when slurred that turns into arfur and thus
 # into r4. The resulting name is short and easy to type.
 
+
+# Setting up the static data about Unicode uses a significant amount of
+# compile-time processing so I need to override the default limits on that.
+# Also I find that coloured diagnostic output makes inspection of log
+# files harder in some cases, so I switch that off.
+
 ifeq ($(OS),Windows NT)
-CXX=x86_64-w64-mingw32-g++ -fconstexpr-ops-limit=100000000 -fdiagnostics-color=never
+CXX=x86_64-w64-mingw32-g++ -std=c++23 -fconstexpr-ops-limit=200000000 \
+	-fdiagnostics-color=never
 else
-CXX=clang++ -fconstexpr-steps=0 -fno-color-diagnostics 
-#CXX=g++ -fconstexpr-ops-limit=100000000 -fdiagnostics-color=never
+CXX=clang++ -std=c++23 -fconstexpr-steps=0 -fno-color-diagnostics 
+#CXX=g++ std=c++23 -fconstexpr-ops-limit=200000000 -fdiagnostics-color=never
 endif
 
-OPTS=-O0 -g -DDEBUG=1
-# OPTS=-O3
+CXXFLAGS=-O3
 
-CXXFLAGS=$(OPTS) -std=c++23
+all:	r4
 
-# The distinction between SOURCES and TABLES is that SOURCES are the
-# files with genuine code and that depends on r4.h. TABLES are just
-# static data and do not depend on the internals of this program so
-# they have no dependency on r4.h and that avoid need to rebuild them
-# for changes there that do not impact them.
+debug:	CXXFLAGS += -DDEBUG -O0 -g
+debug:	r4
+
+# The distinction between SOURCES and LOOKUP is that SOURCES are the
+# files with genuine code and that depends on r4.h. LOOKUP just sets up
+# static data and does not depend on the internals of this program so
+# it has no dependency on r4.h and that avoid need to rebuild it
+# for changes there that do not impact it. The file "codepoints.cpp"
+# uses *.names which provide tabulation of names for characters.
 #
-# entities.cpp counts as a source because some of the codes it maps names
-# onto need combining characters and the way in which I pack those
-# "complex characters" needs m4.h.
+SOURCES =	r4.cpp uniconv.cpp keymap.cpp
 
-SOURCES = 	r4.cpp uniconv.cpp keymap.cpp entities.cpp
+LOOKUP =	codepoints.cpp
 
-TABLES =	adobenames.cpp texnames.cpp combining.cpp \
-		unicode-1.cpp unicode-2.cpp unicode-3.cpp unicode-4.cpp
+DATA =		adobe.names combining.names html.names my.names \
+		tex.names unicode.names
 
-OBJECTS=$(SOURCES:.cpp=.o) $(TABLES:.cpp=.o)
+
+OBJECTS=$(SOURCES:.cpp=.o) $(LOOKUP:.cpp=.o)
+ASMFILES=$(SOURCES:.cpp=.s) $(LOOKUP:.cpp=.s)
+
 
 r4:	$(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -l ncursesw -o r4
 
-$(SOURCES:.cpp=.o):	%.o:	 %.cpp r4.h
+$(SOURCES:.cpp=.o):	%.o:	 %.cpp r4.h cuckoo.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(TABLES:.cpp=.o):	%.o:	 %.cpp
+$(LOOKUP:.cpp=.o):	%.o:	 %.cpp $(DATA) cuckoo.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+$(SOURCES:.cpp=.s):	%.s:	 %.cpp r4.h cuckoo.h
+	$(CXX) $(CXXFLAGS) -S $< -o $@
+
+$(LOOKUP:.cpp=.s):	%.s:	 %.cpp $(DATA) cuckoo.h
+	$(CXX) $(CXXFLAGS) -S $< -o $@
 
 
 # If I am NOT building on Windows I will attempt a cross-build for that
@@ -54,15 +71,15 @@ $(TABLES:.cpp=.o):	%.o:	 %.cpp
 
 ifneq ($(OS),Windows NT)
 
-WOBJECTS=$(SOURCES:.cpp=.obj) $(TABLES:.cpp=.obj)
+WOBJECTS=$(SOURCES:.cpp=.obj) $(LOOKUP:.cpp=.obj)
 
 r4.exe:	$(WOBJECTS)
 	x86_64-w64-mingw32-g++ $(CXXFLAGS) $(WOBJECTS) -l ncursesw -o r4.exe
 
-$(SOURCES:.cpp=.obj):	%.obj:	%.cpp r4.h
+$(SOURCES:.cpp=.obj):	%.obj:	%.cpp r4.h cuckoo.h
 	x86_64-w64-mingw32-g++ $(CXXFLAGS) -c $< -o $@
 
-$(TABLES:.cpp=.obj):	%.obj:	 %.cpp
+$(LOOKUP:.cpp=.obj):	%.obj:	 %.cpp $(DATA) cuckoo.h
 	x86_64-w64-mingw32-g++ $(CXXFLAGS) -c $< -o $@
 
 endif
@@ -71,7 +88,7 @@ clean:
 	rm *.o *.exe r4 *.tgz *.bak* *.old* *.tmp*
 
 
-r4.tgz:	Makefile r4.h $(SOURCES)
+r4.tgz:	Makefile r4.h $(SOURCES) $(LOOKUP) $(DATA)
 	tar cvfz r4.tgz Makefile r4.h $(SOURCES)
 
 # end of Makefile
