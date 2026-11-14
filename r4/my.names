@@ -35,6 +35,10 @@
 // The names here are abbreviations that I am introducing, typically
 // very short and I hope therefore easy to remember and type.
 
+// Note that when I define abbreviated names for combining characters
+// here I just set the top bit in their code. So for instance I might
+// have "cedilla" for a spacing cedilla (U+00b8) and "#cedilla" for
+// a combinng cedilla that I will put here as if it was U+80000327.
 
 // Here are som marks I might expect to like using in mathematics.
      {0x2102,          "!C"},   // double struck C for complex numbers
