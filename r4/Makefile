@@ -1,4 +1,4 @@
-# Makefile for r4.
+# Makefile for r4
 
 # "r4" is a program editor modelled after (antique) wordstar but
 # providing support for Unicode text including use of combining
@@ -49,17 +49,21 @@ ASMFILES=$(SOURCES:.cpp=.s) $(LOOKUP:.cpp=.s)
 r4:	$(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -l ncursesw -o r4
 
+testcode:	testcode.cpp codepoints.o
+	$(CXX) $(CXXFLAGS) -O0 -g testcode.cpp codepoints.o -o testcode
+
 $(SOURCES:.cpp=.o):	%.o:	 %.cpp r4.h cuckoo.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(LOOKUP:.cpp=.o):	%.o:	 %.cpp $(DATA) cuckoo.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+# In a .s file I do not want debug tables etc.
 $(SOURCES:.cpp=.s):	%.s:	 %.cpp r4.h cuckoo.h
-	$(CXX) $(CXXFLAGS) -S $< -o $@
+	$(CXX) $(CXXFLAGS) -S -O3 -g0 $< -o $@
 
 $(LOOKUP:.cpp=.s):	%.s:	 %.cpp $(DATA) cuckoo.h
-	$(CXX) $(CXXFLAGS) -S $< -o $@
+	$(CXX) $(CXXFLAGS) -S -O3 -g0 $< -o $@
 
 
 # If I am NOT building on Windows I will attempt a cross-build for that

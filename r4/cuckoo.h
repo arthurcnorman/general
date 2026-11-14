@@ -2,6 +2,7 @@
 #include <cstring>
 #include <iostream>
 #include <utility>
+#include <algorithm>
 #include <initializer_list>
 
 // To advise me (at compile time) whether the hash tables I use here
@@ -107,7 +108,10 @@ public:
 // that are an index into the tables of names (I will not have
 // a million names), 1 high bits that are a count for when several different
 // names are used for a single codepoint, and one bit that tags whether the
-// code is for a combining mark. This all behaves like a multi-map.
+// code is for a combining mark. This all behaves like a multimap. Note that
+// sometimes a name will be included multiple times in multi-result, but
+// in the result short words come first and when words are the same length
+// they should be lexically ordered, so duplicated will be adjacent.
 
     uint32_t    intkey[3][M] = {-1U};
     uint32_t    intval[3][M] = {0};
@@ -160,7 +164,7 @@ public:
                   [this](const char* a, const char* b)
                   {   return a == nullptr ? false :
                              b == nullptr ? true :
-                             lookup(a) < lookup(b);
+                             ordering(a, b);
                   });
 // Now I have a table or names sorted by the code, so that in particular
 // if multiple names all correspond to the same code then they will be
@@ -189,6 +193,25 @@ public:
             count_of_intstored++;
             p += k;    // skip past the block of names with this codepoint.
         }
+    }
+
+    constexpr int len(const char* a)
+    {   int n = 0;
+        while (*a++ != 0) n++;
+        return n;
+    }
+
+    constexpr bool ordering(const char* a, const char* b)
+    {   uint32_t va = lookup(a);
+        uint32_t vb = lookup(b);
+        if (va != vb) return va < vb;
+        va = len(a);
+        vb = len(b);
+        if (va != vb) return va < vb;
+        while ((va=*a++) == (vb=*b++))
+        {   if (va == 0) return true;
+        }
+        return va < vb;
     }
 
     constexpr bool strequal(const char* a, const char* b) const
