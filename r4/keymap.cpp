@@ -377,20 +377,24 @@ funcMap R4::keymap =
 // use of a switch block rather than a lookup table seems most sense.
 
 bool R4::cmd_process(uint32_t ch)
-{   switch (ch)
+{
+#ifdef DEBUG
+    fprintf(logfile(), "char for cmd_process = %x\n", ch);
+#endif
+    switch (ch)
     {
-    case CTRL_KEY('a'):              R4::cmd_word_left();   return false;
-    case CTRL_KEY('d'):              R4::cmd_char_right();  return false;
-    case CTRL_KEY('f'):              R4::cmd_word_right();  return false;
-    case CTRL_KEY('g'):              R4::cmd_delete_char(); return false;
-    case CTRL_KEY('h'):              R4::cmd_undelete();    return false;
-    case CTRL_KEY('i'):              R4::cmd_tab();         return false;
-    case CTRL_KEY('j'):                                     return true;
-    case CTRL_KEY('s'):              R4::cmd_char_left();   return false;
-    case CTRL_KEY('t'):              R4::cmd_delete_word(); return false;
-    case 's' | TAG_Q:                R4::cmd_start_of_line();return false;
-    case 'd' | TAG_Q:                R4::cmd_end_of_line();  return false;
-    case 0x7f:                       R4::cmd_backspace();    return false;
+    case CTRL_KEY('a'):              R4::cmd_word_left();      return false;
+    case CTRL_KEY('d'):              R4::cmd_char_right();     return false;
+    case CTRL_KEY('f'):              R4::cmd_word_right();     return false;
+    case CTRL_KEY('g'):              R4::cmd_delete_char();    return false;
+    case CTRL_KEY('h'):              R4::cmd_undelete();       return false;
+    case CTRL_KEY('i'):              R4::cmd_tab();            return false;
+    case CTRL_KEY('j'):                                        return true;
+    case CTRL_KEY('s'):              R4::cmd_char_left();      return false;
+    case CTRL_KEY('t'):              R4::cmd_delete_word();    return false;
+    case 's' | TAG_Q:                R4::cmd_start_of_line();  return false;
+    case 'd' | TAG_Q:                R4::cmd_end_of_line();    return false;
+    case 0x7f:                       R4::cmd_backspace();      return false;
     case 'x' | TAG_ALT:              R4::cmd_unicodeConvert(); return false;
     case KEY_LEFT | TAG_FN:          R4::cmd_char_left();      return false;
     case KEY_RIGHT | TAG_FN:         R4::cmd_char_right();     return false;

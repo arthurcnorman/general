@@ -43,6 +43,7 @@ DATA =		adobe.names combining.names html.names my.names \
 		tex.names unicode.names
 
 
+SRCOBJECTS=$(SOURCES:.cpp=.o)
 OBJECTS=$(SOURCES:.cpp=.o) $(LOOKUP:.cpp=.o)
 ASMFILES=$(SOURCES:.cpp=.s) $(LOOKUP:.cpp=.s)
 
@@ -88,6 +89,9 @@ $(LOOKUP:.cpp=.obj):	%.obj:	 %.cpp $(DATA) cuckoo.h
 	x86_64-w64-mingw32-g++ $(CXXFLAGS) -c $< -o $@
 
 endif
+
+predebug semiclean:
+	rm $(SRCOBJECTS)
 
 clean:
 	rm *.o *.exe r4 *.tgz *.bak* *.old* *.tmp*

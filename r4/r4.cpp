@@ -63,13 +63,17 @@ FILE* logfile()
 enum My_colours
 {  COLOR_PINK      = 8,
    COLOR_PALE_BLUE,
-   COLOR_PALE_YELLOW
+   COLOR_PALE_YELLOW,
+   COLOR_PALE_GREEN,
+   COLOR_MAUVE
 };
 
 enum My_pairs
 {  fg_pink         = 8,
    fg_pale_blue,
-   fg_pale_yellow
+   fg_pale_yellow,
+   fg_pale_green,
+   fg_mauve
 };
 
 // I am going to want std::unordered_multimap built using all the
@@ -134,6 +138,8 @@ R4::R4(const std::string& filename) : filename(filename)
     init_color(COLOR_PINK, 999, 700, 700); 
     init_color(COLOR_PALE_BLUE, 600, 600, 999); 
     init_color(COLOR_PALE_YELLOW, 999, 999, 700); 
+    init_color(COLOR_PALE_GREEN, 700, 999, 700); 
+    init_color(COLOR_MAUVE, 999, 700, 990); 
 
 //
 // Colours:
@@ -151,11 +157,13 @@ R4::R4(const std::string& filename) : filename(filename)
     init_pair(fg_blue,    COLOR_BLUE, COLOR_BLACK);
     init_pair(fg_magenta, COLOR_MAGENTA, COLOR_BLACK);
     init_pair(fg_cyan,    COLOR_CYAN, COLOR_BLACK);
-    init_pair(fg_white ,  COLOR_WHITE, COLOR_BLACK);
 
     init_pair(fg_pink ,         COLOR_PINK, COLOR_BLACK);
     init_pair(fg_pale_blue ,    COLOR_PALE_BLUE, COLOR_BLACK);
+    init_pair(fg_white ,        COLOR_WHITE, COLOR_BLACK);
     init_pair(fg_pale_yellow ,  COLOR_PALE_YELLOW, COLOR_BLACK);
+    init_pair(fg_pale_green ,   COLOR_PALE_GREEN, COLOR_BLACK);
+    init_pair(fg_mauve ,        COLOR_MAUVE, COLOR_BLACK);
 
 
     attron(COLOR_PAIR(fg_white));
@@ -784,10 +792,15 @@ void R4::renderScreen()
     }
 // I may be running a dialog to request input from the user. For now I
 // will just make that the very top line of the screen.
+    fprintf(logfile(), "dialog = %d\n", dialog);
     if (dialog)
     {   x = 0;
+        display("in renderscreen ", input_line);
         for (auto c : input_line)
-            put_wch(0, x, c, x < prompt_length ? fg_magenta : fg_green);
+            put_wch(0, x, c, x < prompt_length ? fg_mauve : fg_pale_green);
+        while (x < width)
+            put_wch(0, x, ' ', fg_white);
+
     }
 
 // In some cases I may also want to set the low couple of lines to info
@@ -1553,6 +1566,8 @@ void R4::find()
 //    ^U will interrupt a search at any time.
 //  -----------------------------------------------------------(press any key)-----
    input_line = L("Find? ");
+   cmd_cx = 6;
+   display("input_line=", input_line, " cmd_cx=", cmd_cx);
    prompt_length = input_line.length();
    dialog = true;
    renderScreen();
