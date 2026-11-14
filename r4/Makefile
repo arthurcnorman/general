@@ -22,6 +22,7 @@ endif
 
 CXXFLAGS=-O3
 
+.PHONY:	all
 all:	r4
 
 debug:	CXXFLAGS += -DDEBUG -O0 -g

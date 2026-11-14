@@ -81,22 +81,13 @@ enum My_pairs
 // The table here maps from any string of length from 3 to 11 onto the
 // set of all names that start that way.
 
+#if 0
 class Predictions
 {
 public:
     std::unordered_multimap<std::string, std::string> M;
     Predictions()
-    {   glyphMap tables[] =
-        {   html_names,
-            tex_names,
-            adobe_names,
-            combining_names,
-            unicode_1,
-            unicode_2,
-            unicode_3,
-            unicode_4
-        };
-        for (auto m : tables)
+    {   for (auto m : tables)
         {   for (auto kv : html_names)
             {   std::string s = kv.first;
                 for (int len=3; len<12; len++)
@@ -112,6 +103,7 @@ public:
 // to the user about what ALT-x might do for them.
 
 Predictions P();
+#endif
 
 #include <unistd.h>
 #include <sys/types.h>

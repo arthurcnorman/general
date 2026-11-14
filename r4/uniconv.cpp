@@ -85,7 +85,7 @@ void R4::normalise(string32& line, int& x)
 #ifdef DEBUG
     fprintf(logfile(), "potential combining char = %x\n", c);
 #endif
-    if (!is_combining.contains(c)) return; // A simple character.
+    if ((codepoints.lookup(c) & 0x80000000) == 0) return; // A simple character.
 // Now remove the combining mark from the line.
     line.erase(x-1, 1);
     x--;
@@ -299,43 +299,8 @@ static int hexval(int c)
     else return c + (10 - 'a');
 }
 
-// The table here is the set of names used in HTML to denote characters
-// and so I hope that many of the names will be familiar to many people.
-// They are sorted into a collating order based on their names so I
-// can look up names using binary search. Note that the longest name
-// seems to be of length 31 ("CounterClockwiseContourIntegral"), and the
-// shortest are of length 2 ("mu", "pi" and the quite a few others).
-//
-// The data here is derived from the HTML Living Standard at
-// http://whatwg.org which notes on its contents page
-// "Copyright 2004-2011 Apple Computer, Inc., Mozilla Foundation,
-//  and Opera Software ASA. You are granted a license to use, reproduce
-//  and create derivative works of this document."
-//
-// Some of the character names are shown as mapping onto pairs of Unicode
-// symbols (&acE; is the first such: I might try to render it here as
-// "~=", an &ac; sign (alternating current?) followed by a lowered equals
-// sign). I have commented out all such cases in that it seems bad enough
-// feel like worrying about things like &Afr; (Capital letter A rendered
-// in a Fractur font at codepoint U+1d504) but support for Unicode
-// combining marks and composites is a step too far for me at present!
-//
-// I have added a special extra &hash; to stand for "#" just for the
-// convenience of Reduce. There are also a few other additions that
-// are to assist my conversions to and from HEX. E.g. there is a name
-// &frac12; where the suffix "ac12" could be seen as 4 hex digits. For
-// reasons that apply within my code it is useful to arrange that the
-// name &ac12; will ba mapped onto U+ac12.
-//
-// Just so you know, there are somewhat over 2000 names here.
-
-// I have four lists of character names:
-//   entities.cpp    the HTML entity names intended for use as in &Alpha;
-//   adobenames.cpp  names proposed by Adobe
-//   texnames.cpp    as for use with \Alpha
-//   names from .unicode.rc where the user specifies shortcuts or
-//                          custom names. 
-
+// User shortcusts need to be kept in a dynamic unordered_map because
+// the table is set up at runtime.
 
 glyphMap user_names;  // For user-defined shortcuts.
 
@@ -370,27 +335,22 @@ std::uint32_t lookup_user_name(string32 s)
 std::uint32_t lookup_name(string32 s)
 {   std::string s1 = "";
     for (auto ch : s)
-    {   if (ch >= 0x80) return -1;
+    {   if (ch >= 0x80) return -1U;
         s1.push_back((char)ch);
     }
-// Goodness gracious! What a lot of name-tables I have to search here.
-    if (html_names.count(s1) != 0)  return html_names[s1];
-    if (tex_names.count(s1) != 0)   return tex_names[s1];
-    if (adobe_names.count(s1) != 0) return adobe_names[s1];
-    if (unicode_1.count(s1) != 0)   return unicode_1[s1];
-    if (unicode_2.count(s1) != 0)   return unicode_2[s1];
-    if (unicode_3.count(s1) != 0)   return unicode_3[s1];
-    if (unicode_4.count(s1) != 0)   return unicode_4[s1];
-    if (combining_names.count(s1) != 0)   return combining_names[s1];
+    uint32_t val = codepoints.lookup(s1.c_str());
+// Well: here if the 0x0f000000 field is non-zero I need to create and
+// return a complex char. NOT DONE
+    if (val != -1U) return val;
     if (ishexnum(s1))
     {   int32_t val = std::stoi(s1, nullptr, 16);
 // I will disallow numbers that are either too large or that are in the
 // range of surrogates.
         if (val > 0x0010ffff ||
-            (val >= 0xf800 && val <= 0xdfff)) return -1;
+            (val >= 0xf800 && val <= 0xdfff)) return -1U;
         return val;
     }
-    return -1;
+    return -1U;
 }
 
 // The converse search starts with a code and needs to recover the
@@ -408,15 +368,12 @@ void vecinsert(std::vector<std::string>& v, std::string s)
 }
 
 std::vector<std::string> lookup_code(std::uint32_t c)
-{   std::vector<std::string> v;
-    for (auto kv : user_names)
-        if (kv.second == c) vecinsert(v, kv.first);
-    for (auto kv : html_names)
-        if (kv.second == c) vecinsert(v, kv.first);
-    for (auto kv : tex_names)
-        if (kv.second == c) vecinsert(v, kv.first);
-    for (auto kv : adobe_names)
-        if (kv.second == c) vecinsert(v, kv.first);
+{   uint32_t w = codepoints.lookup(c);
+    size_t offset = w & 0xfffff;
+    size_t len = (w>>20) & 0x7ff;
+    std::vector<std::string> v;
+    for (size_t i=0; i<len; i++)
+        vecinsert(v, std::string(codepoints.names[offset+i]));
     return v;
 }
 

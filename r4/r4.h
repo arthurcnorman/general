@@ -122,7 +122,6 @@ using string32 = std::basic_string<uint32_t>;
 class R4;
 using funcMap = std::unordered_map<wchar_t, void (R4::*)()>;
 using glyphMap = std::unordered_map<std::string, std::uint32_t>;
-using combSet = std::unordered_set<uint32_t>;
 using cplxMap = std::unordered_map<std::uint32_t, cchar_t>;
 
 class R4
@@ -350,22 +349,11 @@ public:
     void cmd_unicodeConvert();
 };
 
-extern glyphMap html_names;
-extern glyphMap tex_names;
-extern glyphMap adobe_names;
-extern glyphMap combining_names;
-extern glyphMap unicode_1;       // Too big to fit comfortably in 1 table!
-extern glyphMap unicode_2;
-extern glyphMap unicode_3;
-extern glyphMap unicode_4;
+extern glyphMap user_names;
 
 extern std::uint32_t name_to_code(const char* name);
 extern const char* code_to_name(std::uint32_t code);
 
-// This is a table that lets me identify codepoints that denote
-// combining/diacritical marks.
-
-extern combSet is_combining;
 
 // The way I will handle "complex characters" is intended to be
 // aligned with ncurses. Such a character will be represented as
@@ -564,7 +552,7 @@ inline constexpr string32 L(const char* a)
     while (*a != 0)
     {   int32_t c  = utf8_getc(a);
         if (c == -1) return string32();     // malformed input
-        if (!is_combining.contains(c))
+        if ((codepoints.lookup(c) & 0x80000000) != 0)
         {   if (prev != -1) r += string32(1, prev);
             prev = c;
             continue;
@@ -572,7 +560,7 @@ inline constexpr string32 L(const char* a)
         if (prev == -1) return string32();  // malformed input
 // Here I want to add the new combing mark to the previous character.
 // This will be a pretty uncommon activity so I feel content doing it
-// inefficiently.
+// inefficiently. NOT DONE YET.
         /* prev = ... */
     }
     if (prev != -1) r += string32(1, prev);
