@@ -46,6 +46,9 @@
 int main()
 {   if (codepoints.OK1) std::cout << "*** Forward table set up properly ***\n";
     if (codepoints.OK2) std::cout << "*** Backward able set up properly ***\n";
+
+    std::cout << "Total table size = " << sizeof(codepoints) << " bytes\n\n";
+
     std::cout << "Table capacity=" << codepoints.table_capacity << "\n"
               << "  count_of_stored=" << codepoints.count_of_stored
               << "  load=" << (100.0*codepoints.count_of_stored/codepoints.table_capacity)
@@ -55,12 +58,23 @@ int main()
               << "  max intprobes=" << codepoints.max_intprobes << "\n";
 
     std::uint32_t point = codepoints.lookup(0x03b1); 
-    std::cout << "index for codepoint U+003b1 is " <<std::hex << point << "\n";
-    bool combine = (point & 0x8000000) != 0;
+    std::cout << "index for codepoint U+03b1 is " <<std::hex << point << "\n";
+    bool combine = point!=-1U && (point & 0x8000000)!=0;
     int count = (point >> 20) & 0x7f;
+    if (point == -1U) count = 0;
     int offset = point & 0xfffff;
     for (int i=0; i<count; i++)
         std::cout << codepoints.names[offset+i] << "\n\n";
+
+    point = codepoints.lookup(0x0013); 
+    std::cout << "index for codepoint U+0013 is " <<std::hex << point << "\n";
+    combine = point!=-1U && (point & 0x8000000)!=0;
+    count = (point >> 20) & 0x7f;
+    if (point == -1U) count = 0;
+    offset = point & 0xfffff;
+    for (int i=0; i<count; i++)
+        std::cout << codepoints.names[offset+i] << "\n\n";
+
     for (int i=0; i<10; i++)
     {   int p = codepoints.namelenp[i];
         std::cout << "length " << std::dec << i << " has "

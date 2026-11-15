@@ -85,7 +85,8 @@ void R4::normalise(string32& line, int& x)
 #ifdef DEBUG
     fprintf(logfile(), "potential combining char = %x\n", c);
 #endif
-    if ((codepoints.lookup(c) & 0x80000000) == 0) return; // A simple character.
+    uint32_t v = codepoints.lookup(x);
+    if (v == -1U || (v & 0x80000000) == 0) return; // A simple character.
 // Now remove the combining mark from the line.
     line.erase(x-1, 1);
     x--;
@@ -132,7 +133,7 @@ void R4::normalise(string32& line, int& x)
     utf32_to_wchar(newchar.chars, ww, CCHARW_MAX);
     line[x-1] = lookup_composite(newchar);
     display("end normalise: ", line, "x = ", x);
-    if (!dialog) marks_after_replace(x+1, x);
+    if (!cmd_active) marks_after_replace(x+1, x);
 }
 
 // If the character before the cursor is "complex", i.e. it involves
@@ -171,7 +172,7 @@ void R4::denormalise(string32& line, int& x)
     x++;
     line.insert(x, 1, final);
     x++;
-    if (!dialog) marks_after_replace(oldx, x);
+    if (!cmd_active) marks_after_replace(oldx, x);
     display("end denormalise", buffer[cy], "cx = ", cx);
 }
 
@@ -394,7 +395,7 @@ void R4::replace_chars_backward(string32& line, int& x)
 // BUT WORRY. If there are marks (eg <B>) present on the line at positions
 // beyond where I have just made changes they can have moved. An especially
 // jolly case is if such a mark was present within the text that go replaced.
-    if (!dialog) marks_after_replace(oldx, x);
+    if (!cmd_active) marks_after_replace(oldx, x);
 }
 
 static void make_wchar(wchar_t* s, int c)
@@ -644,7 +645,7 @@ void R4::unicodeConvert()
 }
 
 void R4::cmd_unicodeConvert()
-{   convert(input_line, cmd_cx);
+{   convert(cmd_line, cmd_cx);
 }
 
 // end of uniconv.cpp

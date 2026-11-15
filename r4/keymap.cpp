@@ -230,7 +230,6 @@ funcMap R4::keymap =
     {'c' | TAG_Q,        &R4::end_of_text},
     {'s' | TAG_Q,        &R4::start_of_line},
     {'d' | TAG_Q,        &R4::end_of_line},
-    {'d' | TAG_Q,        &R4::end_of_line},
     {'e' | TAG_Q,        &R4::top_of_screen},
     {'f' | TAG_Q,        &R4::find},
     {'g' | TAG_Q,        &R4::pending},
@@ -390,6 +389,7 @@ bool R4::cmd_process(uint32_t ch)
     case CTRL_KEY('h'):              R4::cmd_undelete();       return false;
     case CTRL_KEY('i'):              R4::cmd_tab();            return false;
     case CTRL_KEY('j'):                                        return true;
+    case CTRL_KEY('p'):              R4::p_menu();             return false;
     case CTRL_KEY('s'):              R4::cmd_char_left();      return false;
     case CTRL_KEY('t'):              R4::cmd_delete_word();    return false;
     case 's' | TAG_Q:                R4::cmd_start_of_line();  return false;

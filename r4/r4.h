@@ -140,11 +140,16 @@ public:
 // on the screen...
     const char** top_lines;
 
-// When I nee input from the user I see the dialog flag and then use
-// input_line where the first prompt_length chars are fixed (prompt). 
-    bool dialog;
-    string32 input_line;
+// When I need input from the user I see the cmd_active flag and then use
+// cmd_line where the first prompt_length chars are fixed (prompt).
+    bool cmd_active;
+    std::vector<string32*> cmd_lines;
+    int cmd_margin[10];
+    string32 cmd_line;
+    int cmd_cx, cmd_cy;
     int prompt_length;
+    bool cmd_process(uint32_t ch);
+
 
 // Positions:
     int cx=0, cy=0;            // cursor position
@@ -313,21 +318,6 @@ public:
     void goto_line();
     void find();
     void find_and_replace();
-
-// Now there are what are in effect versions of the above that are
-// used for handling a single line that the user is entering text either
-// as a search string, or as the replacement text it must be mapped onto,
-// or just to respond to a question of some sort. These will work using
-// cmd_line and cmd_cx as context, but probably because I have not
-// structured code elsewhere tidily enough I may need (on a temporary basis
-// while using these) to set up the main buffer/cx etc set of variables
-// to refer to this....
-
-    bool cmd_active;
-    string32 cmd_line;
-    string32 saved_line;
-    int cmd_cx;
-    bool cmd_process(uint32_t ch);
 
     void cmd_char_left();
     void cmd_char_right();
@@ -587,7 +577,8 @@ inline constexpr string32 L(const char* a)
     while (*a != 0)
     {   int32_t c  = utf8_getc(a);
         if (c == -1) return string32();     // malformed input
-        if ((codepoints.lookup(c) & 0x80000000) == 0)
+        uint32_t w = codepoints.lookup(c);
+        if (w == -1U || (w & 0x80000000) == 0)
         {   if (prev != -1) r += string32(1, prev);
             prev = c;
             continue;

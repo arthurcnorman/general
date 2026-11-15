@@ -177,6 +177,7 @@ R4::R4(const std::string& filename) : filename(filename)
     {   markLine[i] = -1;
         markCol[i] = -1;
     }
+    cmd_active = false;
     left_margin = 0;
     right_margin = width - 6;
     tab_width = 8;
@@ -800,15 +801,19 @@ void R4::renderScreen()
     }
 // I may be running a dialog to request input from the user. For now I
 // will just make that the very top line of the screen.
-    fprintf(logfile(), "dialog = %d\n", dialog);
-    if (dialog)
-    {   x = 0;
-        display("in renderscreen ", input_line);
-        for (auto c : input_line)
-            put_wch(0, x, c, x < prompt_length ? fg_mauve : fg_pale_green);
-        while (x < width)
-            put_wch(0, x, ' ', fg_white);
-
+    fprintf(logfile(), "dialog = %d\n", cmd_active);
+    if (cmd_active)
+    {   int y = 0;
+        for (auto line : cmd_lines)
+        {   int margin = cmd_margin[y];
+            x = 0;
+            display("in renderscreen ", *line);
+            for (auto c : *line)
+                put_wch(y, x, c, x < margin ? fg_mauve : fg_pale_green);
+            while (x < width)
+                put_wch(y, x, ' ', fg_white);
+            y++;
+        }
     }
 
 // In some cases I may also want to set the low couple of lines to info
@@ -816,8 +821,8 @@ void R4::renderScreen()
 // ...
 // ...
 // ...
-    attrset(0);
-    move(cy-wy+2, cursorx-wx);
+    if (cmd_active) move(cmd_cy, cmd_cx);
+    else move(cy-wy+2, cursorx-wx);
     refresh();
 }
 
@@ -861,7 +866,11 @@ string32 R4::insertMarks(int y)
             r.push_back('>');
         }
         if (cy == y && cx == i) cursorx = r.length();
-        r.push_back(line[i]);
+        if (line[i] < ' ')
+        {   r.push_back('^');
+            r.push_back(line[i] | 0x60);
+        }
+        else r.push_back(line[i]);
     }
     if (cy == y && cx == line.length()) cursorx = r.length();
     return r;
@@ -887,12 +896,12 @@ void R4::processKeypress(uint32_t c, bool insert)
     if (keymap.count(c) > 0) (this->*keymap[c])();
     else if (insert)
     {   buffer[cy].insert(cx, 1, c);
-        if (!dialog) marks_after_insert();
+        if (!cmd_active) marks_after_insert();
         cx++;
     }
 }
 
-R4* tt;
+R4* tt;  // May be useful when debugging.
 
 int main(int argc, char* argv[])
 {   if (argc != 2)
@@ -912,17 +921,17 @@ int main(int argc, char* argv[])
 void R4::insert_char(uint32_t c)
 {   buffer[cy].insert(cx, 1, c);
     display("After inserting char: ", buffer[cy]);
-    if (!dialog) marks_after_insert();
+    if (!cmd_active) marks_after_insert();
     cx++;
 // If I just inserted a combining mark I need to tidy up
     normalise(buffer[cy], cx);
 }
 
 void R4::cmd_insert_char(uint32_t c)
-{   input_line.insert(cmd_cx, 1, c);
+{   cmd_line.insert(cmd_cx, 1, c);
     cmd_cx++;
 // If I just inserted a combining mark I need to tidy up
-    normalise(input_line, cmd_cx);
+    normalise(cmd_line, cmd_cx);
 }
 
 void R4::displayMenu(const char* menu[])
@@ -997,7 +1006,38 @@ void R4::o_menu()
 }
 
 void R4::p_menu()
-{   pending();
+{   timeout(1000);
+    uint32_t c = mygetch();
+    timeout(-1);
+// Note tha the insert_char(c) here inserts the character regardless
+// of whether it is a control one or otherwise "odd". So in particular
+// newline here or a control-h etc get inserted as characters as part
+// of the present line and do not have an editing effect and do not
+// introduce line breaks. A tab inserted this way sits in the buffer as
+// a tab character while a tab when entered normally is treated as
+// entering a newline plus as many blanks as the current line started with.
+    if (c != ERR)
+    {   if (c == ' ') return;
+        if (cmd_active) cmd_insert_char(c);
+        else insert_char(c);
+        return;
+    }
+// Here we waited a second and nothing has been typed, so I will
+// display a menu and then wait for ever.
+    const char* menu[] =
+    {   "------------------- ^P  Entering Literal Control Characters -------------------",
+        "  ANY single character (except space) now entered at the keyboard,",
+        "  including a control character will be entered into the text.",
+        "-------------------------------------------------------------------------------",
+        nullptr
+    };
+    displayMenu(menu);
+    renderScreen();
+    c = mygetch();
+    hideMenu();
+    if (c == ' ') return;
+    if (cmd_active) cmd_insert_char(c);
+    else insert_char(c);
 }
 
 void R4::q_menu()
@@ -1037,7 +1077,7 @@ void R4::insert_newline()
     string32 tail = buffer[cy].substr(cx);
 // If there are marks on the part of the line after the current cursor
 // then they will need to be moved to the next line
-    if (!dialog) marks_after_newline();
+    if (!cmd_active) marks_after_newline();
     delete_to_eol();
     if (last_lexed_line >= cy) last_lexed_line = cy-1;
     buffer.insert(buffer.begin()+cy+1, tail);
@@ -1081,7 +1121,7 @@ void R4::char_right()
 }
 
 void R4::cmd_char_right()
-{   if (cmd_cx < input_line.length()) cmd_cx++;
+{   if (cmd_cx < cmd_line.length()) cmd_cx++;
 //    makeCursorVisible();
 }
 
@@ -1153,19 +1193,19 @@ void R4::scroll_down()
 }
 
 void R4::delete_forward(int n)
-{   if (!dialog) marks_after_delete_forward(n);
+{   if (!cmd_active) marks_after_delete_forward(n);
     buffer[cy].erase(cx+1, n);
 }
 
 void R4::cmd_delete_forward(int n)
-{   input_line.erase(cmd_cx+1, n);
+{   cmd_line.erase(cmd_cx+1, n);
 }
 
 // This one deletes whole n glyphs without regard to whether they
 // are built up using combining chars.
 
 void R4::delete_backward(int n)
-{   if (!dialog) marks_after_delete_back(n);
+{   if (!cmd_active) marks_after_delete_back(n);
     if (n > cx)
     {   beep();
         n = cx;
@@ -1177,7 +1217,7 @@ void R4::delete_backward(int n)
 void R4::cmd_delete_backward(int n)
 {   if (n > cmd_cx-prompt_length) n = cmd_cx;
     cmd_cx -= n;
-    input_line.erase(cmd_cx, n);
+    cmd_line.erase(cmd_cx, n);
 }
 
 void R4::join_lines()
@@ -1185,7 +1225,7 @@ void R4::join_lines()
     {   beep();
         return;
     }
-    if (!dialog) marks_after_join_line();
+    if (!cmd_active) marks_after_join_line();
     cx = buffer[cy-1].length();
     for (auto c : buffer[cy])
         buffer[cy-1].push_back(c);
@@ -1207,7 +1247,7 @@ void R4::backspace()
 
 void R4::cmd_backspace()
 {   if (cmd_cx <= prompt_length) return;
-    denormalise(input_line, cmd_cx);
+    denormalise(cmd_line, cmd_cx);
     cmd_delete_backward(1);
 }
 
@@ -1226,7 +1266,7 @@ void R4::delete_char()
 }
 
 void R4::cmd_delete_char()
-{   size_t n = input_line.length();
+{   size_t n = cmd_line.length();
     if (cx == n-1) return;
     else cmd_delete_forward(1);
 }
@@ -1291,16 +1331,16 @@ void R4::word_left()
 }
 
 void R4::cmd_word_left()
-{   string32 line = input_line;
+{   string32 line = cmd_line;
     if (cmd_cx <= prompt_length)   // do nothing if at start.
         return;
     cmd_cx--;
     while (cmd_cx >= prompt_length &&
-           input_line[cmd_cx] <= 0x7e &&
-           std::isspace(input_line[cmd_cx])) cmd_cx--;
+           cmd_line[cmd_cx] <= 0x7e &&
+           std::isspace(cmd_line[cmd_cx])) cmd_cx--;
     while (cmd_cx >= prompt_length &&
            (line[cx] > 0x7e ||
-            !std::isspace(input_line[cmd_cx]))) cmd_cx--;
+            !std::isspace(cmd_line[cmd_cx]))) cmd_cx--;
     cmd_cx++;
 //    makeCursorVisible();   I may need to do horizontal scrolling...
 }
@@ -1322,15 +1362,15 @@ void R4::word_right()
 }
 
 void R4::cmd_word_right()
-{   string32 line = input_line;
-    if (cmd_cx == input_line.length()) return;
+{   string32 line = cmd_line;
+    if (cmd_cx == cmd_line.length()) return;
     cmd_cx++;
-    while (cmd_cx < input_line.length() &&
-           (input_line[cmd_cx] > 0x7e ||
-            !std::isspace(input_line[cmd_cx]))) cmd_cx++;
-    while (cmd_cx < input_line.length() &&
-           input_line[cmd_cx] <= 0x7e &&
-           std::isspace(input_line[cmd_cx])) cmd_cx++;
+    while (cmd_cx < cmd_line.length() &&
+           (cmd_line[cmd_cx] > 0x7e ||
+            !std::isspace(cmd_line[cmd_cx]))) cmd_cx++;
+    while (cmd_cx < cmd_line.length() &&
+           cmd_line[cmd_cx] <= 0x7e &&
+           std::isspace(cmd_line[cmd_cx])) cmd_cx++;
 //    makeCursorVisible();
 }
 
@@ -1345,12 +1385,12 @@ void R4::cmd_start_of_line()
 }
 
 void R4::end_of_line()
-{   cx = input_line.length();
+{   cx = buffer[cy].length();
     makeCursorVisible();
 }
 
 void R4::cmd_end_of_line()
-{   cmd_cx = input_line.length();
+{   cmd_cx = cmd_line.length();
 //    makeCursorVisible();
 }
 
@@ -1361,7 +1401,7 @@ void R4::top_of_screen()
 }
 
 void R4::bottom_of_screen()
-{   cy = wy + height - 2;
+{   cy = wy + height - 3;
     if (cx > buffer[cy].length()) cx = buffer[cy].length();
     makeCursorVisible();
 }
@@ -1573,11 +1613,16 @@ void R4::find()
 //      This can be useful if you mistype the find string.
 //    ^U will interrupt a search at any time.
 //  -----------------------------------------------------------(press any key)-----
-   input_line = L("Find? ");
-   cmd_cx = 6;
-   display("input_line=", input_line, " cmd_cx=", cmd_cx);
-   prompt_length = input_line.length();
-   dialog = true;
+   string32 empty_line = L("");
+   cmd_line = L("Find? ");
+   prompt_length = cmd_cx = cmd_line.length();
+   cmd_cy = 1;
+   cmd_lines.clear();
+   cmd_lines.push_back(&empty_line); cmd_margin[0] = 0;
+   cmd_lines.push_back(&cmd_line);   cmd_margin[1] = cmd_cx;
+   cmd_lines.push_back(&empty_line); cmd_margin[2] = 0;
+   display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
+   cmd_active = true;
    renderScreen();
    uint32_t ch;
    for (;;)
@@ -1585,7 +1630,52 @@ void R4::find()
        if (cmd_process(ch)) break;
        renderScreen();
    }
-   dialog = false;
+
+   string32 search_line = cmd_line;
+   string32 target = search_line.substr(prompt_length); 
+   display("Search string is: ", target);
+   cmd_line = L("Options (? for info)? ");
+   cmd_cy = 2;
+   cmd_lines.clear();
+   cmd_lines.push_back(&empty_line); cmd_margin[0] = 0;
+   cmd_lines.push_back(&search_line);cmd_margin[1] = prompt_length;
+   prompt_length = cmd_cx = cmd_line.length();
+   cmd_lines.push_back(&cmd_line);   cmd_margin[1] = cmd_cx;
+   cmd_lines.push_back(&empty_line); cmd_margin[2] = 0;
+   display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
+   cmd_active = true;
+   renderScreen();
+   for (;;)
+   {   ch = mygetch();
+       if (cmd_process(ch)) break;
+       renderScreen();
+   }
+   string32 options = cmd_line;
+   display("options = ", options);
+   if (options.find('?') != string32::npos)
+   {   string32 save_options = options;
+       display("Has a query in ", options);
+       cmd_line = L("Options? ");
+       cmd_cy = 8;
+       cmd_lines.clear();
+       cmd_lines.push_back(&empty_line); cmd_margin[0] = 0;
+       cmd_lines.push_back(&search_line);cmd_margin[1] = prompt_length;
+       prompt_length = cmd_cx = cmd_line.length();
+       cmd_lines.push_back(&cmd_line);   cmd_margin[1] = cmd_cx;
+       cmd_lines.push_back(&empty_line); cmd_margin[2] = 0;
+       display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
+       cmd_active = true;
+       renderScreen();
+       for (;;)
+       {   ch = mygetch();
+           if (cmd_process(ch)) break;
+           renderScreen();
+       }
+       options = cmd_line;
+
+
+   }
+   cmd_active = false;
 }
 
 void R4::find_and_replace()
