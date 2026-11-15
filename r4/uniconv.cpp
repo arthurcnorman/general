@@ -338,9 +338,7 @@ std::uint32_t lookup_name(string32 s)
     {   if (ch >= 0x80) return -1U;
         s1.push_back((char)ch);
     }
-    uint32_t val = codepoints.lookup(s1.c_str());
-// Well: here if the 0x0f000000 field is non-zero I need to create and
-// return a complex char. NOT DONE
+    uint32_t val = name_to_code(s1.c_str());
     if (val != -1U) return val;
     if (ishexnum(s1))
     {   int32_t val = std::stoi(s1, nullptr, 16);
@@ -504,10 +502,10 @@ void R4::convert(string32& line, int& x)
         return;
     }
 // Among the names I see for Unicode combining characters I observe
-// "#egyptian_hieroglyph_modifier_damaged_at_bottom_start_and_top_end"
-// and I need to look at enough characters that I will pick up that! I
-// "BOX DRAWINGS LIGHT DIAGONAL UPPER CENTRE TO MIDDLE RIGHT AND MIDDLE LEFT TO LOWER CENTRE"
-// is not (yet?) a name that I recognize but is is 89 letters long.
+// "box_drawings_light_diagonal_upper_centre_to_middle_right_and_middle_left_to_lower_centre"
+// is 89 characters long, so if I am to be able to recognise it I must be
+// willing to look that far back. I believe that is the longest name that
+// the unicode consortium have introduced so far.
     const int longest_name = 90;
     int i = x - longest_name;
     if (i < 0) i = 0;   // only go back as far as the start of the line.

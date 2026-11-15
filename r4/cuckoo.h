@@ -1,3 +1,42 @@
+// cuckoo.h                                    Copyright 2026 Arthur Norman
+
+/**************************************************************************
+ * Copyright (C) 2026, Arthur Norman                                      *
+ *                                                                        *
+ * Redistribution and use in source and binary forms, with or without     *
+ * modification, are permitted provided that the following conditions are *
+ * met:                                                                   *
+ *                                                                        *
+ *     * Redistributions of source code must retain the relevant          *
+ *       copyright notice, this list of conditions and the following      *
+ *       disclaimer.                                                      *
+ *     * Redistributions in binary form must reproduce the above          *
+ *       copyright notice, this list of conditions and the following      *
+ *       disclaimer in the documentation and/or other materials provided  *
+ *       with the distribution.                                           *
+ *                                                                        *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS    *
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT      *
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS      *
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE         *
+ * COPYRIGHT OWNERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,   *
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,   *
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS  *
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND *
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR  *
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF     *
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH   *
+ * DAMAGE.                                                                *
+ *************************************************************************/
+
+// $Id$
+
+// This header file is included by the main one "r4.h" however it is
+// used standalone by codepoints.cpp which sets up some big tables and
+// takes a while to compile, so that changes in the rest of "r4.h" do not
+// trigger recompilatiuon of that file.
+
+
 #include <cstdint>
 #include <cstring>
 #include <iostream>
@@ -116,6 +155,9 @@ public:
     uint32_t    intkey[3][M] = {-1U};
     uint32_t    intval[3][M] = {0};
     const char* names[3*M]   = {nullptr};
+    const char* alphanames[3*M] = {nullptr};
+    static constexpr int nlengths = 30;
+    uint32_t    namelenp[nlengths] = {0};
 
     std::uint64_t hash_multiplier = 0x9e3779b97f4a7c13;
     bool OK1 = true, OK2 = true;
@@ -142,12 +184,13 @@ public:
             intval[i][j] = -1U;
         }
         for (size_t i=0; i<3*M; i++)
-            names[i] = nullptr;
+            names[i] = alphanames[i] = nullptr;
 // Then insert all the data from the initializer_list.
         for (auto s : ss)
         {   if (OK1)
             {   insert(s.second, s.first);
-                names[count_of_stored++] = s.second;
+                names[count_of_stored] = s.second;
+                alphanames[count_of_stored++] = s.second;
             }
         }
 // It could be that with bad luck and the particular hash function in
@@ -193,6 +236,33 @@ public:
             count_of_intstored++;
             p += k;    // skip past the block of names with this codepoint.
         }
+// I want alphanames softed such that shorter names always come first,
+// but within a block of names that have the same length the ordering
+// is lexical.
+        std::sort(std::begin(alphanames), std::end(alphanames),
+                  [this](const char* a, const char* b)
+                  {   return a == nullptr ? false :
+                             b == nullptr ? true :
+                             alphaordering(a, b);
+                  });
+// There can be duplicate names here - I want to get rid of that state
+// of affairs...
+        size_t p1 = 0;
+        size_t p2 = 0;
+        while (p2 < 3*M && alphanames[p2] != nullptr)
+        {   while (strequal(alphanames[p2], alphanames[p1])) p2++;
+            alphanames[++p1] = alphanames[p2++];
+        }
+// Finally I will set pointers to each length-block;
+        int curlen = 0;
+        namelenp[0] = 0;
+        for (size_t i=0; i<3*M && curlen<(nlengths-1); i++)
+        {   const char* w = alphanames[i];
+            if (w == nullptr) continue;
+            int len = 0;
+            while (*w++ != 0) len++;
+            if (len != curlen) namelenp[++curlen] = i; 
+        }
     }
 
     constexpr int len(const char* a)
@@ -214,8 +284,18 @@ public:
         return va < vb;
     }
 
+    constexpr bool alphaordering(const char* a, const char* b)
+    {   uint32_t va = len(a), vb = len(b);
+        if (va != vb) return va < vb;
+        while ((va=*a++) == (vb=*b++))
+        {   if (va == 0) return true;
+        }
+        return va < vb;
+    }
+
     constexpr bool strequal(const char* a, const char* b) const
     {   int ca = 0, cb = 0;
+        if (a == nullptr || b == nullptr) return false;
         while ((ca = *a++) != 0)
         {   if (ca != *b++) return false;
         }

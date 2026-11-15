@@ -20,13 +20,14 @@ CXX=clang++ -std=c++23 -fconstexpr-steps=0 -fno-color-diagnostics
 #CXX=g++ std=c++23 -fconstexpr-ops-limit=200000000 -fdiagnostics-color=never
 endif
 
-CXXFLAGS=-O3
+CXXFLAGS=-O0 -g -DDEBUG=1
 
 .PHONY:	all
 all:	r4
 
-debug:	CXXFLAGS += -DDEBUG -O0 -g
-debug:	r4
+.PHONE:	release
+release:	CXXFLAGS += -O3 -g0 -UDEBUG
+release:	r4
 
 # The distinction between SOURCES and LOOKUP is that SOURCES are the
 # files with genuine code and that depends on r4.h. LOOKUP just sets up
@@ -62,9 +63,9 @@ $(LOOKUP:.cpp=.o):	%.o:	 %.cpp $(DATA) cuckoo.h
 
 # In a .s file I do not want debug tables etc.
 $(SOURCES:.cpp=.s):	%.s:	 %.cpp r4.h cuckoo.h
-	$(CXX) $(CXXFLAGS) -S -O3 -g0 $< -o $@
+	$(CXX) $(CXXFLAGS) -S -O3 -g0 -UDEBUG $< -o $@
 
-$(LOOKUP:.cpp=.s):	%.s:	 %.cpp $(DATA) cuckoo.h
+$(LOOKUP:.cpp=.s):	%.s:	 %.cpp -UDEBUG $(DATA) cuckoo.h
 	$(CXX) $(CXXFLAGS) -S -O3 -g0 $< -o $@
 
 

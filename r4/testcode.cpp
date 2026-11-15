@@ -55,12 +55,19 @@ int main()
               << "  max intprobes=" << codepoints.max_intprobes << "\n";
 
     std::uint32_t point = codepoints.lookup(0x03b1); 
-    std::cout << std::hex << point << "\n";
+    std::cout << "index for codepoint U+003b1 is " <<std::hex << point << "\n";
     bool combine = (point & 0x8000000) != 0;
     int count = (point >> 20) & 0x7f;
     int offset = point & 0xfffff;
     for (int i=0; i<count; i++)
-        std::cout << codepoints.names[offset+i] << "\n";
+        std::cout << codepoints.names[offset+i] << "\n\n";
+    for (int i=0; i<10; i++)
+    {   int p = codepoints.namelenp[i];
+        std::cout << "length " << std::dec << i << " has "
+                  <<(codepoints.namelenp[i+1] - codepoints.namelenp[i]) << " codes\n";
+        for (int q = p; q<p+4 && q<codepoints.namelenp[i+1] ; q++)
+        std::cout << i << ": " << codepoints.alphanames[q] << "\n";
+    }
     return 0;
 }
 

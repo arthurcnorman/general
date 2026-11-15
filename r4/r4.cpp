@@ -149,8 +149,6 @@ R4::R4(const std::string& filename) : filename(filename)
 //   characters    red on black
 //   keyword       green on black
 
-
-
     init_pair(fg_red,     COLOR_RED, COLOR_BLACK);
     init_pair(fg_green,   COLOR_GREEN, COLOR_BLACK);
     init_pair(fg_yellow,  COLOR_YELLOW, COLOR_BLACK);
@@ -164,7 +162,6 @@ R4::R4(const std::string& filename) : filename(filename)
     init_pair(fg_pale_yellow ,  COLOR_PALE_YELLOW, COLOR_BLACK);
     init_pair(fg_pale_green ,   COLOR_PALE_GREEN, COLOR_BLACK);
     init_pair(fg_mauve ,        COLOR_MAUVE, COLOR_BLACK);
-
 
     attron(COLOR_PAIR(fg_white));
     uniConvActive = false;
@@ -184,6 +181,17 @@ R4::R4(const std::string& filename) : filename(filename)
     right_margin = width - 6;
     tab_width = 8;
     top_lines = nullptr;
+
+    std::string profile_name = std::string(homedir).append("/.unicode");
+    std::ifstream profile(profile_name);
+    if (profile.is_open())
+    {
+#ifdef DEBUG
+        fprintf(logfile(), "~/.unicode seems to exist\n");
+#endif
+        profile.close();
+    }
+
     loadFile();
     refresh();
 }

@@ -351,10 +351,6 @@ public:
 
 extern glyphMap user_names;
 
-extern std::uint32_t name_to_code(const char* name);
-extern const char* code_to_name(std::uint32_t code);
-
-
 // The way I will handle "complex characters" is intended to be
 // aligned with ncurses. Such a character will be represented as
 // an ncurses cchar_t object. This has some fixed number of wchar_t
@@ -393,7 +389,7 @@ extern const char* code_to_name(std::uint32_t code);
 
 inline cplxMap ccharmap;
 
-inline uint64_t lookup_composite(cchar_t cc)
+inline uint32_t lookup_composite(cchar_t cc)
 {   uint32_t hash = 0;
 #ifdef DEBUG
     fprintf(logfile(), "lookup composite %x %x %x\n",
@@ -440,6 +436,45 @@ inline uint64_t lookup_composite(cchar_t cc)
         hash = hash + (cc.chars[0] | 0x10000U);
         hash = hash % 0xffeefff3U + 0x00110000U;
     }
+}
+
+// The following is only used for a modest number of HTML entity names
+// where the rendering into unicode uses one of a small set of combining
+// characters.
+
+inline uint32_t name_to_code(const char* name)
+{   uint32_t n = codepoints.lookup(name);
+    if (n == -1U) return n;
+    n &= 0x7fffffff;
+    int extra = 0;
+    switch (n & 0x0f000000)
+    {
+    default:
+        return n;
+    case macron_below:
+        extra = 0x0331;
+        break;
+    case double_low_line:
+        extra = 0x0333;
+        break;
+    case long_solidus:
+        extra = 0x0338;
+        break;
+    case long_vertical_bar:
+        extra = 0x20d2;
+        break;
+    case reverse_solidus:
+        extra = 0x20e5;
+        break;
+    case variation:
+        extra = 0xfe00;
+        break;
+    }
+    cchar_t cc;
+    std::memset(&cc, 0, sizeof(cc));
+    cc.chars[0] = n & 0xffff;
+    cc.chars[1] = extra;
+    return lookup_composite(cc);    
 }
 
 // I provide functions to convert both ways between string32 and
