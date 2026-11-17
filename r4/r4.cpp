@@ -1652,6 +1652,7 @@ void R4::find()
    }
    string32 options = cmd_line;
    display("options = ", options);
+// The "get help" part of the menu here is not yet populated.
    if (options.find('?') != string32::npos)
    {   string32 save_options = options;
        display("Has a query in ", options);
@@ -1672,10 +1673,94 @@ void R4::find()
            renderScreen();
        }
        options = cmd_line;
-
-
    }
-   cmd_active = false;
+// target now has the string we are searching for, and options the
+// options, where valid ones are
+//   B        search backwards
+//   U        case insensitive search
+//   W        find whole words only
+//   R        treat pattern as a regular expression
+//   number   find the nth instance
+    size_t count = 0;
+    bool back = false;
+    bool word = false;
+    bool casefold = false;
+    bool regex = false;
+    bool inint = false;
+    bool valid = true;
+    for (auto c : options)
+    {   if (c >= 0x7e)
+        {   valid = false;
+            break;
+        }
+        if (std::isdigit(c))
+        {   if (!inint) count = 0;
+            count = 10*count + c - '0';
+            inint = true;
+            continue;
+        }
+        switch (c)
+        {
+        case 'b': case 'B':
+            back = true;
+            break;
+        case 'u': case 'U':
+            casefold = true;
+            break;
+        case 'w': case 'W':
+            word = true;
+            break;
+        case 'r': case 'R':
+            regex = true;
+            break;
+        case ' ':
+            break;
+        default:
+            valid = false;
+            break;
+        }
+        inint = false;
+    }
+    if (count == 0) count = 1;
+    while (count-- != 0)
+    {   for (;;)
+        {   if (back)
+            {   if (cy==0 && cx==0) break;
+                else char_left();
+            }
+            else
+            {   if (cy==buffer.size()-1 && cx==buffer[cy].length()) break;
+                else char_right();
+            }
+            if (match_before(target, casefold, word, regex)) break;
+        }
+    }
+
+    cmd_active = false;
+    makeCursorVisible();
+}
+
+// For a first version I will only handlke simple textual matches
+// without the constraint that the match should be of a word.
+
+void R4::next_char_back(int& x, int& y) 
+{   if (x > 0) x--;
+    else if (x == 0 && y != 0)
+    {   string32 line = buffer[--y];
+        x = line.length();
+    }
+}
+
+// This does not handle linebreaks yet...
+
+bool R4::match_before(string32 target, bool casefold, bool word, bool regex)
+{   int x = cx, y = cy;
+    int len = target.length();
+    while (len != 0)
+    {   if (target[--len] != buffer[y][x]) return false;
+        next_char_back(x, y);
+    }
+    return true;
 }
 
 void R4::find_and_replace()

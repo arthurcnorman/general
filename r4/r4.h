@@ -105,7 +105,7 @@ enum
 // uses 32-bits. but on Windows a sizeof(wchar_t) is 4 and std::wstring
 // needs to use utf-16 to cover cases beyond the basic multilingual plane.
 
-using string32 = std::basic_string<uint32_t>;
+using string32 = std::basic_string<char32_t>;
 
 // The various sorts of unordered maps and sets used here can not
 // easily be used to set up their data at compile time because
@@ -311,13 +311,15 @@ public:
 
     void undelete();
     void tab();
-    void repeat_last_find();
     void insert_return();
     void stop_command();
     void redraw_screen();
     void goto_line();
     void find();
     void find_and_replace();
+    void repeat_last_find();
+    void next_char_back(int& x, int& y);
+    bool match_before(string32 target, bool casefold, bool word, bool regex);
 
     void cmd_char_left();
     void cmd_char_right();
@@ -512,7 +514,7 @@ inline constexpr std::string S(string32 a)
 
 extern std::string SS(string32 a);
 
-inline constexpr std::string S(std::uint32_t* p)
+inline constexpr std::string S(char32_t* p)
 {   return S(string32(p));
 }
 
