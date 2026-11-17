@@ -47,13 +47,6 @@ constexpr CuckooMap<SIZE> codepoints =
 //     {numeric-codepoint, "string that names the character"},
 
 
-// Name for symbols that I introduce. Many of these are very short
-// abbreviations including things like "c#," that translates into
-// c-cedilla. ">=" for a single character greater-than-or-equal mark
-// and "|R" for the double struck letter often used to denote the
-// real numbers.
-#include "my.names"
-
 // There is an official list of html entities that are used as in
 // "&omega;" within html documents. I list them all here. Note that
 // a fairly modest number of them use combining characters in their
@@ -87,6 +80,15 @@ constexpr CuckooMap<SIZE> codepoints =
 // useful to be able to expand U+1f60e into "smiling_face_with_sunglasses"
 // and thereby make some sense of it.
 #include "unicode.names"
+
+// Name for symbols that I introduce. Many of these are very short
+// abbreviations including things like "c#," that translates into
+// c-cedilla. ">=" for a single character greater-than-or-equal mark
+// and "|R" for the double struck letter often used to denote the
+// real numbers. This file uses some single letters as abbreviations,
+// while the adobe.names file makes eg "A" map onto the letter A. I want
+// to map it onto "for-all". So I put this list late in the setup.
+#include "my.names"
 
 // I want special treatment for combining marks (and I am including
 // variant selectors here) because they need special treatment for

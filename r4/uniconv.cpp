@@ -516,7 +516,7 @@ void R4::convert(string32& line, int& x)
 // matches of length 1 -- even though the Adobe list includes all
 // the letters of the alphabet.
     word_text = line.substr(i, x-i);
-    while (word_text.length() > 1)
+    while (word_text.length() != 0)
     {   c = lookup_user_name(word_text);
         if (c != -1u)
         {   replacement_text = string32(1, c);
@@ -535,7 +535,7 @@ void R4::convert(string32& line, int& x)
     i = x - longest_name;
     if (i < 0) i = 0;   // only go back as far as the start of the line.
     word_text = line.substr(i, x-i);
-    while (word_text.length() > 1)
+    while (word_text.length() != 0)
     {   c = lookup_name(word_text);
         if (c != -1u)
         {   replacement_text = string32(1, c);

@@ -48,9 +48,22 @@
      {0x211a,          "!Q"},   // double struck Q for rational numbers
      {0x211d,          "!R"},   // double struck R for real numbers
      {0x2124,          "!Z"},   // double struck Z for integers
-     {0x2264,          "<="},
-     {0x2265,          ">="},
-     {0x2260,          "!="},
+     {0x2264,          "<="},   // less than or equal
+     {0x2265,          ">="},   // greater than or equal
+     {0x2260,          "!="},   // not equal
+     {0x2227,          "/\\"},  // and
+     {0x2228,          "\\/"},  // or
+     {0x00ac,          "~~"},   // not
+     {0x2200,          "A"},    // forall
+     {0x2203,          "E"},    // exists
+     {0x2192,          ">"},    // rightarrow
+     {0x2190,          "<"},    // leftarrow
+     {0x2194,          "<>"},   // double-headed arrow
+     {0x2218,          "O"},    // compose [I want o for ring-on-top]
+     {0x2208,          "e"},    // member
+     {0x2a01,          "+"},    // plus in a ring
+     {0x22a2,          "|-"},   // turnstile
+     {0x22a8,          "|="},   // double turnstile
 
      {0x2070,          "^0"},   // superscript digits
      {0x00b9,          "^1"},
@@ -120,7 +133,7 @@
     {0x102,     "A^u"},  // A-breve
     {0x103,     "a^u"},  // a-breve
     {0x105,     "a;"},   // a-ogonek
-    {0x106,     "C'"},   // C-acutw
+    {0x106,     "C'"},   // C-acute
     {0x107,     "c'"},   // c-acute
     {0x108,     "C^"},   // C-circumflex
     {0x109,     "c^"},   // c-circumflex
@@ -163,14 +176,14 @@
     {0x12e,     "I;"},   // I ogonek
     {0x12f,     "i;"},   // i ogonek
     {0x130,     "I."},   // I dot
-    {0x131,     "i "},   // dotless i
-    {0x132,     "IJ"},    // IJ
-    {0x133,     "ij"},    // ij
+    {0x131,     "i"},    // dotless i
+    {0x132,     "IJ"},   // IJ
+    {0x133,     "ij"},   // ij
     {0x134,     "J^"},   // J circumflex
     {0x135,     "j^"},   // j circumflex
     {0x136,     "K,"},   // K cedilla
     {0x137,     "K,"},   // k cedilla
-    {0x138,     "kra"},   // kra
+    {0x138,     "kra"},  // kra
     {0x139,     "L'"},   // L acute
     {0x13a,     "l'"},   // l acute
     {0x13b,     "L,"},   // L cedilla
