@@ -76,7 +76,7 @@ size_t utf32_to_wchar(wchar_t* dest, uint32_t* src, size_t len)
 }
 
 // Here if the character before the cursor is a combining one it should be
-// merged in with whatever came befote it.
+// merged in with whatever came before it.
 
 void R4::normalise(string32& line, int& x)
 {   if (cx == 0) return;
@@ -85,7 +85,10 @@ void R4::normalise(string32& line, int& x)
 #ifdef DEBUG
     fprintf(logfile(), "potential combining char = %x\n", c);
 #endif
-    uint32_t v = codepoints.lookup(x);
+    uint32_t v = codepoints.lookup(c);
+#ifdef DEBUG
+    fprintf(logfile(), "lookup says = %x\n", c);
+#endif
     if (v == -1U || (v & 0x80000000) == 0) return; // A simple character.
 // Now remove the combining mark from the line.
     line.erase(x-1, 1);

@@ -64,6 +64,8 @@
      {0x2a01,          "+"},    // plus in a ring
      {0x22a2,          "|-"},   // turnstile
      {0x22a8,          "|="},   // double turnstile
+     {0x2234,          ":."},   // therefore
+     {0x2235,          ".:"},   // because
 
      {0x2070,          "^0"},   // superscript digits
      {0x00b9,          "^1"},

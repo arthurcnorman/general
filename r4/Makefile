@@ -36,7 +36,7 @@ release:	r4
 # for changes there that do not impact it. The file "codepoints.cpp"
 # uses *.names which provide tabulation of names for characters.
 #
-SOURCES =	r4.cpp uniconv.cpp keymap.cpp
+SOURCES =	r4.cpp uniconv.cpp keymap.cpp generated.cpp
 
 LOOKUP =	codepoints.cpp
 
@@ -44,13 +44,18 @@ DATA =		adobe.names combining.names html.names my.names \
 		tex.names unicode.names
 
 
-SRCOBJECTS=$(SOURCES:.cpp=.o)
-OBJECTS=$(SOURCES:.cpp=.o) $(LOOKUP:.cpp=.o)
+OBJECTS=$(SOURCES:.cpp=.o)
 ASMFILES=$(SOURCES:.cpp=.s) $(LOOKUP:.cpp=.s)
 
 
 r4:	$(OBJECTS)
 	$(CXX) $(CXXFLAGS) $(OBJECTS) -l ncursesw -o r4
+
+generated.cpp:	./generate
+	./generate
+
+./generate:	generate.cpp codepoints.o
+	$(CXX) $(CXXFLAGS) generate.cpp codepoints.o -o generate
 
 testcode:	testcode.cpp codepoints.o
 	$(CXX) $(CXXFLAGS) -O0 -g testcode.cpp codepoints.o -o testcode
@@ -91,11 +96,8 @@ $(LOOKUP:.cpp=.obj):	%.obj:	 %.cpp $(DATA) cuckoo.h
 
 endif
 
-predebug semiclean:
-	rm $(SRCOBJECTS)
-
 clean:
-	rm *.o *.exe r4 *.tgz *.bak* *.old* *.tmp*
+	rm -f *.o *.exe r4 *.tgz *.bak* *.old* *.tmp*
 
 
 r4.tgz:	Makefile r4.h $(SOURCES) $(LOOKUP) $(DATA)

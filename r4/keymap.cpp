@@ -271,7 +271,7 @@ funcMap R4::keymap =
     {KEY_HOME | TAG_FN,          &R4::pending},        /* home key */
     {KEY_BACKSPACE | TAG_FN,     &R4::backspace},      /* backspace key */
     {KEY_F0 | TAG_FN,            &R4::pending},        /* Function keys.  Space for 64 */
-    {KEY_F(1) | TAG_FN,          &R4::pending},
+    {KEY_F(1) | TAG_FN,          &R4::unicodeConvert}, /* F1: unicode convert */
     {KEY_F(2) | TAG_FN,          &R4::pending},
     {KEY_F(3) | TAG_FN,          &R4::pending},
     {KEY_F(4) | TAG_FN,          &R4::pending},
