@@ -104,7 +104,8 @@ public:
 
 // This lets me map any prefix with from 3 to 11 characters into the set
 // of known words that it could start. I will use this to offer hints
-// to the user about what ALT-x might do for them.
+// to the user about what ALT-x might do for them. Note that the function
+// ket F1 is equivalent top ALT-x for this editor.
 
 Predictions P();
 #endif
@@ -347,7 +348,7 @@ enum lexer_state lexer_transition(lexer_state state, std::uint32_t c)
 // will return those extended values with TAG_FN. Here I expect that
 // those extended keys that sometimes get returned as sequences starting
 // with ESC will have been converted into single codes. But letters types
-// with the ALT ket pressed will get returned as two characters, ESC and
+// with the ALT key pressed will get returned as two characters, ESC and
 // then the letter.
 
 int R4::mygetch8()
@@ -474,6 +475,7 @@ void R4::makeCursorVisible()
         if (wy < 0) wy = 0;
     }
     if (cx > buffer[cy].length()) cx = buffer[cy].length();
+    move(cy-wy, cx-wx);
 }
 
 void to_utf8(uint32_t ch, char*& p)
@@ -799,11 +801,13 @@ void R4::renderScreen()
             y++;
         }
     }
-// I may be running a dialog to request input from the user. For now I
-// will just make that the very top line of the screen.
-    fprintf(logfile(), "dialog = %d\n", cmd_active);
+// I may be running a dialog to request input from the user.
     if (cmd_active)
-    {   int y = 0;
+    {
+#ifdef DEBUG
+        fprintf(logfile(), "cmd_active in renderScreen\n");
+#endif
+        int y = 0;
         for (auto line : cmd_lines)
         {   int margin = cmd_margin[y];
             x = 0;
@@ -817,12 +821,20 @@ void R4::renderScreen()
     }
 
 // In some cases I may also want to set the low couple of lines to info
-// about possible consequences of ALT-x.
+// about possible consequences of ALT-x/F1.
 // ...
 // ...
 // ...
+#ifdef DEBUG
+    fprintf(logfile(), "cmd_active=%d cy=%d wy=%d cursorx=%d wx=%d cmd_cy=%d cmd_cx=%d\n",
+        cmd_active, cy, wy, cursorx, wx, cmd_cy, cmd_cx);
+#endif
     if (cmd_active) move(cmd_cy, cmd_cx);
     else move(cy-wy+2, cursorx-wx);
+#ifdef DEBUG
+    if (cmd_active) fprintf(logfile(), "move cursor to %d %d\n", cmd_cy, cmd_cx);
+    else fprintf(logfile(), "move cursor to %d %d\n", cy-wy+2, cursorx-wx);
+#endif
     refresh();
 }
 
@@ -1455,10 +1467,6 @@ void R4::cmd_tab()
 {   pending();
 }
 
-void R4::repeat_last_find()
-{   pending();
-}
-
 void R4::insert_return()
 {   pending();
 }
@@ -1674,17 +1682,20 @@ void R4::find()
    string32 options = cmd_line;
    display("options = ", options);
 // The "get help" part of the menu here is not yet populated.
-   if (options.find('?') != string32::npos)
+   if (options.find('?', prompt_length) != string32::npos)
    {   string32 save_options = options;
        display("Has a query in ", options);
        cmd_line = L("Options? ");
+       string32 helpline_1 = L("some help text");
+       string32 helpline_2 = L("more help test");
        cmd_cy = 8;
        cmd_lines.clear();
        cmd_lines.push_back(&empty_line); cmd_margin[0] = 0;
        cmd_lines.push_back(&search_line);cmd_margin[1] = prompt_length;
        prompt_length = cmd_cx = cmd_line.length();
        cmd_lines.push_back(&cmd_line);   cmd_margin[1] = cmd_cx;
-       cmd_lines.push_back(&empty_line); cmd_margin[2] = 0;
+       cmd_lines.push_back(&helpline_1); cmd_margin[2] = 0;
+       cmd_lines.push_back(&helpline_2); cmd_margin[3] = 0;
        display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
        cmd_active = true;
        renderScreen();
@@ -1758,7 +1769,16 @@ void R4::find()
     }
 
     cmd_active = false;
+#ifdef DEBUG
+    fprintf(logfile(), "end of search cy=%d, cx=%d\n", cy, cx);
+#endif 
     makeCursorVisible();
+//    renderScreen();
+//    refresh();
+}
+
+void R4::repeat_last_find()
+{   pending();
 }
 
 // For a first version I will only handlke simple textual matches
@@ -1776,6 +1796,7 @@ void R4::next_char_back(int& x, int& y)
 
 bool R4::match_before(string32 target, bool casefold, bool word, bool regex)
 {   int x = cx, y = cy;
+    next_char_back(x, y);
     int len = target.length();
     while (len != 0)
     {   if (target[--len] != buffer[y][x]) return false;
