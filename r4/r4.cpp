@@ -145,9 +145,9 @@ R4::R4(const std::string& filename) : filename(filename)
 //
 // Colours:
 //   plain text    white on black
-//   comments      cyan on black
+//   comments      pale blue on black
 //   strings       red on black
-//   characters    red on black
+//   characters    pink on black
 //   keyword       green on black
 
     init_pair(fg_red,     COLOR_RED, COLOR_BLACK);
@@ -183,6 +183,8 @@ R4::R4(const std::string& filename) : filename(filename)
     right_margin = width - 6;
     tab_width = 8;
     top_lines = nullptr;
+
+    count = 0; // So that trying to repeat a search does not do anything.
 
     std::string profile_name = std::string(homedir).append("/.unicode");
     std::ifstream profile(profile_name);
@@ -524,7 +526,7 @@ std::string simple_word(string32 line, int col)
 {   std::string r = "";
     while (col < line.length())
     {   uint32_t c = line[col++];
-        if (c > 0x7f || !std::isalnum(c)) break;
+        if (c > 0x7f || (!std::isalnum(c) && c != '_')) break;
         r.push_back((char)c);
     }
     return r;
@@ -704,14 +706,14 @@ void R4::renderLine(int screeny, int row, string32 line,
                  state == lexer_star) colour = fg_pale_blue;
         if (state == lexer_slash &&
             col+1 < line.length() &&
-            (line[col+1] == '*' || line[col+1] == '/')) colour = fg_cyan;
+            (line[col+1] == '*' || line[col+1] == '/')) colour = fg_pale_blue;
         if (state == lexer_base &&
-            oldstate == lexer_star) colour = fg_cyan;
+            oldstate == lexer_star) colour = fg_pale_blue;
         if (state == lexer_base &&
             (oldstate == lexer_string || oldstate == lexer_char))
             colour = fg_red;
         if (state == lexer_base &&
-            oldstate == lexer_star) colour = fg_cyan;
+            oldstate == lexer_star) colour = fg_pale_blue;
         if (state == lexer_base &&
             (col == 0 ||
              (line[col-1] > 0x7f || !std::isalnum(line[col-1]))))
@@ -805,7 +807,7 @@ void R4::renderScreen()
     if (cmd_active)
     {
 #ifdef DEBUG
-        fprintf(logfile(), "cmd_active in renderScreen\n");
+//      fprintf(logfile(), "cmd_active in renderScreen\n");
 #endif
         int y = 0;
         for (auto line : cmd_lines)
@@ -826,14 +828,14 @@ void R4::renderScreen()
 // ...
 // ...
 #ifdef DEBUG
-    fprintf(logfile(), "cmd_active=%d cy=%d wy=%d cursorx=%d wx=%d cmd_cy=%d cmd_cx=%d\n",
-        cmd_active, cy, wy, cursorx, wx, cmd_cy, cmd_cx);
+//  fprintf(logfile(), "cmd_active=%d cy=%d wy=%d cursorx=%d wx=%d cmd_cy=%d cmd_cx=%d\n",
+//      cmd_active, cy, wy, cursorx, wx, cmd_cy, cmd_cx);
 #endif
     if (cmd_active) move(cmd_cy, cmd_cx);
     else move(cy-wy+2, cursorx-wx);
 #ifdef DEBUG
-    if (cmd_active) fprintf(logfile(), "move cursor to %d %d\n", cmd_cy, cmd_cx);
-    else fprintf(logfile(), "move cursor to %d %d\n", cy-wy+2, cursorx-wx);
+//  if (cmd_active) fprintf(logfile(), "move cursor to %d %d\n", cmd_cy, cmd_cx);
+//  else fprintf(logfile(), "move cursor to %d %d\n", cy-wy+2, cursorx-wx);
 #endif
     refresh();
 }
@@ -939,7 +941,23 @@ void R4::insert_char(uint32_t c)
     normalise(buffer[cy], cx);
 }
 
+void R4::overwrite_char(uint32_t c)
+{   buffer[cy].insert(cx, 1, c);
+    display("After inserting char: ", buffer[cy]);
+    if (!cmd_active) marks_after_insert();
+    cx++;
+// If I just inserted a combining mark I need to tidy up
+    normalise(buffer[cy], cx);
+}
+
 void R4::cmd_insert_char(uint32_t c)
+{   cmd_line.insert(cmd_cx, 1, c);
+    cmd_cx++;
+// If I just inserted a combining mark I need to tidy up
+    normalise(cmd_line, cmd_cx);
+}
+
+void R4::cmd_overwrite_char(uint32_t c)
 {   cmd_line.insert(cmd_cx, 1, c);
     cmd_cx++;
 // If I just inserted a combining mark I need to tidy up
@@ -1013,10 +1031,6 @@ void R4::k_menu()
     processKeypress(c | TAG_K, false);
 }
 
-void R4::o_menu()
-{   pending();
-}
-
 void R4::p_menu()
 {   timeout(1000);
     uint32_t c = mygetch();
@@ -1030,8 +1044,14 @@ void R4::p_menu()
 // entering a newline plus as many blanks as the current line started with.
     if (c != ERR)
     {   if (c == ' ') return;
-        if (cmd_active) cmd_insert_char(c);
-        else insert_char(c);
+        if (overwriteMode)
+        {   if (cmd_active) cmd_overwrite_char(c);
+            else overwrite_char(c);
+        }
+        else
+        {   if (cmd_active) cmd_insert_char(c);
+            else insert_char(c);
+        }
         return;
     }
 // Here we waited a second and nothing has been typed, so I will
@@ -1048,8 +1068,14 @@ void R4::p_menu()
     c = mygetch();
     hideMenu();
     if (c == ' ') return;
-    if (cmd_active) cmd_insert_char(c);
-    else insert_char(c);
+    if (overwriteMode)
+    {   if (cmd_active) cmd_overwrite_char(c);
+        else overwrite_char(c);
+    }
+    else
+    {   if (cmd_active) cmd_insert_char(c);
+        else insert_char(c);
+    }
 }
 
 void R4::q_menu()
@@ -1084,8 +1110,8 @@ void R4::q_menu()
 
 void R4::insert_newline()
 {
-// Here I will need to truncate the current line and move its tail
-// to for the next line.
+// Here I will need to move the tail of the current line to form
+// the next (new) line.
     string32 tail = buffer[cy].substr(cx);
 // If there are marks on the part of the line after the current cursor
 // then they will need to be moved to the next line
@@ -1096,6 +1122,38 @@ void R4::insert_newline()
     buffer_state.insert(buffer_state.begin()+cy+1, lexer_base);
     cx = 0;
     cy++;
+}
+
+// Insert return splits the line just after the current position, leaving
+// the cursort at the end of the current line.
+
+void R4::insert_return()
+{   insert_newline();
+    char_left();
+}
+
+// If the screen had been corrupted by things beyond the control
+// of ncurses I will try to put things right by first filling the screen
+// with dots and refreshing. Anywhere that ncurses though there was a dot
+// already will possibly not be updates, so if it has junk there that
+// will remain. So then I write in blanks everywhere and ncurses thinks
+// there are dots everywhere so it HAS to write those. Finally I redraw the
+// material I actually want. This is liable to flicker. But that is fair.
+
+void R4::redraw_screen()
+{   for (int y=0; y<height; y++)
+    for (int x=0; x<width; x++)
+    {   move(y, x);
+        addch('.');
+    }
+    refresh();
+    for (int y=0; y<height; y++)
+    for (int x=0; x<width; x++)
+    {   move(y, x);
+        addch(' ');
+    }
+    refresh();
+    renderScreen();
 }
 
 void R4::line_up()
@@ -1451,38 +1509,6 @@ void R4::end_of_text()
     makeCursorVisible();
 }
 
-void R4::undelete()
-{   pending();
-}
-
-void R4::cmd_undelete()
-{   pending();
-}
-
-void R4::tab()
-{   pending();
-}
-
-void R4::cmd_tab()
-{   pending();
-}
-
-void R4::insert_return()
-{   pending();
-}
-
-void R4::delete_word()
-{   pending();
-}
-
-void R4::cmd_delete_word()
-{   pending();
-}
-
-void R4::stop_command()
-{   pending();
-}
-
 void R4::flip_overwrite_mode()
 {   overwriteMode = !overwriteMode;
 }
@@ -1582,26 +1608,6 @@ void R4::goto_end_block()
     cy = endBlockLine;
     cx = endBlockCol;
     makeCursorVisible();
-}
-
-void R4::copy_block()
-{   pending();
-}
-
-void R4::insert_from_file()
-{   pending();
-}
-
-void R4::move_block()
-{   pending();
-}
-
-void R4::delete_block()
-{   pending();
-}
-
-void R4::redraw_screen()
-{   pending();
 }
 
 void R4::find()
@@ -1713,11 +1719,11 @@ void R4::find()
 //   W        find whole words only
 //   R        treat pattern as a regular expression
 //   number   find the nth instance
-    size_t count = 0;
-    bool back = false;
-    bool word = false;
-    bool casefold = false;
-    bool regex = false;
+    back = false;
+    word = false;
+    casefold = false;
+    regex = false;
+    count = 0;
     bool inint = false;
     bool valid = true;
     for (auto c : options)
@@ -1754,7 +1760,28 @@ void R4::find()
         inint = false;
     }
     if (count == 0) count = 1;
-    while (count-- != 0)
+    perform_find();
+    cmd_active = false;
+#ifdef DEBUG
+    fprintf(logfile(), "end of search cy=%d, cx=%d\n", cy, cx);
+#endif 
+    makeCursorVisible();
+//    renderScreen();
+//    refresh();
+}
+
+void R4::repeat_last_find()
+{   pending("repeat last find");
+    perform_find();
+}
+
+void R4::perform_find()
+{   size_t rep = count;
+    if (rep == 0)
+    {   beep();
+        return;
+    }
+    while (rep-- != 0)
     {   for (;;)
         {   if (back)
             {   if (cy==0 && cx==0) break;
@@ -1767,18 +1794,6 @@ void R4::find()
             if (match_before(target, casefold, word, regex)) break;
         }
     }
-
-    cmd_active = false;
-#ifdef DEBUG
-    fprintf(logfile(), "end of search cy=%d, cx=%d\n", cy, cx);
-#endif 
-    makeCursorVisible();
-//    renderScreen();
-//    refresh();
-}
-
-void R4::repeat_last_find()
-{   pending();
 }
 
 // For a first version I will only handlke simple textual matches
@@ -1805,16 +1820,70 @@ bool R4::match_before(string32 target, bool casefold, bool word, bool regex)
     return true;
 }
 
+// @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+void R4::o_menu()
+{   pending("o menu");
+}
+
+void R4::undelete()
+{   pending("undelete");
+}
+
+void R4::cmd_undelete()
+{   pending("cmd undelete");
+}
+
+void R4::tab()
+{   pending("tab");
+}
+
+void R4::delete_word()
+{   pending("delete word");
+}
+
+void R4::cmd_delete_word()
+{   pending("cmd delete word");
+}
+
+void R4::stop_command()
+{   pending("stop");
+}
+
+void R4::copy_block()
+{   pending("copy block");
+}
+
+void R4::insert_from_file()
+{   pending("insert from file");
+}
+
+void R4::move_block()
+{   pending("move block");
+}
+
+void R4::delete_block()
+{   pending("delete block");
+}
+
 void R4::find_and_replace()
-{   pending();
+{   pending("find and replace");
 }
 
 void R4::goto_line()
-{   pending();
+{   pending("goto line");
 }
 
 void R4::last_find_or_block()
-{   pending();
+{   pending("last find or block");
+}
+
+void R4::flip_case()
+{   pending("flip case");
+}
+
+void R4::cmd_flip_case()
+{   pending("cmd flip case");
 }
 
 std::string SS(string32 s) // Maybe useful for debugging.
@@ -1825,6 +1894,14 @@ void R4::pending()
 {
 #ifdef DEBUG
     fprintf(logfile(), "Pending/Unimplemented op %x\n", command_character);
+#endif
+}
+
+void R4::pending(const char* s)
+{
+#ifdef DEBUG
+    fprintf(logfile(), "Pending/Unimplemented op %x (%s)\n",
+        command_character, s);
 #endif
 }
 

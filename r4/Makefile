@@ -57,8 +57,8 @@ generated.cpp:	./generate
 ./generate:	generate.cpp codepoints.o
 	$(CXX) $(CXXFLAGS) generate.cpp codepoints.o -o generate
 
-testcode:	testcode.cpp codepoints.o
-	$(CXX) $(CXXFLAGS) -O0 -g testcode.cpp codepoints.o -o testcode
+testcode:	testcode.cpp generated.o
+	$(CXX) $(CXXFLAGS) -O0 -g testcode.cpp generated.o -o testcode
 
 $(SOURCES:.cpp=.o):	%.o:	 %.cpp r4.h cuckoo.h
 	$(CXX) $(CXXFLAGS) -c $< -o $@

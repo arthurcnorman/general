@@ -226,6 +226,7 @@ public:
 // called for.
     void insert_newline();
     void insert_char(uint32_t c);
+    void overwrite_char(uint32_t c);
     void addch8(int c);
     void delete_forward(int n);
     void delete_backward(int n);
@@ -249,6 +250,7 @@ public:
     string32 insertMarks(int y);      // put in explicit <K> etc as needed.
     bool invalidBlock();
     void pending();
+    void pending(const char* s);
 
 // Now all the edit actions that are supported.
     void flip_overwrite_mode();
@@ -318,9 +320,20 @@ public:
     void stop_command();
     void redraw_screen();
     void goto_line();
+    void flip_case();
     void find();
     void find_and_replace();
     void repeat_last_find();
+// In order to be able to repeat a find command I want all its
+// parameters to be stored here...
+    string32 target;       // What we are looking for.
+    string32 replacement;  // In case we are doing "find and replace".
+    int count;             // Search this many times.
+    bool casefold;         // Ignore case in the search.
+    bool word;             // Only match full words. 
+    bool back;             // Search backwards through the text.
+    bool regex;            // Use regular expression matching.
+    void perform_find();
     void next_char_back(int& x, int& y);
     bool match_before(string32 target, bool casefold, bool word, bool regex);
 
@@ -332,7 +345,7 @@ public:
     void cmd_end_of_line();
 
     void cmd_insert_char(uint32_t c);
-    void cmd_tab();
+    void cmd_overwrite_char(uint32_t c);
 
     void cmd_delete_forward(int n);
     void cmd_delete_backward(int n);
@@ -340,6 +353,7 @@ public:
     void cmd_delete_char();
     void cmd_undelete();
     void cmd_delete_word();
+    void cmd_flip_case();
 
     void cmd_unicodeConvert();
 };

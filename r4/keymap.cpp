@@ -66,6 +66,7 @@ funcMap R4::keymap =
     {CTRL_KEY('x'),      &R4::line_down},
     {CTRL_KEY('y'),      &R4::pending},
     {CTRL_KEY('z'),      &R4::scroll_up},
+    {CTRL_KEY('\\'),     &R4::flip_case},
     {0x7f,               &R4::backspace},
 
     {'a' | TAG_ALT,      &R4::pending},
@@ -136,7 +137,8 @@ funcMap R4::keymap =
     {'a' | TAG_K,        &R4::pending},
     {'b' | TAG_K,        &R4::set_start_block},
     {'c' | TAG_K,        &R4::copy_block},
-    {'d' | TAG_K,        &R4::pending},
+//    {'d' | TAG_K,        &R4::pending},
+    {'d' | TAG_K,        &R4::redraw_screen},
     {'e' | TAG_K,        &R4::pending},
     {'f' | TAG_K,        &R4::pending},
     {'g' | TAG_K,        &R4::pending},
@@ -387,11 +389,11 @@ bool R4::cmd_process(uint32_t ch)
     case CTRL_KEY('f'):              R4::cmd_word_right();     return false;
     case CTRL_KEY('g'):              R4::cmd_delete_char();    return false;
     case CTRL_KEY('h'):              R4::cmd_undelete();       return false;
-    case CTRL_KEY('i'):              R4::cmd_tab();            return false;
     case CTRL_KEY('j'):                                        return true;
     case CTRL_KEY('p'):              R4::p_menu();             return false;
     case CTRL_KEY('s'):              R4::cmd_char_left();      return false;
     case CTRL_KEY('t'):              R4::cmd_delete_word();    return false;
+    case CTRL_KEY('\\'):             R4::cmd_flip_case();      return false;
     case 'y' | TAG_Q:                R4::cmd_delete_line();    return false;
     case 'd' | TAG_Q:                R4::cmd_end_of_line();    return false;
     case 's' | TAG_Q:                R4::cmd_start_of_line();  return false;
@@ -406,7 +408,7 @@ bool R4::cmd_process(uint32_t ch)
     case KEY_ENTER | TAG_FN:                                   return true;
     default:                                                   break;
     }
-// The view I take is that control characters 
+// The view I take is that all control characters terminate the input.
     if (ch < ' ' || ch > 0x0010ffff) return true;
 // Also the special values that ncurses can return for dedicated and
 // function keys. Those values would alias with Unicode characters in the

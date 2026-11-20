@@ -9,24 +9,24 @@
  *                                                                        *
  *     * Redistributions of source code must retain the relevant          *
  *       copyright notice, this list of conditions and the following      *
- *       disclaimer,                                         *
+ *       disclaimer,                                                      *
  *     * Redistributions in binary form must reproduce the above          *
  *       copyright notice, this list of conditions and the following      *
  *       disclaimer in the documentation and/or other materials provided  *
- *       with the distribution,                              *
+ *       with the distribution,                                           *
  *                                                                        *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS    *
- *.// AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT      *
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT      *
  * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS      *
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED,IN NO EVENT SHALL THE         *
- * COPYRIGHT OWNERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,*
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,*
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED, IN NO EVENT SHALL THE         *
+ * COPYRIGHT OWNERS OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,   *
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,   *
  * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS  *
  * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND *
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR  *
  * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF     *
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH   *
- * DAMAGE,                                                   *
+ * DAMAGE,                                                                *
  *************************************************************************/
 
 // $Id: c0b2ff54c1959400b458c410b7f7ed819b25912d $
@@ -43,51 +43,51 @@
 #define C(n) (n | 0x80000000)
 
 // Here are some marks I might expect to like using in mathematics.
-     {0x2102,          "!C"},   // double struck C for complex numbers
-     {0x2115,          "!N"},   // double struck N for natural numbers
-     {0x211a,          "!Q"},   // double struck Q for rational numbers
-     {0x211d,          "!R"},   // double struck R for real numbers
-     {0x2124,          "!Z"},   // double struck Z for integers
-     {0x2264,          "<="},   // less than or equal
-     {0x2265,          ">="},   // greater than or equal
-     {0x2260,          "!="},   // not equal
-     {0x2227,          "/\\"},  // and
-     {0x2228,          "\\/"},  // or
-     {0x00ac,          "~~"},   // not
-     {0x2200,          "A"},    // forall
-     {0x2203,          "E"},    // exists
-     {0x2192,          ">"},    // rightarrow
-     {0x2190,          "<"},    // leftarrow
-     {0x2194,          "<>"},   // double-headed arrow
-     {0x2218,          "O"},    // compose [I want o for ring-on-top]
-     {0x2208,          "e"},    // member
-     {0x2a01,          "+"},    // plus in a ring
-     {0x22a2,          "|-"},   // turnstile
-     {0x22a8,          "|="},   // double turnstile
-     {0x2234,          ":."},   // therefore
-     {0x2235,          ".:"},   // because
+     {0x2102,          "|C"},   // ℂ: double struck C for complex numbers
+     {0x2115,          "|N"},   // ℕ: double struck N for natural numbers
+     {0x211a,          "|Q"},   // ℚ: double struck Q for rational numbers
+     {0x211d,          "|R"},   // ℝ: double struck R for real numbers
+     {0x2124,          "|Z"},   // ℤ: double struck Z for integers
+     {0x2264,          "<="},   // ≤: less than or equal
+     {0x2265,          ">="},   // ≥: greater than or equal
+     {0x2260,          "!="},   // ≠: not equal
+     {0x2227,          "/\\"},  // ∧: and
+     {0x2228,          "\\/"},  // ∧: or
+     {0x00ac,          "#"},    // ¬: not
+     {0x2200,          "A"},    // ∀: forall
+     {0x2203,          "E"},    // ∃: exists
+     {0x2192,          ">"},    // →: rightarrow
+     {0x2190,          "<"},    // ←: leftarrow
+     {0x2194,          "<>"},   // ↔: double-headed arrow
+     {0x2218,          "O"},    // ∘: compose [I want o for ring-on-top]
+     {0x2208,          "e"},    // ∈: member
+     {0x2a01,          "+"},    // ⨁: plus in a ring
+     {0x22a2,          "|-"},   // ⊢: turnstile
+     {0x22a8,          "|="},   // ⊨: double turnstile
+     {0x2234,          ":."},   // ∴: therefore
+     {0x2235,          ".:"},   // ∵: because
 
-     {0x2070,          "^0"},   // superscript digits
-     {0x00b9,          "^1"},
-     {0x00b2,          "^2"},
-     {0x00b3,          "^3"},
-     {0x2074,          "^4"},
-     {0x2075,          "^5"},
-     {0x2076,          "^6"},
-     {0x2077,          "^7"},
-     {0x2078,          "^8"},
-     {0x2079,          "^9"},
+     {0x2070,          "^0"},   // ⁰: superscript digits
+     {0x00b9,          "^1"},   // ¹
+     {0x00b2,          "^2"},   // ²
+     {0x00b3,          "^3"},   // ³
+     {0x2074,          "^4"},   // ⁴
+     {0x2075,          "^5"},   // ⁵
+     {0x2076,          "^6"},   // ⁶
+     {0x2077,          "^7"},   // ⁷
+     {0x2078,          "^8"},   // ⁸
+     {0x2079,          "^9"},   // ⁹
 
-     {0x2080,          "_0"},   // subscript digits
-     {0x2081,          "_1"},
-     {0x2082,          "_2"},
-     {0x2083,          "_3"},
-     {0x2084,          "_4"},
-     {0x2085,          "_5"},
-     {0x2086,          "_6"},
-     {0x2087,          "_7"},
-     {0x2088,          "_8"},
-     {0x2089,          "_9"},
+     {0x2080,          "_0"},   // ₀: subscript digits
+     {0x2081,          "_1"},   // ₁
+     {0x2082,          "_2"},   // ₂
+     {0x2083,          "_3"},   // ₃
+     {0x2084,          "_4"},   // ₄
+     {0x2085,          "_5"},   // ₅
+     {0x2086,          "_6"},   // ₆
+     {0x2087,          "_7"},   // ₇
+     {0x2088,          "_8"},   // ₈
+     {0x2089,          "_9"},   // ₉
 
 // Now I have some things that generate combining characters.
 
@@ -130,23 +130,23 @@
 // I will use "_" to underline a character so I use "^_" for macron.
 // I will have "-" for a short line across the middle of a letter.
 
-    {0x100,     "A^_"},  // A-macron
-    {0x101,     "a^_"},  // a-macron
-    {0x102,     "A^u"},  // A-breve
-    {0x103,     "a^u"},  // a-breve
-    {0x105,     "a;"},   // a-ogonek
-    {0x106,     "C'"},   // C-acute
-    {0x107,     "c'"},   // c-acute
-    {0x108,     "C^"},   // C-circumflex
-    {0x109,     "c^"},   // c-circumflex
-    {0x10a,     "C."},   // C-dot-above
-    {0x10b,     "c."},   // c-dot-above
-    {0x10c,     "Cv"},   // C-caron
-    {0x10d,     "cv"},   // c-caron
-    {0x10e,     "Dv"},   // D-caron
-    {0x10f,     "dv"},   // d-caron
-    {0x110,     "D-"},   // D with stroke
-    {0x111,     "d-"},   // d with stroke
+    {0x100,     "A^_"},  // Ā: A-macron
+    {0x101,     "a^_"},  // ā: a-macron
+    {0x102,     "A^u"},  // Ă: A-breve
+    {0x103,     "a^u"},  // ă: a-breve
+    {0x105,     "a;"},   // ą: a-ogonek
+    {0x106,     "C'"},   // Ć: C-acute
+    {0x107,     "c'"},   // ć: c-acute
+    {0x108,     "C^"},   // Ĉ: C-circumflex
+    {0x109,     "c^"},   // ĉ: c-circumflex
+    {0x10a,     "C."},   // Ċ: C-dot-above
+    {0x10b,     "c."},   // ċ: c-dot-above
+    {0x10c,     "Cv"},   // Č: C-caron
+    {0x10d,     "cv"},   // č: c-caron
+    {0x10e,     "Dv"},   // Ď: D-caron
+    {0x10f,     "dv"},   // ď: d-caron
+    {0x110,     "D-"},   // Đ: D with stroke
+    {0x111,     "d-"},   // đ: d with stroke
     {0x112,     "E^_"},  // E macron
     {0x113,     "e^_"},  // e macron
     {0x114,     "E^u"},  // E breve
@@ -177,10 +177,10 @@
     {0x12d,     "i^u"},  // i breve
     {0x12e,     "I;"},   // I ogonek
     {0x12f,     "i;"},   // i ogonek
-    {0x130,     "I."},   // I dot
-    {0x131,     "i"},    // dotless i
-    {0x132,     "IJ"},   // IJ
-    {0x133,     "ij"},   // ij
+    {0x130,     "I."},   // İ: I dot
+    {0x131,     "i"},    // ı: dotless i
+    {0x132,     "IJ"},   // Ĳ: IJ
+    {0x133,     "ij"},   // ĳ: ij
     {0x134,     "J^"},   // J circumflex
     {0x135,     "j^"},   // j circumflex
     {0x136,     "K,"},   // K cedilla
@@ -241,26 +241,27 @@
     {0x16d,     "u^u"},  // u breve
     {0x16e,     "Uo"},   // U ring
     {0x16f,     "uo"},   // u ring
-    {0x170,     "U''"},  // U double acute
-    {0x171,     "u''"},  // u double acute
+    {0x170,     "U''"},  // Ű: U double acute
+    {0x171,     "u''"},  // ű: u double acute
     {0x172,     "U;"},   // U ogonek
     {0x173,     "u;"},   // u ogonek
     {0x174,     "W^"},   // W circumflex
     {0x175,     "w^"},   // w circumflex
     {0x176,     "Y^"},   // Y circumflex
     {0x177,     "y^"},   // y circumflex
-    {0x178,     "Y:"},   // Y diaeresis
+    {0x178,     "Y:"},   // Ÿ: Y diaeresis
     {0x179,     "Z'"},   // Z acute
     {0x17a,     "z'"},   // z acute
     {0x17b,     "Z."},   // Z dot
     {0x17c,     "z."},   // z dot
     {0x17d,     "Zv"},   // Z caron
     {0x17e,     "zv"},   // z caron
-    {0x17f,     "ss"},    // long s
+    {0x17f,     "ss"},   // ſ: long s
 
 // I could put in Latin Extended B here but I think I see fewer
 // charafcters that I view as frequently used...
                     
 #undef C            
                     
-// end of my.names  
+// end of my.names
+
