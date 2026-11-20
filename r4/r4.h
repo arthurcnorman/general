@@ -278,8 +278,11 @@ public:
     void backspace();       // delete char before the cursor.
     void delete_char();     // delete char after the cursor.
     void delete_word();
+    void delete_rest_of_line();
     void delete_to_eol();
+    void cmd_delete_to_eol();
     void delete_line();
+    void cmd_delete_line();
 
 // Wordstar uses s ^J menu key, but with the way I use ncurses that seems
 // to alias against the enter key... So I use ALT-J instead.

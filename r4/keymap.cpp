@@ -245,12 +245,12 @@ funcMap R4::keymap =
     {'q' | TAG_Q,        &R4::pending},   // repeat command
     {'r' | TAG_Q,        &R4::start_of_text},
     {'s' | TAG_Q,        &R4::start_of_line},
-    {'t' | TAG_Q,        &R4::pending},
+    {'t' | TAG_Q,        &R4::delete_to_eol},
     {'u' | TAG_Q,        &R4::pending},
     {'v' | TAG_Q,        &R4::last_find_or_block},
     {'w' | TAG_Q,        &R4::pending},
     {'x' | TAG_Q,        &R4::bottom_of_screen},
-    {'y' | TAG_Q,        &R4::pending},
+    {'y' | TAG_Q,        &R4::delete_line},
     {'z' | TAG_Q,        &R4::pending},
 
 
@@ -392,12 +392,15 @@ bool R4::cmd_process(uint32_t ch)
     case CTRL_KEY('p'):              R4::p_menu();             return false;
     case CTRL_KEY('s'):              R4::cmd_char_left();      return false;
     case CTRL_KEY('t'):              R4::cmd_delete_word();    return false;
-    case 's' | TAG_Q:                R4::cmd_start_of_line();  return false;
+    case 'y' | TAG_Q:                R4::cmd_delete_line();    return false;
     case 'd' | TAG_Q:                R4::cmd_end_of_line();    return false;
-    case 0x7f:                       R4::cmd_backspace();      return false;
+    case 's' | TAG_Q:                R4::cmd_start_of_line();  return false;
+    case 't' | TAG_Q:                R4::cmd_delete_to_eol();  return false;
     case 'x' | TAG_ALT:              R4::cmd_unicodeConvert(); return false;
+    case KEY_F(1) | TAG_FN:          R4::unicodeConvert();     return false;
     case KEY_LEFT | TAG_FN:          R4::cmd_char_left();      return false;
     case KEY_RIGHT | TAG_FN:         R4::cmd_char_right();     return false;
+    case 0x7f:                       R4::cmd_backspace();      return false;
     case KEY_BACKSPACE | TAG_FN:     R4::cmd_backspace();      return false;
     case KEY_DC | TAG_FN:            R4::cmd_delete_char();    return false;
     case KEY_ENTER | TAG_FN:                                   return true;

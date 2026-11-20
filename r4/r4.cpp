@@ -1078,7 +1078,7 @@ void R4::insert_newline()
 // If there are marks on the part of the line after the current cursor
 // then they will need to be moved to the next line
     if (!cmd_active) marks_after_newline();
-    delete_to_eol();
+    delete_rest_of_line();
     if (last_lexed_line >= cy) last_lexed_line = cy-1;
     buffer.insert(buffer.begin()+cy+1, tail);
     buffer_state.insert(buffer_state.begin()+cy+1, lexer_base);
@@ -1194,11 +1194,19 @@ void R4::scroll_down()
 
 void R4::delete_forward(int n)
 {   if (!cmd_active) marks_after_delete_forward(n);
-    buffer[cy].erase(cx+1, n);
+    if (cx == buffer[cy].length())
+    {   if (cy == buffer.size()) beep();
+        else
+        {   cy++;
+            join_lines();
+        }
+    }
+    else buffer[cy].erase(cx+1, n);
 }
 
 void R4::cmd_delete_forward(int n)
-{   cmd_line.erase(cmd_cx+1, n);
+{   if (cx == cmd_line.length()) beep();
+    else cmd_line.erase(cmd_cx+1, n);
 }
 
 // This one deletes whole n glyphs without regard to whether they
@@ -1271,9 +1279,19 @@ void R4::cmd_delete_char()
     else cmd_delete_forward(1);
 }
 
-void R4::delete_to_eol()
+void R4::delete_rest_of_line()
 {   if (cx+1 < buffer[cy].length())
         delete_forward(buffer[cy].length() - cx - 1);
+}
+
+void R4::delete_to_eol()
+{   if (cx+1 < buffer[cy].length())
+        buffer[cy].erase(cx, buffer[cy].length() - cx);
+}
+
+void R4::cmd_delete_to_eol()
+{   if (cx+1 < cmd_line.length())
+        cmd_line.erase(cmd_cx, cmd_line.length() - cmd_cx);
 }
 
 void R4::delete_line()
@@ -1282,6 +1300,9 @@ void R4::delete_line()
     cx = 0;
 }
 
+void R4::cmd_delete_line()
+{   cmd_line.erase(0);
+}
 
 void R4::flip_column_mode()
 {   columnMode = !columnMode;
