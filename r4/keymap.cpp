@@ -51,7 +51,7 @@ funcMap R4::keymap =
 // But MAYBE it does not? So ALT-j is for the help menu.
     {CTRL_KEY('j'),      &R4::insert_newline},
     {CTRL_KEY('k'),      &R4::k_menu},
-    {CTRL_KEY('l'),      &R4::repeat_last_find},
+    {CTRL_KEY('l'),      &R4::perform_find},
     {CTRL_KEY('m'),      &R4::pending},
     {CTRL_KEY('n'),      &R4::insert_return},
     {CTRL_KEY('o'),      &R4::o_menu},

@@ -324,7 +324,7 @@ public:
     void flip_case();
     void find();
     void find_and_replace();
-    void repeat_last_find();
+    void perform_find();   // repeats the most recently executed find.
 // In order to be able to repeat a find command I want all its
 // parameters to be stored here...
     string32 target;       // What we are looking for.
@@ -334,7 +334,6 @@ public:
     bool word;             // Only match full words. 
     bool back;             // Search backwards through the text.
     bool regex;            // Use regular expression matching.
-    void perform_find();
     void next_char_back(int& x, int& y);
     bool match_before(string32 target, bool casefold, bool word, bool regex);
 

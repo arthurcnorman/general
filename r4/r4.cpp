@@ -183,7 +183,7 @@ R4::R4(const std::string& filename) : filename(filename)
     right_margin = width - 6;
     tab_width = 8;
     top_lines = nullptr;
-
+    overwriteMode = false;
     count = 0; // So that trying to repeat a search does not do anything.
 
     std::string profile_name = std::string(homedir).append("/.unicode");
@@ -909,9 +909,8 @@ void R4::processKeypress(uint32_t c, bool insert)
     if (c != ('x' | TAG_ALT)) uniConvActive = false;
     if (keymap.count(c) > 0) (this->*keymap[c])();
     else if (insert)
-    {   buffer[cy].insert(cx, 1, c);
-        if (!cmd_active) marks_after_insert();
-        cx++;
+    {   if (overwriteMode) overwrite_char(c);
+        else insert_char(c);
     }
 }
 
@@ -942,12 +941,15 @@ void R4::insert_char(uint32_t c)
 }
 
 void R4::overwrite_char(uint32_t c)
-{   buffer[cy].insert(cx, 1, c);
-    display("After inserting char: ", buffer[cy]);
-    if (!cmd_active) marks_after_insert();
-    cx++;
+{   if (cx == buffer[cy].length())
+    {   insert_char(c);
+        return;
+    }
+    buffer[cy][cx] = c;
+    display("After overwriting char: ", buffer[cy]);
 // If I just inserted a combining mark I need to tidy up
     normalise(buffer[cy], cx);
+    cx++;
 }
 
 void R4::cmd_insert_char(uint32_t c)
@@ -955,11 +957,15 @@ void R4::cmd_insert_char(uint32_t c)
     cmd_cx++;
 // If I just inserted a combining mark I need to tidy up
     normalise(cmd_line, cmd_cx);
+    cmd_cx++;
 }
 
 void R4::cmd_overwrite_char(uint32_t c)
-{   cmd_line.insert(cmd_cx, 1, c);
-    cmd_cx++;
+{   if (cx == cmd_line.length())
+    {   cmd_insert_char(c);
+        return;
+    }
+    cmd_line[cmd_cx] = c;
 // If I just inserted a combining mark I need to tidy up
     normalise(cmd_line, cmd_cx);
 }
@@ -1122,6 +1128,21 @@ void R4::insert_newline()
     buffer_state.insert(buffer_state.begin()+cy+1, lexer_base);
     cx = 0;
     cy++;
+}
+
+// A tab inserts a newline and then indents by the amount that the
+// line you are splitting was indented by. The idea of this is that
+// it is useful if you are entering a number of consecutive lines all
+// of which must be indented by the same amount. It transcribes leading
+// spaces and tabs from the line above the new one it introduces.
+
+void R4::tab()
+{   insert_newline();
+    string32 prev = buffer[cy-1];
+    while (prev.length() != 0 && prev[0] == ' ' || prev[0] == '\t')
+    {   insert_char(prev[0]);
+        prev.erase(1);
+    }
 }
 
 // Insert return splits the line just after the current position, leaving
@@ -1766,13 +1787,6 @@ void R4::find()
     fprintf(logfile(), "end of search cy=%d, cx=%d\n", cy, cx);
 #endif 
     makeCursorVisible();
-//    renderScreen();
-//    refresh();
-}
-
-void R4::repeat_last_find()
-{   pending("repeat last find");
-    perform_find();
 }
 
 // I probably need to be able to report "no matches found".
@@ -1881,10 +1895,6 @@ void R4::undelete()
 
 void R4::cmd_undelete()
 {   pending("cmd undelete");
-}
-
-void R4::tab()
-{   pending("tab");
 }
 
 void R4::delete_word()
