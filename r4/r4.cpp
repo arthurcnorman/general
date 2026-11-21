@@ -1084,6 +1084,41 @@ void R4::p_menu()
     }
 }
 
+// Almost all of the options documented here are not yet available, and
+// are mostly liable to be useful for text not program editing. But
+// looking here reminds me that I have not yet supported flashing brackets
+// to highlight matching.
+
+void R4::o_menu()
+{   timeout(1000);
+    uint32_t c = mygetch();
+    timeout(-1);
+    if (c != ERR)
+    {   processKeypress(c | TAG_O, false);
+        return;
+    }
+// Here we waited a second and nothing has been typed, so I will
+// display a menu and then wait for ever.
+    const char* menu[] =
+    {   "^O - these are the available commands:",
+        "-----------------------O N S C R E E N   M E N U-------------------------------",
+        "--Margins & Tabs--|----Toggles---------|----Miscellaneous-----|---Other Menus--",
+        "L set Left margin |T rulr line off (ON)|C Center text on line | (from Main only",
+        "R set Right margin|W wordwrap  on (OFF)|                      |^J Help  ^K Bloc",
+        "X Release margins |() br flash off (ON)|S redraw Screen       |^Q Quick ^P CtlC",
+        "I set tabstop     |V Vari-tabs on (OFF)|                      |^O Onscreen",
+        "N clear tabstop   |                    |                      |Space bar return",
+        "F set margins and tabstops from current line in File          |you to Main Menu",
+        "-------------------------------------------------------------------------------",
+        nullptr
+    };
+    displayMenu(menu);
+    renderScreen();
+    c = mygetch();
+    hideMenu();
+    processKeypress(c | TAG_O, false);
+}
+
 void R4::q_menu()
 {   timeout(1000);
     uint32_t c = mygetch();
@@ -1300,6 +1335,14 @@ void R4::cmd_delete_forward(int n)
     else cmd_line.erase(cmd_cx+1, n);
 }
 
+void R4::delete_word()
+{   pending("delete word");
+}
+
+void R4::cmd_delete_word()
+{   pending("cmd delete word");
+}
+
 // This one deletes whole n glyphs without regard to whether they
 // are built up using combining chars.
 
@@ -1395,6 +1438,41 @@ void R4::cmd_delete_line()
 {   cmd_line.erase(0);
 }
 
+// When I flip case if the character is compound I just flip the case
+// of the base character, so E-acute will swap with e-acute. If I
+// have sizeof(wchar_t)=2 then I treat codes beyond 0xffff as caseless.
+
+char32_t flipcase(char32_t ch)
+{
+    if (ch > 0x0010ffff)
+    {   cchar_t cch = ccharmap[ch];
+        if (iswupper(cch.chars[0])) cch.chars[0] = towlower(cch.chars[0]);
+        else if (iswlower(cch.chars[0])) cch.chars[0] = towupper(cch.chars[0]);
+        return lookup_composite(cch);
+    }
+    else if (sizeof(wchar_t) == 2 && ch > 0xffff) return ch;
+    else if (iswupper((wchar_t)ch)) return (char32_t)towlower((wchar_t)ch);
+    else if (iswlower((wchar_t)ch)) return (char32_t)towupper((wchar_t)ch);
+    else return ch;
+}
+
+void R4::flip_case()
+{   if (cx == buffer[cy].length())
+    {   beep();
+        return;
+    }
+    buffer[cy][cx] = flipcase(buffer[cy][cx]);
+    char_right();
+}
+
+void R4::cmd_flip_case()
+{   if (cmd_cx == cmd_line.length())
+    {   beep();
+        return;
+    }
+    cmd_line[cmd_cx] = flipcase(cmd_line[cmd_cx]);
+}
+
 void R4::flip_column_mode()
 {   columnMode = !columnMode;
 }
@@ -1425,6 +1503,21 @@ void R4::quit_editor()
     exit(0);
 }
 
+// Return true if I should view this character as part of a "word".
+// I allow alphanumeric characters and underscore. If the input characters
+// has some combining marks I judge it on the base character in use. So
+// an underlined "x" or a "y" with a ring above it will be viewed as
+// alphabetic and so can be included in words.
+
+bool wordchar(char32_t ch)
+{   if (ch > 0x0010ffff)
+    {   cchar_t cch = ccharmap[ch];
+        ch = cch.chars[0];          // Just look at the base character.
+    }
+    if (sizeof(wchar_t) == 2 && ch > 0xffff) return false;
+    return iswalnum(ch) || ch == '_';
+}
+
 void R4::word_left()
 {   string32 line = buffer[cy];
     if (cx == 0)
@@ -1433,11 +1526,9 @@ void R4::word_left()
     }
     cx--;
     while (cx >= 0 &&
-           line[cx] <= 0x7e &&
-           std::isspace(line[cx])) cx--;
+           !wordchar(line[cx])) cx--;
     while (cx >= 0 &&
-           (line[cx] > 0x7e ||
-            !std::isspace(line[cx]))) cx--;
+           wordchar(line[cx])) cx--;
     cx++;
     makeCursorVisible();
 }
@@ -1448,11 +1539,9 @@ void R4::cmd_word_left()
         return;
     cmd_cx--;
     while (cmd_cx >= prompt_length &&
-           cmd_line[cmd_cx] <= 0x7e &&
-           std::isspace(cmd_line[cmd_cx])) cmd_cx--;
+           !wordchar(cmd_line[cmd_cx])) cmd_cx--;
     while (cmd_cx >= prompt_length &&
-           (line[cx] > 0x7e ||
-            !std::isspace(cmd_line[cmd_cx]))) cmd_cx--;
+           wordchar(cmd_line[cmd_cx])) cmd_cx--;
     cmd_cx++;
 //    makeCursorVisible();   I may need to do horizontal scrolling...
 }
@@ -1465,11 +1554,9 @@ void R4::word_right()
     }
     cx++;
     while (cx < line.length() &&
-           (line[cx] > 0x7e ||
-            !std::isspace(line[cx]))) cx++;
+           wordchar(line[cx])) cx++;
     while (cx < line.length() &&
-           line[cx] <= 0x7e &&
-           std::isspace(line[cx])) cx++;
+           !wordchar(line[cx])) cx++;
     makeCursorVisible();
 }
 
@@ -1478,11 +1565,9 @@ void R4::cmd_word_right()
     if (cmd_cx == cmd_line.length()) return;
     cmd_cx++;
     while (cmd_cx < cmd_line.length() &&
-           (cmd_line[cmd_cx] > 0x7e ||
-            !std::isspace(cmd_line[cmd_cx]))) cmd_cx++;
+           wordchar(cmd_line[cmd_cx])) cmd_cx++;
     while (cmd_cx < cmd_line.length() &&
-           cmd_line[cmd_cx] <= 0x7e &&
-           std::isspace(cmd_line[cmd_cx])) cmd_cx++;
+           !wordchar(cmd_line[cmd_cx])) cmd_cx++;
 //    makeCursorVisible();
 }
 
@@ -1493,7 +1578,7 @@ void R4::start_of_line()
 
 void R4::cmd_start_of_line()
 {   cmd_cx = prompt_length;
-//    makeCursorVisible();
+    makeCursorVisible();
 }
 
 void R4::end_of_line()
@@ -1503,7 +1588,7 @@ void R4::end_of_line()
 
 void R4::cmd_end_of_line()
 {   cmd_cx = cmd_line.length();
-//    makeCursorVisible();
+    makeCursorVisible();
 }
 
 void R4::top_of_screen()
@@ -1851,21 +1936,6 @@ char32_t fixcase(char32_t ch, bool casefold)
     else return (char32_t)towlower((wchar_t)ch);
 }
 
-// Return true if I should view this character as part of a "word".
-// I allow alphanumeric characters and underscore. If the input characters
-// has some combining marks I judge it on the base character in use. So
-// an underlined "x" or a "y" with a ring above it will be viewed as
-// alphabetic and so can be included in words.
-
-bool wordchar(char32_t ch)
-{   if (ch > 0x0010ffff)
-    {   cchar_t cch = ccharmap[ch];
-        ch = cch.chars[0];          // Just look at the base character.
-    }
-    if (sizeof(wchar_t) == 2 && ch > 0xffff) return false;
-    return iswalnum(ch) || ch == '_';
-}
-
 // This does not handle linebreaks yet... and I may worry about the very
 // start of the buffer.
 
@@ -1885,24 +1955,12 @@ bool R4::match_before(string32 target, bool casefold, bool word, bool regex)
 
 // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-void R4::o_menu()
-{   pending("o menu");
-}
-
 void R4::undelete()
 {   pending("undelete");
 }
 
 void R4::cmd_undelete()
 {   pending("cmd undelete");
-}
-
-void R4::delete_word()
-{   pending("delete word");
-}
-
-void R4::cmd_delete_word()
-{   pending("cmd delete word");
 }
 
 void R4::stop_command()
@@ -1935,14 +1993,6 @@ void R4::goto_line()
 
 void R4::last_find_or_block()
 {   pending("last find or block");
-}
-
-void R4::flip_case()
-{   pending("flip case");
-}
-
-void R4::cmd_flip_case()
-{   pending("cmd flip case");
 }
 
 std::string SS(string32 s) // Maybe useful for debugging.

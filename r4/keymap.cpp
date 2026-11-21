@@ -137,7 +137,7 @@ funcMap R4::keymap =
     {'a' | TAG_K,        &R4::pending},
     {'b' | TAG_K,        &R4::set_start_block},
     {'c' | TAG_K,        &R4::copy_block},
-//    {'d' | TAG_K,        &R4::pending},
+    {'d' | TAG_K,        &R4::pending},
     {'d' | TAG_K,        &R4::redraw_screen},
     {'e' | TAG_K,        &R4::pending},
     {'f' | TAG_K,        &R4::pending},
