@@ -43,6 +43,7 @@
 #include <cstdlib>
 #include <cstdio>    
 #include <cctype>
+#include <cwctype>
 #include <cstdlib>
 #include <cwctype>
 #include <cassert>

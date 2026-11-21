@@ -1667,7 +1667,7 @@ void R4::find()
    }
 
    string32 search_line = cmd_line;
-   string32 target = search_line.substr(prompt_length); 
+   target = search_line.substr(prompt_length); 
    display("Search string is: ", target);
    cmd_line = L("Options (? for info)? ");
    cmd_cy = 2;
@@ -1685,7 +1685,7 @@ void R4::find()
        if (cmd_process(ch)) break;
        renderScreen();
    }
-   string32 options = cmd_line;
+   string32 options = cmd_line.erase(0, prompt_length);
    display("options = ", options);
 // The "get help" part of the menu here is not yet populated.
    if (options.find('?', prompt_length) != string32::npos)
@@ -1775,6 +1775,8 @@ void R4::repeat_last_find()
     perform_find();
 }
 
+// I probably need to be able to report "no matches found".
+
 void R4::perform_find()
 {   size_t rep = count;
     if (rep == 0)
@@ -1807,16 +1809,63 @@ void R4::next_char_back(int& x, int& y)
     }
 }
 
-// This does not handle linebreaks yet...
+// When doing a case-insensitive search I map characters from both
+// strings into lower case, with special case for when I am on windows
+// where wide characters are only 2 bytes (I take a view that any glyph
+// represented using surrogates will not have a case-flipped version) and
+// with characters that have added diacritical marks added using
+// combining characters.
+
+// Both for case-insensitive matching and for word-searches the exact
+// behaviour can be locale-sensitive.
+
+char32_t fixcase(char32_t ch, bool casefold)
+{   if (!casefold) return ch;
+// If I have a character with composing marks and the base characters is
+// in upper case I will fold it to lower case. Furthermore I will
+// normalise the order of combining marks here. When I am not performing
+// comparisons I leave that order unchanged so that adding and removing
+// multiple diacriticals behaves sensibly with the last one added being the
+// first to be removed.
+    else if (ch > 0x0010ffff)
+    {   cchar_t cch = ccharmap[ch];
+        cch.chars[0] = towlower(cch.chars[0]);
+        std::sort(std::begin(cch.chars)+1, std::end(cch.chars));
+        return lookup_composite(cch);
+    }
+    else if (sizeof(wchar_t) == 2 && ch > 0xffff) return ch;
+    else return (char32_t)towlower((wchar_t)ch);
+}
+
+// Return true if I should view this character as part of a "word".
+// I allow alphanumeric characters and underscore. If the input characters
+// has some combining marks I judge it on the base character in use. So
+// an underlined "x" or a "y" with a ring above it will be viewed as
+// alphabetic and so can be included in words.
+
+bool wordchar(char32_t ch)
+{   if (ch > 0x0010ffff)
+    {   cchar_t cch = ccharmap[ch];
+        ch = cch.chars[0];          // Just look at the base character.
+    }
+    if (sizeof(wchar_t) == 2 && ch > 0xffff) return false;
+    return iswalnum(ch) || ch == '_';
+}
+
+// This does not handle linebreaks yet... and I may worry about the very
+// start of the buffer.
 
 bool R4::match_before(string32 target, bool casefold, bool word, bool regex)
 {   int x = cx, y = cy;
+    if (word && wordchar(buffer[y][x])) return false;
     next_char_back(x, y);
     int len = target.length();
     while (len != 0)
-    {   if (target[--len] != buffer[y][x]) return false;
+    {   if (fixcase(target[--len], casefold) !=
+            fixcase(buffer[y][x], casefold)) return false;
         next_char_back(x, y);
     }
+    if (word && wordchar(buffer[y][x])) return false;
     return true;
 }
 
