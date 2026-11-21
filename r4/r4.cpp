@@ -772,7 +772,7 @@ void R4::renderScreen()
     std::string line1 = format("\"{}\"", filename);
     line1 = std::format(
         "EDITING {:30s}  LINE={: <6d} CHAR={: <4d}  {:s}",
-        line1, cy, cx,
+        line1, cy+1, cx+1,
         (overwriteMode ? "REPLACE MODE" : " INSERT MODE"));
     while (line1.length() < width) line1.push_back(' ');
     std::string line2 = "";
@@ -1716,6 +1716,41 @@ void R4::goto_end_block()
     makeCursorVisible();
 }
 
+void R4::goto_line()
+{   string32 first_line = L("Move to absolute line in text:");
+    cmd_line = L("Line number? ");
+    prompt_length = cmd_cx = cmd_line.length();
+    string32 empty_line = L("");
+    cmd_cy = 1;
+    cmd_lines.clear();
+    cmd_lines.push_back(&first_line); cmd_margin[0] = 0;
+    cmd_lines.push_back(&cmd_line);   cmd_margin[1] = cmd_cx;
+    cmd_lines.push_back(&empty_line); cmd_margin[2] = 0;
+    display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
+    cmd_active = true;
+    renderScreen();
+    uint32_t ch;
+    size_t lineno = 0;
+    for (;;)
+    {   ch = mygetch();
+        if (ch < 0x7e && isdigit(ch))
+            lineno = 10*lineno + ch - '0';
+        else if (ch == '\n') break;
+        else if (ch == CTRL_KEY('u'))
+        {   lineno = 01U;
+            break;
+        }
+        renderScreen();
+    }
+    std::fprintf(logfile(), "goto line %d\n", (int)lineno);
+    if (lineno != -1U &&
+        lineno <= buffer.size())
+    {   cy = lineno;
+        cx = 0;
+    }
+    cmd_active = false;
+}
+
 void R4::find()
 {
 // Dialog goes...
@@ -1754,70 +1789,70 @@ void R4::find()
 //      This can be useful if you mistype the find string.
 //    ^U will interrupt a search at any time.
 //  -----------------------------------------------------------(press any key)-----
-   string32 empty_line = L("");
-   cmd_line = L("Find? ");
-   prompt_length = cmd_cx = cmd_line.length();
-   cmd_cy = 1;
-   cmd_lines.clear();
-   cmd_lines.push_back(&empty_line); cmd_margin[0] = 0;
-   cmd_lines.push_back(&cmd_line);   cmd_margin[1] = cmd_cx;
-   cmd_lines.push_back(&empty_line); cmd_margin[2] = 0;
-   display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
-   cmd_active = true;
-   renderScreen();
-   uint32_t ch;
-   for (;;)
-   {   ch = mygetch();
-       if (cmd_process(ch)) break;
-       renderScreen();
-   }
+    string32 empty_line = L("");
+    cmd_line = L("Find? ");
+    prompt_length = cmd_cx = cmd_line.length();
+    cmd_cy = 1;
+    cmd_lines.clear();
+    cmd_lines.push_back(&empty_line); cmd_margin[0] = 0;
+    cmd_lines.push_back(&cmd_line);   cmd_margin[1] = cmd_cx;
+    cmd_lines.push_back(&empty_line); cmd_margin[2] = 0;
+    display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
+    cmd_active = true;
+    renderScreen();
+    uint32_t ch;
+    for (;;)
+    {   ch = mygetch();
+        if (cmd_process(ch)) break;
+        renderScreen();
+    }
 
-   string32 search_line = cmd_line;
-   target = search_line.substr(prompt_length); 
-   display("Search string is: ", target);
-   cmd_line = L("Options (? for info)? ");
-   cmd_cy = 2;
-   cmd_lines.clear();
-   cmd_lines.push_back(&empty_line); cmd_margin[0] = 0;
-   cmd_lines.push_back(&search_line);cmd_margin[1] = prompt_length;
-   prompt_length = cmd_cx = cmd_line.length();
-   cmd_lines.push_back(&cmd_line);   cmd_margin[1] = cmd_cx;
-   cmd_lines.push_back(&empty_line); cmd_margin[2] = 0;
-   display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
-   cmd_active = true;
-   renderScreen();
-   for (;;)
-   {   ch = mygetch();
-       if (cmd_process(ch)) break;
-       renderScreen();
-   }
-   string32 options = cmd_line.erase(0, prompt_length);
-   display("options = ", options);
+    string32 search_line = cmd_line;
+    target = search_line.substr(prompt_length);
+    display("Search string is: ", target);
+    cmd_line = L("Options (? for info)? ");
+    cmd_cy = 2;
+    cmd_lines.clear();
+    cmd_lines.push_back(&empty_line); cmd_margin[0] = 0;
+    cmd_lines.push_back(&search_line);cmd_margin[1] = prompt_length;
+    prompt_length = cmd_cx = cmd_line.length();
+    cmd_lines.push_back(&cmd_line);   cmd_margin[1] = cmd_cx;
+    cmd_lines.push_back(&empty_line); cmd_margin[2] = 0;
+    display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
+    cmd_active = true;
+    renderScreen();
+    for (;;)
+    {   ch = mygetch();
+        if (cmd_process(ch)) break;
+        renderScreen();
+    }
+    string32 options = cmd_line.erase(0, prompt_length);
+    display("options = ", options);
 // The "get help" part of the menu here is not yet populated.
-   if (options.find('?', prompt_length) != string32::npos)
-   {   string32 save_options = options;
-       display("Has a query in ", options);
-       cmd_line = L("Options? ");
-       string32 helpline_1 = L("some help text");
-       string32 helpline_2 = L("more help test");
-       cmd_cy = 8;
-       cmd_lines.clear();
-       cmd_lines.push_back(&empty_line); cmd_margin[0] = 0;
-       cmd_lines.push_back(&search_line);cmd_margin[1] = prompt_length;
-       prompt_length = cmd_cx = cmd_line.length();
-       cmd_lines.push_back(&cmd_line);   cmd_margin[1] = cmd_cx;
-       cmd_lines.push_back(&helpline_1); cmd_margin[2] = 0;
-       cmd_lines.push_back(&helpline_2); cmd_margin[3] = 0;
-       display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
-       cmd_active = true;
-       renderScreen();
-       for (;;)
-       {   ch = mygetch();
-           if (cmd_process(ch)) break;
-           renderScreen();
-       }
-       options = cmd_line;
-   }
+    if (options.find('?', prompt_length) != string32::npos)
+    {   string32 save_options = options;
+        display("Has a query in ", options);
+        cmd_line = L("Options? ");
+        string32 helpline_1 = L("some help text");
+        string32 helpline_2 = L("more help test");
+        cmd_cy = 8;
+        cmd_lines.clear();
+        cmd_lines.push_back(&empty_line); cmd_margin[0] = 0;
+        cmd_lines.push_back(&search_line);cmd_margin[1] = prompt_length;
+        prompt_length = cmd_cx = cmd_line.length();
+        cmd_lines.push_back(&cmd_line);   cmd_margin[1] = cmd_cx;
+        cmd_lines.push_back(&helpline_1); cmd_margin[2] = 0;
+        cmd_lines.push_back(&helpline_2); cmd_margin[3] = 0;
+        display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
+        cmd_active = true;
+        renderScreen();
+        for (;;)
+        {   ch = mygetch();
+            if (cmd_process(ch)) break;
+            renderScreen();
+        }
+        options = cmd_line;
+    }
 // target now has the string we are searching for, and options the
 // options, where valid ones are
 //   B        search backwards
@@ -1985,10 +2020,6 @@ void R4::delete_block()
 
 void R4::find_and_replace()
 {   pending("find and replace");
-}
-
-void R4::goto_line()
-{   pending("goto line");
 }
 
 void R4::last_find_or_block()

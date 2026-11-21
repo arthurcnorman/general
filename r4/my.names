@@ -107,13 +107,11 @@
      {C(0x030d),       "i"},   // combining vertical line above
      {C(0x030e),       "I"},   // combining double vertical line above
      {C(0x030f),       "``"},  // combining double grave accent
-
      {C(0x0327),       ","},   // combining cedilla
      {C(0x0328),       ";"},   // combining ogonek
      {C(0x0332),       "_"},   // combining low line
      {C(0x0335),       "-"},   // combining short stroke overlay
      {C(0x0338),       "/"},   // combining long solidus overlay
-     {C(0x0335),       "-"},   // combining short stroke overlay
      {C(0x20d2),       "|"},   // combining long vertical line overlay
      {C(0x20e5),       "\\"},  // combining reverse solidus overlay
 
