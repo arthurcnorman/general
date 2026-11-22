@@ -64,7 +64,7 @@ funcMap R4::keymap =
     {CTRL_KEY('v'),      &R4::flip_overwrite_mode},
     {CTRL_KEY('w'),      &R4::scroll_down},
     {CTRL_KEY('x'),      &R4::line_down},
-    {CTRL_KEY('y'),      &R4::pending},
+    {CTRL_KEY('y'),      &R4::delete_line},
     {CTRL_KEY('z'),      &R4::scroll_up},
     {CTRL_KEY('\\'),     &R4::flip_case},
     {0x7f,               &R4::backspace},
@@ -213,7 +213,7 @@ funcMap R4::keymap =
     {'v' | TAG_P,        &R4::pending},
     {'w' | TAG_P,        &R4::pending},
     {'x' | TAG_P,        &R4::pending},
-    {'y' | TAG_P,        &R4::pending},
+    {'y' | TAG_P,        &R4::delete_line},
     {'z' | TAG_P,        &R4::pending},
 
     {'0' | TAG_Q,        &R4::goto_mark},
@@ -252,7 +252,7 @@ funcMap R4::keymap =
     {'v' | TAG_Q,        &R4::last_find_or_block},
     {'w' | TAG_Q,        &R4::pending},
     {'x' | TAG_Q,        &R4::bottom_of_screen},
-    {'y' | TAG_Q,        &R4::delete_line},
+    {'y' | TAG_Q,        &R4::blank_this_line},
     {'z' | TAG_Q,        &R4::pending},
 
 
@@ -393,11 +393,12 @@ bool R4::cmd_process(uint32_t ch)
     case CTRL_KEY('p'):              R4::p_menu();             return false;
     case CTRL_KEY('s'):              R4::cmd_char_left();      return false;
     case CTRL_KEY('t'):              R4::cmd_delete_word();    return false;
+    case CTRL_KEY('y'):              R4::cmd_delete_line();    return false;
     case CTRL_KEY('\\'):             R4::cmd_flip_case();      return false;
-    case 'y' | TAG_Q:                R4::cmd_delete_line();    return false;
     case 'd' | TAG_Q:                R4::cmd_end_of_line();    return false;
     case 's' | TAG_Q:                R4::cmd_start_of_line();  return false;
     case 't' | TAG_Q:                R4::cmd_delete_to_eol();  return false;
+    case 'y' | TAG_Q:                R4::cmd_blank_this_line();return true;
     case 'x' | TAG_ALT:              R4::cmd_unicodeConvert(); return false;
     case KEY_F(1) | TAG_FN:          R4::unicodeConvert();     return false;
     case KEY_LEFT | TAG_FN:          R4::cmd_char_left();      return false;

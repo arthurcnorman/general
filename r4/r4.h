@@ -292,6 +292,8 @@ public:
     void cmd_delete_to_eol();
     void delete_line();
     void cmd_delete_line();
+    void blank_this_line();
+    void cmd_blank_this_line();
 
 // Wordstar uses s ^J menu key, but with the way I use ncurses that seems
 // to alias against the enter key... So I use ALT-J instead.

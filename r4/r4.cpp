@@ -1498,8 +1498,18 @@ void R4::delete_line()
     cx = 0;
 }
 
+void R4::blank_this_line()
+{   cx = buffer[cy].length();
+    while (cx != 0) backspace();
+}
+
 void R4::cmd_delete_line()
 {   cmd_line.erase(0);
+}
+
+void R4::cmd_blank_this_line()
+{   cmd_cx = cmd_line.length();
+    while (cmd_cx != prompt_length) cmd_backspace();
 }
 
 // When I flip case if the character is compound I just flip the case
@@ -1752,6 +1762,150 @@ void R4::goto_end_block()
     cy = endBlockLine;
     cx = endBlockCol;
     makeCursorVisible();
+}
+
+// To deal with blocks I will have a function that extracts the
+// current block as a std::vector<string32> where in column mode
+// each string is the same length. It has an optional argument that
+// controls whether it deletes the material that it is copying.
+
+std::vector<string32> R4::extract_block(bool del)
+{   std::vector<string32> r;
+    if (invalidBlock()) return r;
+// The cursor might be within a block that I am about to remove.
+// To handle that I set a special markpoint at the cursor and then
+// the general markpoint updating will re-position it if necessary. I
+// reset the cursor to wherever it ends up. That means I am entitled
+// to move the cursor as I do the adjustment. That is jolly convenient.
+    save_cy = cy;
+    save_cx = cx;
+    if (columnMode)
+    {   for (size_t y=startBlockLine; y<=endBlockLine; y++)
+        {   cy = y;
+            string32 new_line;
+            int dc = 0;
+            for (cx = startBlockCol; cx<endBlockCol; cx++)
+            {   if (cx < buffer[cy].length())
+                {   dc++;
+                    new_line.push_back(buffer[cy][cx]);
+                }
+                else new_line.push_back(' ');
+            }
+display("column segment: ", new_line, " y=", y);
+            r.push_back(new_line);
+            if (del)
+            {   if (cx > buffer[cy].length()) cx = buffer[cy].length();
+                while (dc-- != 0) backspace();
+            }
+        }
+    }
+    else
+    {
+display("block extract: ", buffer[cy], "del=", del);
+        for (size_t y = startBlockLine; y<=endBlockLine; y++)
+        {   string32 d = buffer[y];
+display("Start to extract from ", d, " y=", y);
+            if (y == endBlockLine)
+                d.erase(endBlockCol, string32::npos);
+            if (y == startBlockLine)
+                d.erase(0, startBlockCol);
+display("bit that is copied: ", d);
+            r.push_back(d);
+            if (del)
+            {   cy = y;
+display("going to delete from line: ", buffer[y]);
+fprintf(logfile(), "y=%d startBlockLine=%d endBlockLine=%d\n", (int)y, (int)startBlockLine, (int)endBlockLine);
+fprintf(logfile(), "y=%d startBlockCol=%d endBlockCol=%d\n", (int)y, (int)startBlockCol, (int)endBlockCol);
+                if (y == startBlockLine && y == endBlockLine)
+                {   size_t len = cx = endBlockCol - startBlockCol;
+                    for (size_t i=0; i<len; i++)
+                        backspace();
+                }
+                else if (y == endBlockLine)
+                {   size_t len = cx = endBlockCol;
+                    for (size_t i=0; i<len; i++)
+                        backspace();
+                }
+                else if (y == startBlockLine)
+                {   size_t len = buffer[cy].length() - startBlockCol;
+                    cx = startBlockCol;
+                    for (size_t i=0; i<len; i++)
+                        backspace();
+                }
+                else
+                {   size_t len = cx = buffer[cy].length();
+                    for (size_t i=0; i<len; i++)
+                        backspace();
+                }
+            }
+display("residue", buffer[cy]);
+// Now I will have a bunch of empty lines where the middle parts of the
+// block had been and I may need to get rid of them...
+        }
+    }
+    cy = save_cy;
+    cx = save_cx;
+    return r;
+}
+
+// This has to insert or overwrite as needed, and it leaves the cursor
+// at the start of the inserted material. It also sets the block to be
+// where the inserted material has bene placed.
+
+void R4::insert_block(std::vector<string32> b)
+{   save_cy = cy;
+    save_cx = cx;
+    if (columnMode)
+    {   for (auto s : b)
+        {
+// If inserting the block would extend beyond the current material
+// I will need to add lines.
+            if (cy == buffer.size())
+            {   buffer.push_back(L(""));
+                buffer_state.push_back(lexer_base);
+            }
+// If the line I new want to add info to does not reach as far as the
+// desired insert point I will pad it with spaces. Hah a funny thing
+// is that if I am in overwrite mode this still inserts padding blanks.
+            cx = buffer[cy].length();
+            while (buffer[cy].length() < save_cx) insert_char(' ');
+            cx = save_cx;
+// Now I can transcribe new material. I am in column mode and so I
+// always insert to the width of the colum, even if this leaves
+// trailing blanks where the copied material had short lines.
+            for (auto c : s)
+                if (overwriteMode) overwrite_char(c);
+                else insert_char(c);
+            cy++;
+        }
+    }
+    else
+    {   pending("not column mode");
+    }
+    cy = save_cy;
+    cx = save_cx;
+    endBlockLine = cy + endBlockLine - startBlockLine;
+    endBlockCol = cx + endBlockCol - startBlockCol;
+    startBlockLine = cy;
+    startBlockCol = cx;
+}
+
+void R4::delete_block()
+{   extract_block(true);
+    startBlockLine = -1U;
+    endBlockLine = -1U;
+    startBlockCol = -1U;
+    endBlockCol = -1U;
+}
+
+void R4::copy_block()
+{   std::vector<string32> b = extract_block(false);
+    insert_block(b);
+}
+
+void R4::move_block()
+{   std::vector<string32> b = extract_block(true);
+    insert_block(b);
 }
 
 void R4::goto_line()
@@ -2043,105 +2197,6 @@ void R4::cmd_undelete()
 
 void R4::stop_command()
 {   pending("stop");
-}
-
-// To deal with blocks I will have a function that extracts the
-// current block as a std::vector<string32> where in column mode
-// each string is the same length. It has an optional argument that
-// controls whether it deletes the material that it is copying.
-
-std::vector<string32> R4::extract_block(bool del)
-{   std::vector<string32> r;
-    if (invalidBlock()) return r;
-// The cursor might be within a block that I am about to remove.
-// To handle that I set a special markpoint at the cursor and then
-// the general markpoint updating will re-position it if necessary. I
-// reset the cursor to wherever it ends up. That means I am entitled
-// to move the cursor as I do the adjustment. That is jolly convenient.
-    save_cy = cy;
-    save_cx = cx;
-    if (columnMode)
-    {   for (size_t y=startBlockLine; y<=endBlockLine; y++)
-        {   cy = y;
-            string32 new_line;
-            int dc = 0;
-            for (cx = startBlockCol; cx<endBlockCol; cx++)
-            {   if (cx < buffer[cy].length())
-                {   dc++;
-                    new_line.push_back(buffer[cy][cx]);
-                }
-                else new_line.push_back(' ');
-            }
-display("column segment: ", new_line, " y=", y);
-            r.push_back(new_line);
-            if (del)
-            {   if (cx > buffer[cy].length()) cx = buffer[cy].length();
-                while (dc-- != 0) backspace();
-            }
-        }
-    }
-    else
-    {   pending("not column mode");
-    }
-    cy = save_cy;
-    cx = save_cx;
-    return r;
-}
-
-// This has to insert or overwrite as needed, and it leaves the cursor
-// at the start of the inserted material. It also sets the block to be
-// where the inserted material has bene placed.
-
-void R4::insert_block(std::vector<string32> b)
-{   save_cy = cy;
-    save_cx = cx;
-    if (columnMode)
-    {   for (auto s : b)
-        {
-// If inserting the block would extend beyond the current material
-// I will need to add lines.
-            if (cy == buffer.size())
-            {   buffer.push_back(L(""));
-                buffer_state.push_back(lexer_base);
-            }
-// If the line I new want to add info to does not reach as far as the
-// desired insert point I will pad it with spaces. Hah a funny thing
-// is that if I am in overwrite mode this still inserts padding blanks.
-            cx = buffer[cy].length();
-            while (buffer[cy].length() < save_cx) insert_char(' ');
-            cx = save_cx;
-// Now I can transcribe new material. I am in column mode and so I
-// always insert to the width of the colum, even if this leaves
-// trailing blanks where the copied material had short lines.
-            for (auto c : s)
-                if (overwriteMode) overwrite_char(c);
-                else insert_char(c);
-            cy++;
-        }
-    }
-    else
-    {   pending("not column mode");
-    }
-    cy = save_cy;
-    cx = save_cx;
-}
-
-void R4::delete_block()
-{   extract_block(true);
-    startBlockLine = -1U;
-    endBlockLine = -1U;
-    startBlockCol = -1U;
-    endBlockCol = -1U;
-}
-
-void R4::copy_block()
-{   std::vector<string32> b = extract_block(false);
-    insert_block(b);
-}
-
-void R4::move_block()
-{   std::vector<string32> b = extract_block(true);
-    insert_block(b);
 }
 
 void R4::find_and_replace()
