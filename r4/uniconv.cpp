@@ -80,20 +80,20 @@ size_t utf32_to_wchar(wchar_t* dest, uint32_t* src, size_t len)
 
 void R4::normalise(string32& line, int& x)
 {   if (cx == 0) return;
-    display("begin normalise: ", line, "x = ", x);
+//  display("begin normalise: ", line, "x = ", x);
     uint32_t c = line[x-1];
 #ifdef DEBUG
-    fprintf(logfile(), "potential combining char = %x\n", c);
+//  fprintf(logfile(), "potential combining char = %x\n", c);
 #endif
     uint32_t v = codepoints.lookup(c);
 #ifdef DEBUG
-    fprintf(logfile(), "lookup says = %x\n", c);
+//  fprintf(logfile(), "lookup says = %x\n", c);
 #endif
     if (v == -1U || (v & 0x80000000) == 0) return; // A simple character.
 // Now remove the combining mark from the line.
     line.erase(x-1, 1);
     x--;
-    display("combing char removed I hope: ", line, "x = ", x);
+//  display("combing char removed I hope: ", line, "x = ", x);
 // As a special case if I try to normalise at the very start of a line
 // and I have a combining mark I will forcibly insert a space before
 // it so it has something to combine with.
@@ -101,7 +101,7 @@ void R4::normalise(string32& line, int& x)
     {   line.insert(0, 1, ' ');
         x = 1;
     }
-    display("need to merge char into: ", line, "x = ", x);
+//  display("need to merge char into: ", line, "x = ", x);
     uint32_t mergeWith = line[x-1];
     cchar_t newchar;
     std::memset(&newchar, 0, sizeof(newchar));
@@ -109,7 +109,7 @@ void R4::normalise(string32& line, int& x)
     memset(&ww, 0, sizeof(ww));
     size_t n;
 #ifdef DEBUG
-    fprintf(logfile(), "mergeWith = %x\n", mergeWith);
+//  fprintf(logfile(), "mergeWith = %x\n", mergeWith);
 #endif
     if (mergeWith <= 0x0010ffff)
     {   ww[0] = mergeWith;
@@ -118,12 +118,12 @@ void R4::normalise(string32& line, int& x)
     else
     {   cchar_t cc = ccharmap[mergeWith];
 #ifdef DEBUG
-        fprintf(logfile(), "composite char is %x %x %x\n", cc.chars[0], cc.chars[1], cc.chars[2]);
+//      fprintf(logfile(), "composite char is %x %x %x\n", cc.chars[0], cc.chars[1], cc.chars[2]);
 #endif
         std::memcpy(&newchar, &cc, sizeof(cchar_t)); // copy any attributes
         n = wchar_to_utf32(ww, cc.chars, CCHARW_MAX);
 #ifdef DEBUG
-        fprintf(logfile(), "composite char expands as %x %x %x\n", ww[0], ww[1], ww[2]);
+//      fprintf(logfile(), "composite char expands as %x %x %x\n", ww[0], ww[1], ww[2]);
 #endif
     }
 // Now w is an array of 32-bit characters. Either just one if the preceeding
@@ -135,7 +135,7 @@ void R4::normalise(string32& line, int& x)
     else ww[i] = c;
     utf32_to_wchar(newchar.chars, ww, CCHARW_MAX);
     line[x-1] = lookup_composite(newchar);
-    display("end normalise: ", line, "x = ", x);
+//  display("end normalise: ", line, "x = ", x);
     if (!cmd_active) marks_after_replace(x+1, x);
 }
 

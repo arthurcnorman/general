@@ -167,12 +167,14 @@ public:
     bool columnMode = false;
     bool withinBlock(int row, int col);
 // The first 10 marks ate <0> to <9> and then I have <B> and <K>.
-    int markLine[12];
-    int& startBlockLine = markLine[10];
-    int& endBlockLine = markLine[11];
-    int markCol[12];
-    int& startBlockCol = markCol[10];
-    int& endBlockCol = markCol[11];
+    size_t markLine[13];
+    size_t& startBlockLine = markLine[10];
+    size_t& endBlockLine   = markLine[11];
+    size_t& save_cy        = markLine[12];
+    size_t markCol[13];
+    size_t& startBlockCol = markCol[10];
+    size_t& endBlockCol   = markCol[11];
+    size_t& save_cx       = markCol[12];
 
 // Code that send data from the buffer to ncurses.
     void renderScreen();
@@ -251,8 +253,8 @@ public:
     void marks_after_add_line();
     void marks_after_remove_line();
 
-    void flip_mark(int& y, int& x);   // Set or clear a mark.
-    string32 insertMarks(int y);      // put in explicit <K> etc as needed.
+    void flip_mark(size_t& y, size_t& x); // Set or clear a mark.
+    string32 insertMarks(int y);          // put in explicit <K> etc as needed.
     bool invalidBlock();
     void pending();
     void pending(const char* s);
@@ -307,6 +309,9 @@ public:
     void goto_start_block();
     void goto_end_block();
     void goto_mark();
+
+    std::vector<string32> extract_block(bool del=false);
+    void insert_block(std::vector<string32> b);
 
     void copy_block();
     void move_block();

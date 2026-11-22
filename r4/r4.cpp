@@ -174,6 +174,8 @@ R4::R4(const std::string& filename) : filename(filename)
     startBlockCol = -1;
     endBlockLine = -1;
     endBlockCol = -1;
+    save_cy = -1;
+    save_cx = -1;
     for (int i=0; i<10; i++)
     {   markLine[i] = -1;
         markCol[i] = -1;
@@ -1290,7 +1292,7 @@ void R4::scroll_page_up()
         }
     }
 #ifdef DEBUG
-    fprintf(logfile(), "moveby = %d set wy=%d cy = %d\n", moveby, wy, cy);
+//  fprintf(logfile(), "moveby = %d set wy=%d cy = %d\n", moveby, wy, cy);
 #endif
     makeCursorVisible();
 }
@@ -1385,7 +1387,22 @@ void R4::delete_word()
 }
 
 void R4::cmd_delete_word()
-{   pending("cmd delete word");
+{   string32 line = cmd_line;
+    if (cmd_cx == line.length()) return;
+    size_t N = 0;
+    if (wordchar(line[cmd_cx]))
+    {   while (cmd_cx<line.length() && wordchar(line[cmd_cx]))
+        {   cmd_cx++;
+            N++;
+        }
+    }
+    else
+    {   while (cmd_cx<line.length() && !wordchar(line[cmd_cx]))
+        {   cmd_cx++;
+            N++;
+        }
+    }
+    while (N-- != 0) cmd_backspace();
 }
 
 // This one deletes whole n glyphs without regard to whether they
@@ -1524,19 +1541,8 @@ void R4::flip_column_mode()
 {   columnMode = !columnMode;
 }
 
-void R4::write_file()
-{
-#ifdef DEBUG
-    fprintf(logfile(), "write file\n");
-#endif
-}
-
 void R4::save_file()
-{
-#ifdef DEBUG
-    fprintf(logfile(), "save file\n");
-#endif
-    saveFile();
+{   saveFile();
 }
 
 void R4::save_and_exit()
@@ -1655,10 +1661,10 @@ void R4::flip_overwrite_mode()
 // If you behave as if you are setting a mark but your position is already
 // where the mark is then that clears it.
 
-void R4::flip_mark(int& y, int& x)
+void R4::flip_mark(size_t& y, size_t& x)
 {   if (cy == y && cx == x)  // already at that mark ..
-    {   y = -1;              // .. so cancel it
-        x = -1;
+    {   y = -1U;             // .. so cancel it
+        x = -1U;
         return;
     }
     y = cy;                  // set it.
@@ -2039,20 +2045,103 @@ void R4::stop_command()
 {   pending("stop");
 }
 
-void R4::copy_block()
-{   pending("copy block");
+// To deal with blocks I will have a function that extracts the
+// current block as a std::vector<string32> where in column mode
+// each string is the same length. It has an optional argument that
+// controls whether it deletes the material that it is copying.
+
+std::vector<string32> R4::extract_block(bool del)
+{   std::vector<string32> r;
+    if (invalidBlock()) return r;
+// The cursor might be within a block that I am about to remove.
+// To handle that I set a special markpoint at the cursor and then
+// the general markpoint updating will re-position it if necessary. I
+// reset the cursor to wherever it ends up. That means I am entitled
+// to move the cursor as I do the adjustment. That is jolly convenient.
+    save_cy = cy;
+    save_cx = cx;
+    if (columnMode)
+    {   for (size_t y=startBlockLine; y<=endBlockLine; y++)
+        {   cy = y;
+            string32 new_line;
+            int dc = 0;
+            for (cx = startBlockCol; cx<endBlockCol; cx++)
+            {   if (cx < buffer[cy].length())
+                {   dc++;
+                    new_line.push_back(buffer[cy][cx]);
+                }
+                else new_line.push_back(' ');
+            }
+display("column segment: ", new_line, " y=", y);
+            r.push_back(new_line);
+            if (del)
+            {   if (cx > buffer[cy].length()) cx = buffer[cy].length();
+                while (dc-- != 0) backspace();
+            }
+        }
+    }
+    else
+    {   pending("not column mode");
+    }
+    cy = save_cy;
+    cx = save_cx;
+    return r;
 }
 
-void R4::insert_from_file()
-{   pending("insert from file");
-}
+// This has to insert or overwrite as needed, and it leaves the cursor
+// at the start of the inserted material. It also sets the block to be
+// where the inserted material has bene placed.
 
-void R4::move_block()
-{   pending("move block");
+void R4::insert_block(std::vector<string32> b)
+{   save_cy = cy;
+    save_cx = cx;
+    if (columnMode)
+    {   for (auto s : b)
+        {
+// If inserting the block would extend beyond the current material
+// I will need to add lines.
+            if (cy == buffer.size())
+            {   buffer.push_back(L(""));
+                buffer_state.push_back(lexer_base);
+            }
+// If the line I new want to add info to does not reach as far as the
+// desired insert point I will pad it with spaces. Hah a funny thing
+// is that if I am in overwrite mode this still inserts padding blanks.
+            cx = buffer[cy].length();
+            while (buffer[cy].length() < save_cx) insert_char(' ');
+            cx = save_cx;
+// Now I can transcribe new material. I am in column mode and so I
+// always insert to the width of the colum, even if this leaves
+// trailing blanks where the copied material had short lines.
+            for (auto c : s)
+                if (overwriteMode) overwrite_char(c);
+                else insert_char(c);
+            cy++;
+        }
+    }
+    else
+    {   pending("not column mode");
+    }
+    cy = save_cy;
+    cx = save_cx;
 }
 
 void R4::delete_block()
-{   pending("delete block");
+{   extract_block(true);
+    startBlockLine = -1U;
+    endBlockLine = -1U;
+    startBlockCol = -1U;
+    endBlockCol = -1U;
+}
+
+void R4::copy_block()
+{   std::vector<string32> b = extract_block(false);
+    insert_block(b);
+}
+
+void R4::move_block()
+{   std::vector<string32> b = extract_block(true);
+    insert_block(b);
 }
 
 void R4::find_and_replace()
@@ -2061,6 +2150,14 @@ void R4::find_and_replace()
 
 void R4::last_find_or_block()
 {   pending("last find or block");
+}
+
+void R4::insert_from_file()
+{   pending("insert from file");
+}
+
+void R4::write_file()
+{   pending("write_file");
 }
 
 std::string SS(string32 s) // Maybe useful for debugging.
