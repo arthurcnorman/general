@@ -39,7 +39,7 @@
 // one or more diacritical/combining marks.
 // The name r4 is chosen so it is just two characters the are close
 // together on the keyboard, and also as a nod to my name "Arthur" which
-// with enough of a slur moves through "arfut" to "r4".
+// with enough of a slur moves through "arfur" to "r4".
 
 // This should build and run on Linux, Macintosh and Windows (with the
 // mingw32 compilers). It is JUST for use from a command prompt.
@@ -476,7 +476,8 @@ void R4::makeCursorVisible()
     {   wy = cy = 2;
         if (wy < 0) wy = 0;
     }
-    if (cx > buffer[cy].length()) cx = buffer[cy].length();
+    if (cy == buffer.size()) cx = 0;
+    else if (cx > buffer[cy].length()) cx = buffer[cy].length();
     move(cy-wy, cx-wx);
 }
 
@@ -729,7 +730,15 @@ void R4::renderLine(int screeny, int row, string32 line,
         add_wch(&cc);
     }
     while (col < width)
-        put_wch(screeny, col, ' ');
+    {   cchar_t cc;
+        std::memset(&cc, 0, sizeof(cc));
+        cc.chars[0] = ' ';
+        if (withinBlock(row, col)) cc.attr = A_REVERSE;
+        cc.ext_color = fg_white;
+        move(screeny, col);
+        add_wch(&cc);
+        col++;
+    }
 }
 
 void R4::renderScreen()
@@ -957,7 +966,6 @@ void R4::cmd_insert_char(uint32_t c)
     cmd_cx++;
 // If I just inserted a combining mark I need to tidy up
     normalise(cmd_line, cmd_cx);
-    cmd_cx++;
 }
 
 void R4::cmd_overwrite_char(uint32_t c)
@@ -1237,7 +1245,8 @@ void R4::cmd_char_left()
 }
 
 void R4::char_right()
-{   if (cx < buffer[cy].length()) cx++;
+{   if (cy == buffer.size()) return;
+    if (cx < buffer[cy].length()) cx++;
     else if (cx == buffer[cy].length() &&
              cy != buffer.size())
     {   cy++;
@@ -1335,8 +1344,44 @@ void R4::cmd_delete_forward(int n)
     else cmd_line.erase(cmd_cx+1, n);
 }
 
+// Return true if I should view this character as part of a "word".
+// I allow alphanumeric characters and underscore. If the input characters
+// has some combining marks I judge it on the base character in use. So
+// an underlined "x" or a "y" with a ring above it will be viewed as
+// alphabetic and so can be included in words.
+
+bool wordchar(char32_t ch)
+{   if (ch > 0x0010ffff)
+    {   cchar_t cch = ccharmap[ch];
+        ch = cch.chars[0];          // Just look at the base character.
+    }
+    if (sizeof(wchar_t) == 2 && ch > 0xffff) return false;
+    return iswalnum(ch) || ch == '_';
+}
+
 void R4::delete_word()
-{   pending("delete word");
+{   string32 line = buffer[cy];
+    if (cx == line.length())
+    {   if (cy != buffer.size())
+        {   cy++;
+            join_lines();
+        }
+        return;
+    }
+    size_t N = 0;
+    if (wordchar(line[cx]))
+    {   while (cx<line.length() && wordchar(line[cx]))
+        {   cx++;
+            N++;
+        }
+    }
+    else
+    {   while (cx<line.length() && !wordchar(line[cx]))
+        {   cx++;
+            N++;
+        }
+    }
+    while (N-- != 0) backspace();
 }
 
 void R4::cmd_delete_word()
@@ -1369,10 +1414,12 @@ void R4::join_lines()
     }
     if (!cmd_active) marks_after_join_line();
     cx = buffer[cy-1].length();
-    for (auto c : buffer[cy])
-        buffer[cy-1].push_back(c);
-    buffer.erase(buffer.begin()+cy);
-    buffer_state.erase(buffer_state.begin()+cy);
+    if (cy != buffer.size())
+    {   for (auto c : buffer[cy])
+            buffer[cy-1].push_back(c);
+        buffer.erase(buffer.begin()+cy);
+        buffer_state.erase(buffer_state.begin()+cy);
+    }
     cy--;
 }
 
@@ -1501,21 +1548,6 @@ void R4::save_and_exit()
 void R4::quit_editor()
 {   endwin();
     exit(0);
-}
-
-// Return true if I should view this character as part of a "word".
-// I allow alphanumeric characters and underscore. If the input characters
-// has some combining marks I judge it on the base character in use. So
-// an underlined "x" or a "y" with a ring above it will be viewed as
-// alphabetic and so can be included in words.
-
-bool wordchar(char32_t ch)
-{   if (ch > 0x0010ffff)
-    {   cchar_t cch = ccharmap[ch];
-        ch = cch.chars[0];          // Just look at the base character.
-    }
-    if (sizeof(wchar_t) == 2 && ch > 0xffff) return false;
-    return iswalnum(ch) || ch == '_';
 }
 
 void R4::word_left()
@@ -1731,24 +1763,29 @@ void R4::goto_line()
     renderScreen();
     uint32_t ch;
     size_t lineno = 0;
+// I should read the whold inpout and then turn it into a number.
     for (;;)
     {   ch = mygetch();
         if (ch < 0x7e && isdigit(ch))
             lineno = 10*lineno + ch - '0';
         else if (ch == '\n') break;
         else if (ch == CTRL_KEY('u'))
-        {   lineno = 01U;
+        {   lineno = -1U;
             break;
         }
+        cmd_line.push_back(ch);
+        cmd_cx++;
         renderScreen();
     }
     std::fprintf(logfile(), "goto line %d\n", (int)lineno);
-    if (lineno != -1U &&
-        lineno <= buffer.size())
-    {   cy = lineno;
+    if (lineno != -1U)
+    {   if (lineno == 0) lineno = 1;
+        else if (lineno > buffer.size()) lineno = buffer.size();
+        cy = lineno-1;
         cx = 0;
     }
     cmd_active = false;
+    makeCursorVisible();
 }
 
 void R4::find()

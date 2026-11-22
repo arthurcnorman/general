@@ -164,11 +164,15 @@ public:
 
 // Positions in the buffer are given the value (-1, -1) when they are
 // not set. Here I have a "selected block" and ten marks.
-    int startBlockLine, startBlockCol;
-    int endBlockLine, endBlockCol;
     bool columnMode = false;
     bool withinBlock(int row, int col);
-    int markLine[10], markCol[10];
+// The first 10 marks ate <0> to <9> and then I have <B> and <K>.
+    int markLine[12];
+    int& startBlockLine = markLine[10];
+    int& endBlockLine = markLine[11];
+    int markCol[12];
+    int& startBlockCol = markCol[10];
+    int& endBlockCol = markCol[11];
 
 // Code that send data from the buffer to ncurses.
     void renderScreen();
