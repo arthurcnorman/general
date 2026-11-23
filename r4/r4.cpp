@@ -785,9 +785,10 @@ void R4::renderScreen()
 // Then there are possibly some initial lines that need to be filled in.
     std::string line1 = format("\"{}\"", filename);
     line1 = std::format(
-        "EDITING {:30s}  LINE={: <6d} CHAR={: <4d}  {:s}",
+        "EDITING {:30s} LINE={: <6d} COL={: <4d}  {:s} {:s}",
         line1, cy+1, cx+1,
-        (overwriteMode ? "REPLACE MODE" : " INSERT MODE"));
+        (overwriteMode ? "REPLACE" : " INSERT"),
+        (columnMode ? "COLUMN" : " BLOCK"));
     while (line1.length() < width) line1.push_back(' ');
     std::string line2 = "";
     for (int i=0; i<width && i<=right_margin; i++)
