@@ -174,9 +174,9 @@ public:
     size_t& endBlockLine   = markLine[11];
     size_t& save_cy        = markLine[12];
     size_t markCol[nMarks];
-    size_t& startBlockCol = markCol[10];
-    size_t& endBlockCol   = markCol[11];
-    size_t& save_cx       = markCol[12];
+    size_t& startBlockCol  = markCol[10];
+    size_t& endBlockCol    = markCol[11];
+    size_t& save_cx        = markCol[12];
 
 // Code that send data from the buffer to ncurses.
     void renderScreen();

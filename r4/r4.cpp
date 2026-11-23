@@ -1883,14 +1883,17 @@ fprintf(logfile(), "cx=%d endBlockCol=%d startBlockCol=%d @@\n",
                    (int)cx, (int)endBlockCol, (int)startBlockCol);
     }
     else
-    {   pending("not column mode");
-#pragma message "non column insert block"
-        cy = save_cy;
-        cx = save_cx;
-        endBlockLine = cy + endBlockLine - startBlockLine;
-        endBlockCol = cx + endBlockCol - startBlockCol;
-        startBlockLine = cy;
-        startBlockCol = cx;
+    {   if (b.size() != 0)
+        {   for (auto c : b[0]) insert_char(c);
+            for (auto l = std::begin(b)+1; l!=b.end(); l++)
+            {   insert_newline();
+                for (auto c : *l) insert_char(c);
+            }
+        }
+        endBlockLine = cy;
+        endBlockCol = cx;
+        startBlockLine = cy = save_cy;
+        startBlockCol = cx = save_cx;
     }
 }
 
