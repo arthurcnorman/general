@@ -163,15 +163,17 @@ public:
     int tab_width;
 
 // Positions in the buffer are given the value (-1, -1) when they are
-// not set. Here I have a "selected block" and ten marks.
+// not set. Here I have a "selected block" and ten marks plus one "mark" used
+// internally.
+    static const size_t nMarks = 13;
     bool columnMode = false;
     bool withinBlock(int row, int col);
-// The first 10 marks ate <0> to <9> and then I have <B> and <K>.
-    size_t markLine[13];
+// The first 10 marks are <0> to <9> and then I have <B> and <K>.
+    size_t markLine[nMarks];
     size_t& startBlockLine = markLine[10];
     size_t& endBlockLine   = markLine[11];
     size_t& save_cy        = markLine[12];
-    size_t markCol[13];
+    size_t markCol[nMarks];
     size_t& startBlockCol = markCol[10];
     size_t& endBlockCol   = markCol[11];
     size_t& save_cx       = markCol[12];
@@ -235,23 +237,8 @@ public:
     void insert_char(uint32_t c);
     void overwrite_char(uint32_t c);
     void addch8(int c);
-    void delete_forward(int n);
-    void delete_backward(int n);
+    void delete_forward();
     void join_lines();
-
-// If you have a line with some marks on it, eg <2>, and you insert or
-// delete characters before the mark(s) or split or join lines than
-// the recorded position of marks must be changed. Similarly if you
-// insert or delete a line then the y-coordinate of any marks further down
-// the file than that will need review.
-    void marks_after_insert();
-    void marks_after_newline();
-    void marks_after_join_line();
-    void marks_after_delete_forward(int n);
-    void marks_after_delete_back(int n);
-    void marks_after_replace(int oldx, int x);
-    void marks_after_add_line();
-    void marks_after_remove_line();
 
     void flip_mark(size_t& y, size_t& x); // Set or clear a mark.
     string32 insertMarks(int y);          // put in explicit <K> etc as needed.
@@ -284,10 +271,12 @@ public:
     void scroll_up();       // by 1 line.
     void scroll_down();
     
-    void backspace();       // delete char before the cursor.
+    void backspace();       // delete char before the cursor. If it is in
+                            // fact one with combining marks just delete
+                            // the final combining mark.
+    void basic_backspace(); // delete char before the cursor.
     void delete_char();     // delete char after the cursor.
     void delete_word();
-    void delete_rest_of_line();
     void delete_to_eol();
     void cmd_delete_to_eol();
     void delete_line();
@@ -358,9 +347,8 @@ public:
     void cmd_insert_char(uint32_t c);
     void cmd_overwrite_char(uint32_t c);
 
-    void cmd_delete_forward(int n);
-    void cmd_delete_backward(int n);
     void cmd_backspace();
+    void cmd_basic_backspace();
     void cmd_delete_char();
     void cmd_undelete();
     void cmd_delete_word();

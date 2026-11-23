@@ -640,17 +640,20 @@ std::unordered_set<std::string> cxx_keywords =
 };
 
 bool R4::withinBlock(int row, int col)
-{   if (columnMode)
+{   if (invalidBlock()) return false;
+    else if (columnMode)
     {   if (row >= startBlockLine &&
             row <= endBlockLine &&
             col >= startBlockCol &&
             col < endBlockCol) return true;
         else return false;
     }
-    if (row < startBlockLine || row > endBlockLine) return false;
-    if (row == startBlockLine && col < startBlockCol) return false;
-    if (row == endBlockLine && col >= endBlockCol) return false;
-    return true;
+    else
+    {   if (row < startBlockLine || row > endBlockLine) return false;
+        else if (row == startBlockLine && col < startBlockCol) return false;
+        else if (row == endBlockLine && col >= endBlockCol) return false;
+        else return true;
+    }
 }
 
 // In the colour version of ncurses I want to insert characters this
@@ -853,17 +856,18 @@ void R4::renderScreen()
 
 // The selection block is invalid either if one of its endpoints is
 // unset or if the start is after the end, of if we are in column
-// mode and the start is to the right of the end.
+// mode and the start is to the right of the end even though they
+// are on different lines. The block must be non-empty.
 
 bool R4::invalidBlock()
 {   if (startBlockLine == -1 ||
         endBlockLine == -1 ||
         startBlockCol == -1 ||
         endBlockCol == -1) return true;
-    if (startBlockLine > endBlockLine) return true;
-    if (startBlockLine == endBlockLine || columnMode)
-        return startBlockCol > endBlockCol;
-    return false;
+    if (endBlockLine < startBlockLine) return true;
+    if (columnMode) return endBlockCol <= startBlockCol;
+    else return (endBlockLine == startBlockLine) &&
+                (endBlockCol <= startBlockCol); 
 }
 
 // Here y is the line in the document to be processed.
@@ -945,8 +949,11 @@ int main(int argc, char* argv[])
 void R4::insert_char(uint32_t c)
 {   buffer[cy].insert(cx, 1, c);
     display("After inserting char: ", buffer[cy]);
-    if (!cmd_active) marks_after_insert();
     cx++;
+// Move any marks that I need to.
+    for (int i=0; i<nMarks; i++)
+        if (markLine[i] == cy && markCol[i] >= cx)
+            markCol[i]++;
 // If I just inserted a combining mark I need to tidy up
     normalise(buffer[cy], cx);
 }
@@ -958,7 +965,7 @@ void R4::overwrite_char(uint32_t c)
     }
     buffer[cy][cx] = c;
     display("After overwriting char: ", buffer[cy]);
-// If I just inserted a combining mark I need to tidy up
+// If I just overwrote with a combining mark I need to tidy up.
     normalise(buffer[cy], cx);
     cx++;
 }
@@ -976,7 +983,7 @@ void R4::cmd_overwrite_char(uint32_t c)
         return;
     }
     cmd_line[cmd_cx] = c;
-// If I just inserted a combining mark I need to tidy up
+// If I just overwrote with a combining mark I need to tidy up
     normalise(cmd_line, cmd_cx);
 }
 
@@ -1162,12 +1169,13 @@ void R4::q_menu()
 void R4::insert_newline()
 {
 // Here I will need to move the tail of the current line to form
-// the next (new) line.
+// the next (new) line. That is going to need a load of adjustments
+// to any marks present,
+#pragma message "marks"
     string32 tail = buffer[cy].substr(cx);
 // If there are marks on the part of the line after the current cursor
 // then they will need to be moved to the next line
-    if (!cmd_active) marks_after_newline();
-    delete_rest_of_line();
+    delete_to_eol();
     if (last_lexed_line >= cy) last_lexed_line = cy-1;
     buffer.insert(buffer.begin()+cy+1, tail);
     buffer_state.insert(buffer_state.begin()+cy+1, lexer_base);
@@ -1329,21 +1337,22 @@ void R4::scroll_down()
     makeCursorVisible();
 }
 
-void R4::delete_forward(int n)
-{   if (!cmd_active) marks_after_delete_forward(n);
-    if (cx == buffer[cy].length())
+// When you delete forward you will always get rid of a full character
+// even if it is a complex one that involves combining marks.
+
+void R4::delete_forward()
+{   if (cx == buffer[cy].length())
     {   if (cy == buffer.size()) beep();
         else
         {   cy++;
             join_lines();
         }
     }
-    else buffer[cy].erase(cx+1, n);
-}
-
-void R4::cmd_delete_forward(int n)
-{   if (cx == cmd_line.length()) beep();
-    else cmd_line.erase(cmd_cx+1, n);
+    else
+    {   buffer[cy].erase(cx+1, 1);
+        for (int i=0; i<nMarks; i++)
+            if (markLine[i] == cy && markCol[i] > cx) markCol[i]--;
+    }
 }
 
 // Return true if I should view this character as part of a "word".
@@ -1383,7 +1392,7 @@ void R4::delete_word()
             N++;
         }
     }
-    while (N-- != 0) backspace();
+    while (N-- != 0) basic_backspace();
 }
 
 void R4::cmd_delete_word()
@@ -1402,26 +1411,7 @@ void R4::cmd_delete_word()
             N++;
         }
     }
-    while (N-- != 0) cmd_backspace();
-}
-
-// This one deletes whole n glyphs without regard to whether they
-// are built up using combining chars.
-
-void R4::delete_backward(int n)
-{   if (!cmd_active) marks_after_delete_back(n);
-    if (n > cx)
-    {   beep();
-        n = cx;
-    }
-    cx -= n;
-    buffer[cy].erase(cx, n);
-}
-
-void R4::cmd_delete_backward(int n)
-{   if (n > cmd_cx-prompt_length) n = cmd_cx;
-    cmd_cx -= n;
-    cmd_line.erase(cmd_cx, n);
+    while (N-- != 0) cmd_basic_backspace();
 }
 
 void R4::join_lines()
@@ -1429,7 +1419,6 @@ void R4::join_lines()
     {   beep();
         return;
     }
-    if (!cmd_active) marks_after_join_line();
     cx = buffer[cy-1].length();
     if (cy != buffer.size())
     {   for (auto c : buffer[cy])
@@ -1440,6 +1429,12 @@ void R4::join_lines()
     cy--;
 }
 
+// This is the behaviour when the user types "backspace", ie they ask to
+// delete the character before the cursor. If that character is one that
+// has diacriticals attached using combining marks then the last-applied
+// such combining mark is removed and so the number of glyphs in the
+// buffer will remain unchanged.
+
 void R4::backspace()
 {   if (cx == 0)
     {   if (cy == 0) beep();
@@ -1447,14 +1442,41 @@ void R4::backspace()
     }
     else
     {   denormalise(buffer[cy], cx);
-        delete_backward(1);
+        basic_backspace();
+    }
+}
+
+// "basic_backspace" removed the item at the character position before the
+// cursor whatever it is.
+
+void R4::basic_backspace()
+{   if (cx == 0)
+    {   if (cy == 0) beep();
+        else join_lines();
+    }
+    else
+    {   cx--;
+        buffer[cy].erase(cx, 1);
+// Now if there are any marks set on the current line beyond position cx
+// they need to move back by 1. To keep marks fully up to date
+        for (int i=0; i<nMarks; i++)
+        if (markLine[i] == cy && markCol[i] > cx) markCol[i]--;
     }
 }
 
 void R4::cmd_backspace()
 {   if (cmd_cx <= prompt_length) return;
     denormalise(cmd_line, cmd_cx);
-    cmd_delete_backward(1);
+    cmd_cx--;
+    cmd_line.erase(cmd_cx, 1);
+}
+
+void R4::cmd_basic_backspace()
+{   if (cmd_cx <= prompt_length) return;
+// The 1-line used for input to commands can not have marks set on
+// it so I do not need to update marks here.
+    cmd_cx--;
+    cmd_line.erase(cmd_cx, 1);
 }
 
 void R4::delete_char()
@@ -1468,29 +1490,36 @@ void R4::delete_char()
             join_lines();
         }
     }
-    else delete_forward(1);
+    else delete_forward();
 }
 
 void R4::cmd_delete_char()
 {   size_t n = cmd_line.length();
     if (cx == n-1) return;
-    else cmd_delete_forward(1);
+    else cmd_line.erase(cmd_cx+1, 1);
 }
 
-void R4::delete_rest_of_line()
-{   if (cx+1 < buffer[cy].length())
-        delete_forward(buffer[cy].length() - cx - 1);
-}
-
+// "delete_to_eol" removes all characters from the current position on
+// the line onward. It does this one at a time so that marks get updated
+// without needing extra code here.
+ 
 void R4::delete_to_eol()
 {   if (cx+1 < buffer[cy].length())
-        buffer[cy].erase(cx, buffer[cy].length() - cx);
+    {   size_t len = buffer[cy].length() - cx;
+        while (len-- != 0) delete_char();
+    }
 }
+
+// For the command line I do not need to fuss about marks so I delete
+// all that I want to in one go.
 
 void R4::cmd_delete_to_eol()
 {   if (cx+1 < cmd_line.length())
         cmd_line.erase(cmd_cx, cmd_line.length() - cmd_cx);
 }
+
+// "delete_line" removes the whole of the current line, so the document as
+// a whole becomed one line shorter. Marks can need updating.
 
 void R4::delete_line()
 {   buffer.erase(buffer.begin()+cy);
@@ -1500,7 +1529,9 @@ void R4::delete_line()
 
 void R4::blank_this_line()
 {   cx = buffer[cy].length();
-    while (cx != 0) backspace();
+// I do this using basic_backspace in case there are any marks set on
+// the material that is being removed.
+    while (cx != 0) basic_backspace();
 }
 
 void R4::cmd_delete_line()
@@ -1681,45 +1712,6 @@ void R4::flip_mark(size_t& y, size_t& x)
     x = cx;
 }
 
-// If yuo have marks, <B>, <K> or <0> to <9> on a line that is changed
-// they need to remain (as best possible) referring to the character they
-// did before the alteration. So this applies if the marhs are to the right
-// of an insert or deletion, and special treatment happens when the
-// edit involved inserting or removing a newline. Here I have stubs that
-// I intend to come back and flesh out later.
-
-void R4::marks_after_insert()
-{
-}
-
-void R4::marks_after_newline()
-{
-}
-
-void R4::marks_after_join_line()
-{
-}
-
-void R4::marks_after_delete_forward(int n)
-{
-}
-
-void R4::marks_after_delete_back(int n)
-{
-}
-
-void R4::marks_after_replace(int oldx, int x)
-{
-}
-
-void R4::marks_after_add_line()
-{
-}
-
-void R4::marks_after_remove_line()
-{
-}
-
 void R4::set_mark()
 {   int n = command_character & 0xf;
     flip_mark(markLine[n], markCol[n]);
@@ -1795,7 +1787,7 @@ display("column segment: ", new_line, " y=", y);
             r.push_back(new_line);
             if (del)
             {   if (cx > buffer[cy].length()) cx = buffer[cy].length();
-                while (dc-- != 0) backspace();
+                while (dc-- != 0) basic_backspace();
             }
         }
     }
@@ -1819,23 +1811,23 @@ fprintf(logfile(), "y=%d startBlockCol=%d endBlockCol=%d\n", (int)y, (int)startB
                 if (y == startBlockLine && y == endBlockLine)
                 {   size_t len = cx = endBlockCol - startBlockCol;
                     for (size_t i=0; i<len; i++)
-                        backspace();
+                        basic_backspace();
                 }
                 else if (y == endBlockLine)
                 {   size_t len = cx = endBlockCol;
                     for (size_t i=0; i<len; i++)
-                        backspace();
+                        basic_backspace();
                 }
                 else if (y == startBlockLine)
                 {   size_t len = buffer[cy].length() - startBlockCol;
                     cx = startBlockCol;
                     for (size_t i=0; i<len; i++)
-                        backspace();
+                        basic_backspace();
                 }
                 else
                 {   size_t len = cx = buffer[cy].length();
                     for (size_t i=0; i<len; i++)
-                        backspace();
+                        basic_backspace();
                 }
             }
 display("residue", buffer[cy]);
@@ -1878,16 +1870,27 @@ void R4::insert_block(std::vector<string32> b)
                 else insert_char(c);
             cy++;
         }
+        cy = save_cy;
+        cx = save_cx;
+fprintf(logfile(), "cx=%d endBlockCol=%d startBlockCol=%d\n",
+                   (int)cx, (int)endBlockCol, (int)startBlockCol);
+        endBlockLine = cy + endBlockLine - startBlockLine;
+        endBlockCol = cx + b[0].length();
+        startBlockLine = cy;
+        startBlockCol = cx;
+fprintf(logfile(), "cx=%d endBlockCol=%d startBlockCol=%d @@\n",
+                   (int)cx, (int)endBlockCol, (int)startBlockCol);
     }
     else
     {   pending("not column mode");
+#pragma message "non column insert block"
+        cy = save_cy;
+        cx = save_cx;
+        endBlockLine = cy + endBlockLine - startBlockLine;
+        endBlockCol = cx + endBlockCol - startBlockCol;
+        startBlockLine = cy;
+        startBlockCol = cx;
     }
-    cy = save_cy;
-    cx = save_cx;
-    endBlockLine = cy + endBlockLine - startBlockLine;
-    endBlockCol = cx + endBlockCol - startBlockCol;
-    startBlockLine = cy;
-    startBlockCol = cx;
 }
 
 void R4::delete_block()

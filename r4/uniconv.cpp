@@ -136,7 +136,6 @@ void R4::normalise(string32& line, int& x)
     utf32_to_wchar(newchar.chars, ww, CCHARW_MAX);
     line[x-1] = lookup_composite(newchar);
 //  display("end normalise: ", line, "x = ", x);
-    if (!cmd_active) marks_after_replace(x+1, x);
 }
 
 // If the character before the cursor is "complex", i.e. it involves
@@ -175,7 +174,6 @@ void R4::denormalise(string32& line, int& x)
     x++;
     line.insert(x, 1, final);
     x++;
-    if (!cmd_active) marks_after_replace(oldx, x);
     display("end denormalise", buffer[cy], "cx = ", cx);
 }
 
@@ -395,10 +393,6 @@ void R4::replace_chars_backward(string32& line, int& x)
         x++;
         normalise(line, x);
     }
-// BUT WORRY. If there are marks (eg <B>) present on the line at positions
-// beyond where I have just made changes they can have moved. An especially
-// jolly case is if such a mark was present within the text that go replaced.
-    if (!cmd_active) marks_after_replace(oldx, x);
 }
 
 static void make_wchar(wchar_t* s, int c)
