@@ -44,6 +44,14 @@
 // This should build and run on Linux, Macintosh and Windows (with the
 // mingw32 compilers). It is JUST for use from a command prompt.
 
+// The text buffer is represented as a std::vector<string32> and (cy,cx)
+// give coordinates into it that indicate where a cursor is.
+// The model is that there are newlines between each line. In particular this
+// means that if a document ends with a newline the final line in it will
+// be empty. If buffer[buffer.size()-1] is not an empty string32 then the
+// document does not end in a newline.
+
+
 #include "r4.h"
 
 #ifdef DEBUG
@@ -419,11 +427,23 @@ void R4::loadFile()
 {   std::ifstream file(filename, std::ifstream::in);
     if (file.is_open())
     {   std::string rawline;
-        string32 line;
-        while (getline(file, rawline))
-        {   line = L(rawline);
-            if (line.length()>0 && line[0]==0xfeff)
+        bool eof_seen = false;
+        while (std::getline(file, rawline))
+        {   eof_seen = file.eof();
+            string32 line = L(rawline);
+// A Byte Order Mark might appear at the start of a file and its byte-
+// swapped variant could be there in unusual circumstances. Neither should
+// appear within the text and if I see them there they will be ignored.
+// Note that data from the file is initially read as raw bytes, but my L()
+// function decodes them from utf8 to utf32.
+            if (line.length()>0 && (line[0]==0xfeff || line[0]==0xfffe))
                 line.erase(0, 1);  // Get rid of BOM if present.
+            buffer.push_back(line);
+            buffer_state.push_back(lexer_base);
+std::cerr << "Line = " << rawline << " eof_seen = " << eof_seen << "\n";
+        }
+        if (!eof_seen)
+        {   string32 line = L("");
             buffer.push_back(line);
             buffer_state.push_back(lexer_base);
         }
@@ -1343,16 +1363,16 @@ void R4::scroll_down()
 
 void R4::delete_forward()
 {   if (cx == buffer[cy].length())
-    {   if (cy == buffer.size()) beep();
+    {   if (cy == buffer.size()-1) beep();
         else
         {   cy++;
             join_lines();
         }
     }
     else
-    {   buffer[cy].erase(cx+1, 1);
+    {   buffer[cy].erase(cx, 1);
         for (int i=0; i<nMarks; i++)
-            if (markLine[i] == cy && markCol[i] > cx) markCol[i]--;
+            if (markLine[i] == cy && markCol[i] >= cx) markCol[i]--;
     }
 }
 
@@ -1414,6 +1434,8 @@ void R4::cmd_delete_word()
     }
     while (N-- != 0) cmd_basic_backspace();
 }
+
+// This joins the current line (cy) onto the end of line (cy-1)
 
 void R4::join_lines()
 {   if (cy == 0)
@@ -1481,10 +1503,8 @@ void R4::cmd_basic_backspace()
 }
 
 void R4::delete_char()
-{   size_t n = buffer[cy].length();
-    if (cx == n-1)
-    {   n = buffer.size();
-        if (cy == n-1) beep();
+{   if (cx == buffer[cy].length())
+    {   if (cy+1 == buffer.size()) beep();
         else
         {   cx = 0;
             cy++;
@@ -1495,9 +1515,7 @@ void R4::delete_char()
 }
 
 void R4::cmd_delete_char()
-{   size_t n = cmd_line.length();
-    if (cx == n-1) return;
-    else cmd_line.erase(cmd_cx+1, 1);
+{   if (cmd_cx != cmd_line.length()) cmd_line.erase(cmd_cx, 1);
 }
 
 // "delete_to_eol" removes all characters from the current position on
@@ -1505,7 +1523,7 @@ void R4::cmd_delete_char()
 // without needing extra code here.
  
 void R4::delete_to_eol()
-{   if (cx+1 < buffer[cy].length())
+{   if (cx < buffer[cy].length())
     {   size_t len = buffer[cy].length() - cx;
         while (len-- != 0) delete_char();
     }
@@ -1930,6 +1948,7 @@ void R4::goto_line()
     renderScreen();
     uint32_t ch;
     size_t lineno = 0;
+#pragma message "goto_line needs to be done better"
 // I should read the whold inpout and then turn it into a number.
     for (;;)
     {   ch = mygetch();
