@@ -857,9 +857,15 @@ void R4::renderScreen()
         }
     }
 
-// In some cases I may also want to set the low couple of lines to info
-// about possible consequences of ALT-x/F1.
-// ...
+// I also want to set the bottom line to info about possible consequences
+// of pressing function keys.
+    x = 0;
+    for (auto c : shortcut_line())
+        put_wch(height-1, x, c, fg_pale_yellow);
+    while (x < width)
+        put_wch(height-1, x, ' ', fg_white);
+
+
 // ...
 // ...
 #ifdef DEBUG
@@ -873,6 +879,10 @@ void R4::renderScreen()
 //  else fprintf(logfile(), "move cursor to %d %d\n", cy-wy+2, cursorx-wx);
 #endif
     refresh();
+}
+
+string32 R4::shortcut_line()
+{   return L("1: A  2: B  3: C  4: D  5: E  6: F  7: G  8: H  9: I  10: J  11: K  12: L"); 
 }
 
 // The selection block is invalid either if one of its endpoints is
@@ -915,7 +925,7 @@ string32 R4::insertMarks(int y)
             r.push_back('K');
             r.push_back('>');
         }
-        if (cy == y && cx == i) cursorx = r.length();
+        if (height-1 == y && cx == i) cursorx = r.length();
         if (line[i] < ' ')
         {   r.push_back('^');
             r.push_back(line[i] | 0x60);
@@ -2261,3 +2271,4 @@ void R4::pending(const char* s)
 }
 
 // end of r4.cpp
+

@@ -149,6 +149,7 @@ public:
     string32 cmd_line;
     int cmd_cx, cmd_cy;
     int prompt_length;
+    string32 shortcut_line();
     bool cmd_process(uint32_t ch);
 
 
