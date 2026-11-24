@@ -43,51 +43,111 @@
 #define C(n) (n | 0x80000000)
 
 // Here are some marks I might expect to like using in mathematics.
-     {0x2102,          "|C"},   // ℂ: double struck C for complex numbers
-     {0x2115,          "|N"},   // ℕ: double struck N for natural numbers
-     {0x211a,          "|Q"},   // ℚ: double struck Q for rational numbers
-     {0x211d,          "|R"},   // ℝ: double struck R for real numbers
-     {0x2124,          "|Z"},   // ℤ: double struck Z for integers
-     {0x2264,          "<="},   // ≤: less than or equal
-     {0x2265,          ">="},   // ≥: greater than or equal
-     {0x2260,          "!="},   // ≠: not equal
-     {0x2227,          "/\\"},  // ∧: and
-     {0x2228,          "\\/"},  // ∧: or
-     {0x00ac,          "#"},    // ¬: not
-     {0x2200,          "A"},    // ∀: forall
-     {0x2203,          "E"},    // ∃: exists
-     {0x2192,          ">"},    // →: rightarrow
-     {0x2190,          "<"},    // ←: leftarrow
-     {0x2194,          "<>"},   // ↔: double-headed arrow
-     {0x2218,          "O"},    // ∘: compose [I want o for ring-on-top]
-     {0x2208,          "e"},    // ∈: member
-     {0x2a01,          "+"},    // ⨁: plus in a ring
-     {0x22a2,          "|-"},   // ⊢: turnstile
-     {0x22a8,          "|="},   // ⊨: double turnstile
-     {0x2234,          ":."},   // ∴: therefore
-     {0x2235,          ".:"},   // ∵: because
+     {0x2102,          "|C"},   // |C: double struck C for complex numbers
+     {0x2115,          "|N"},   // |N: double struck N for natural numbers
+     {0x211a,          "|Q"},   // |Q: double struck Q for rational numbers
+     {0x211d,          "|R"},   // |R: double struck R for real numbers
+     {0x2124,          "|Z"},   // |Z: double struck Z for integers
+     {0x2264,          "<="},   // <=: less than or equal
+     {0x2265,          ">="},   // >=: greater than or equal
+     {0x2260,          "!="},   // !=: not equal
+     {0x2227,          "/\\"},  // /\: and
+     {0x2228,          "\\/"},  // \/: or
+     {0x00ac,          "#"},    // #: not
+     {0x2200,          "A"},    // A: forall
+     {0x2203,          "E"},    // E: exists
+     {0x2192,          ">"},    // >: rightarrow
+     {0x2190,          "<"},    // <: leftarrow
+     {0x2194,          "<>"},   // <>: double-headed arrow
+     {0x2218,          "O"},    // O: compose [I want o for ring-on-top]
+     {0x2208,          "e"},    // e: member
+     {0x2a01,          "+"},    // +: plus in a ring
+     {0x22a2,          "|-"},   // |-: turnstile
+     {0x22a8,          "|="},   // |=: double turnstile
+     {0x2234,          "_."},   // _.: therefore
+     {0x2235,          ".\""},   // .": because
 
-     {0x2070,          "^0"},   // ⁰: superscript digits
-     {0x00b9,          "^1"},   // ¹
-     {0x00b2,          "^2"},   // ²
-     {0x00b3,          "^3"},   // ³
-     {0x2074,          "^4"},   // ⁴
-     {0x2075,          "^5"},   // ⁵
-     {0x2076,          "^6"},   // ⁶
-     {0x2077,          "^7"},   // ⁷
-     {0x2078,          "^8"},   // ⁸
-     {0x2079,          "^9"},   // ⁹
+     {0x2070,          "^0"},   // ^0: superscript digits
+     {0x00b9,          "^1"},   // ^1
+     {0x00b2,          "^2"},   // ^2
+     {0x00b3,          "^3"},   // ^3
+     {0x2074,          "^4"},   // ^4
+     {0x2075,          "^5"},   // ^5
+     {0x2076,          "^6"},   // ^6
+     {0x2077,          "^7"},   // ^7
+     {0x2078,          "^8"},   // ^8
+     {0x2079,          "^9"},   // ^9
 
-     {0x2080,          "_0"},   // ₀: subscript digits
-     {0x2081,          "_1"},   // ₁
-     {0x2082,          "_2"},   // ₂
-     {0x2083,          "_3"},   // ₃
-     {0x2084,          "_4"},   // ₄
-     {0x2085,          "_5"},   // ₅
-     {0x2086,          "_6"},   // ₆
-     {0x2087,          "_7"},   // ₇
-     {0x2088,          "_8"},   // ₈
-     {0x2089,          "_9"},   // ₉
+     {0x2080,          "_0"},   // _0: subscript digits
+     {0x2081,          "_1"},   // _1
+     {0x2082,          "_2"},   // _2
+     {0x2083,          "_3"},   // _3
+     {0x2084,          "_4"},   // _4
+     {0x2085,          "_5"},   // _5
+     {0x2086,          "_6"},   // _6
+     {0x2087,          "_7"},   // _7
+     {0x2088,          "_8"},   // _8
+     {0x2089,          "_9"},   // _9
+
+// Greek letters are rendered as a latin letter followed by a space
+// and then conversion. In many cases the transliteration is phonetic.
+
+     {0x0391,          "A "},   // A :  Alpha
+     {0x0392,          "B "},   // B :  Beta
+     {0x0394,          "D "},   // D :  Delta
+     {0x0395,          "E "},   // B :  Epsilon
+     {0x03a6,          "F "},   // B :  Phi
+     {0x0393,          "G "},   // B :  Gamma
+     {0x0399,          "I "},   // B :  Iota
+     {0x039a,          "K "},   // B :  Kappa
+     {0x039b,          "L "},   // B :  Lambda
+     {0x039c,          "M "},   // B :  Mu
+     {0x039d,          "N "},   // B :  Nu
+     {0x039f,          "O "},   // B :  Omicron
+     {0x03a0,          "P "},   // B :  Pi
+     {0x03a1,          "R "},   // B :  Rho
+     {0x03a3,          "S "},   // B :  Sigma
+     {0x03a4,          "T "},   // B :  Tau
+     {0x0396,          "Z "},   // B :  Zeta
+
+     {0x03a8,          "C "},   // B :  Psi
+     {0x0397,          "H "},   // B :  Eta
+     {0x039e,          "J "},   // B :  Xi
+     {0x0398,          "U "},   // B :  Theta
+     {0x03a8,          "V "},   // B :  Omega
+     {0x03a3,          "W "},   // B :  FinalSigma
+     {0x03a7,          "X "},   // B :  Chi
+     {0x03af,          "Y "},   // B :  Upsilon
+
+     {0x03b1,          "a "},   // a :  alpha
+     {0x03b2,          "b "},   // b :  beta
+     {0x03b4,          "d "},   // d :  delta
+     {0x03b5,          "e "},   // e :  epsilon
+     {0x03c6,          "f "},   // f :  phi
+     {0x03b3,          "g "},   // g :  gamma
+     {0x03b9,          "i "},   // i :  iota
+     {0x03ba,          "k "},   // k :  kappa
+     {0x03bb,          "l "},   // l :  lambda
+     {0x03bc,          "m "},   // m :  mu
+     {0x03bd,          "n "},   // n :  nu
+     {0x03bf,          "o "},   // o :  omicron
+     {0x03c0,          "p "},   // p :  pi
+     {0x03c1,          "r "},   // r :  rho
+     {0x03c3,          "s "},   // s :  sigma
+     {0x03c4,          "t "},   // t :  tau
+     {0x03b6,          "z "},   // z :  zeta
+         
+     {0x03c8,          "c "},   // c :  psi
+     {0x03b7,          "h "},   // h :  eta
+     {0x03be,          "j "},   // j :  xi
+     {0x03b8,          "u "},   // u :  theta
+     {0x03c8,          "v "},   // v :  omega
+     {0x03c2,          "w "},   // w :  finalsigma
+     {0x03c7,          "x "},   // x :  chi
+     {0x03c5,          "y "},   // y :  upsilon
+
+
+
 
 // Now I have some things that generate combining characters.
 
@@ -128,136 +188,138 @@
 // I will use "_" to underline a character so I use "^_" for macron.
 // I will have "-" for a short line across the middle of a letter.
 
-    {0x100,     "A^_"},  // Ā: A-macron
-    {0x101,     "a^_"},  // ā: a-macron
-    {0x102,     "A^u"},  // Ă: A-breve
-    {0x103,     "a^u"},  // ă: a-breve
-    {0x105,     "a;"},   // ą: a-ogonek
-    {0x106,     "C'"},   // Ć: C-acute
-    {0x107,     "c'"},   // ć: c-acute
-    {0x108,     "C^"},   // Ĉ: C-circumflex
-    {0x109,     "c^"},   // ĉ: c-circumflex
-    {0x10a,     "C."},   // Ċ: C-dot-above
-    {0x10b,     "c."},   // ċ: c-dot-above
-    {0x10c,     "Cv"},   // Č: C-caron
-    {0x10d,     "cv"},   // č: c-caron
-    {0x10e,     "Dv"},   // Ď: D-caron
-    {0x10f,     "dv"},   // ď: d-caron
-    {0x110,     "D-"},   // Đ: D with stroke
-    {0x111,     "d-"},   // đ: d with stroke
-    {0x112,     "E^_"},  // E macron
-    {0x113,     "e^_"},  // e macron
-    {0x114,     "E^u"},  // E breve
-    {0x115,     "e^u"},  // e breve
-    {0x116,     "E."},   // E dot
-    {0x117,     "e."},   // e dot
-    {0x118,     "E;"},   // E okonek
-    {0x119,     "e;"},   // e ogonek
-    {0x11a,     "Ev"},   // E caron
-    {0x11b,     "ev"},   // e caron
-    {0x11c,     "G^"},   // G circumflex
-    {0x11d,     "g^"},   // g circumflex
-    {0x11e,     "G^u"},  // G breve
-    {0x11f,     "g^u"},  // g breve
-    {0x120,     "G."},   // G dot
-    {0x121,     "g."},   // g dot
-    {0x122,     "G,"},   // G cedilla 
-    {0x123,     "g,"},   // g cedilla
-    {0x124,     "H^"},   // H circumflex
-    {0x125,     "h^"},   // h circumflex
-    {0x126,     "H-"},   // H with stroke
-    {0x127,     "h-"},   // h with stoke
-    {0x128,     "I~"},   // I tilde
-    {0x129,     "i~"},   // i tilde
-    {0x12a,     "I^_"},  // I macron
-    {0x12b,     "i^_"},  // i macron
-    {0x12c,     "I^u"},  // I breve
-    {0x12d,     "i^u"},  // i breve
-    {0x12e,     "I;"},   // I ogonek
-    {0x12f,     "i;"},   // i ogonek
-    {0x130,     "I."},   // İ: I dot
-    {0x131,     "i"},    // ı: dotless i
-    {0x132,     "IJ"},   // Ĳ: IJ
-    {0x133,     "ij"},   // ĳ: ij
-    {0x134,     "J^"},   // J circumflex
-    {0x135,     "j^"},   // j circumflex
-    {0x136,     "K,"},   // K cedilla
-    {0x137,     "K,"},   // k cedilla
-    {0x138,     "kra"},  // kra
-    {0x139,     "L'"},   // L acute
-    {0x13a,     "l'"},   // l acute
-    {0x13b,     "L,"},   // L cedilla
-    {0x13c,     "l,"},   // l cedilla
-    {0x13d,     "Lv"},   // L caron
-    {0x13e,     "lv"},   // l caron
-    {0x13f,     "L."},   // L middle dot
-    {0x140,     "l."},   // l middle dot
-    {0x141,     "L-"},   // L stroke
-    {0x142,     "l-"},   // l stroke
-    {0x143,     "N'"},   // N acute
-    {0x144,     "n'"},   // n acute
-    {0x145,     "N,"},   // N cedilla
-    {0x146,     "n,"},   // n cedilla
-    {0x147,     "Nv"},   // N caron
-    {0x148,     "nv"},   // n caron
-    {0x149,     "n<"},   // n pre-apostrophe
-//  {0x14a,     "???"},   // N eng
-//  {0x14b,     "???"},   // n eng
-    {0x14c,     "O^_"},  // O macron
-    {0x14d,     "o^_"},  // o macron
-    {0x14e,     "O^u"},  // O breve
-    {0x14f,     "o^u"},  // o breve
-    {0x150,     "O''"},  // O double acute
-    {0x151,     "O''"},  // o double acute
-    {0x152,     "OE"},    // OE
-    {0x153,     "oe"},    // oe
-    {0x154,     "R'"},   // R acute
-    {0x155,     "r'"},   // r acute
-    {0x156,     "R,"},   // R cedilla
-    {0x157,     "r,"},   // r cedilla
-    {0x158,     "Rv"},   // R caron
-    {0x159,     "rv"},   // r caron
-    {0x15a,     "S'"},   // S acute
-    {0x15b,     "s'"},   // s acute
-    {0x15c,     "S^"},   // S circumflex
-    {0x15d,     "s^"},   // s circumflex
-    {0x15e,     "S,"},   // S cedilla
-    {0x15f,     "s,"},   // s cedilla
-    {0x160,     "Sv"},   // S caron
-    {0x161,     "sv"},   // s caron
-    {0x162,     "T,"},   // T cedilla
-    {0x163,     "t,"},   // t cedilla
-    {0x164,     "Tv"},   // T caron
-    {0x165,     "tv"},   // t caron
-    {0x166,     "T-"},   // T stroke
-    {0x167,     "t-"},   // t stroke
-    {0x168,     "U~"},   // U tilde
-    {0x169,     "u~"},   // u tilde
-    {0x16a,     "U^_"},  // U macron
-    {0x16b,     "u^_"},  // u macron
-    {0x16c,     "U^u"},  // U breve
-    {0x16d,     "u^u"},  // u breve
-    {0x16e,     "Uo"},   // U ring
-    {0x16f,     "uo"},   // u ring
-    {0x170,     "U''"},  // Ű: U double acute
-    {0x171,     "u''"},  // ű: u double acute
-    {0x172,     "U;"},   // U ogonek
-    {0x173,     "u;"},   // u ogonek
-    {0x174,     "W^"},   // W circumflex
-    {0x175,     "w^"},   // w circumflex
-    {0x176,     "Y^"},   // Y circumflex
-    {0x177,     "y^"},   // y circumflex
-    {0x178,     "Y:"},   // Ÿ: Y diaeresis
-    {0x179,     "Z'"},   // Z acute
-    {0x17a,     "z'"},   // z acute
-    {0x17b,     "Z."},   // Z dot
-    {0x17c,     "z."},   // z dot
-    {0x17d,     "Zv"},   // Z caron
-    {0x17e,     "zv"},   // z caron
-    {0x17f,     "ss"},   // ſ: long s
+    {0x100,     "A^_"},  // A^_: A-macron
+    {0x101,     "a^_"},  // a^_: a-macron
+    {0x102,     "A^u"},  // A^u: A-breve
+    {0x103,     "a^u"},  // a^u: a-breve
+    {0x105,     "a;"},   // a;: a-ogonek
+    {0x106,     "C'"},   // C': C-acute
+    {0x107,     "c'"},   // c': c-acute
+    {0x108,     "C^"},   // C^: C-circumflex
+    {0x109,     "c^"},   // c^: c-circumflex
+    {0x10a,     "C."},   // C.: C-dot-above
+    {0x10b,     "c."},   // c.: c-dot-above
+    {0x10c,     "Cv"},   // Cv: C-caron
+    {0x10d,     "cv"},   // cv c-caron
+    {0x10e,     "Dv"},   // Dv: D-caron
+    {0x10f,     "dv"},   // dv: d-caron
+    {0x110,     "D-"},   // D-: D with stroke
+    {0x111,     "d-"},   // d-: d with stroke
+    {0x112,     "E^_"},  // E^_: E macron
+    {0x113,     "e^_"},  // e^_: e macron
+    {0x114,     "E^u"},  // E^u: E breve
+    {0x115,     "e^u"},  // e^u: e breve
+    {0x116,     "E."},   // E.: E dot
+    {0x117,     "e."},   // e.: e dot
+    {0x118,     "E;"},   // E;: E okonek
+    {0x119,     "e;"},   // e;: e ogonek
+    {0x11a,     "Ev"},   // Ev: E caron
+    {0x11b,     "ev"},   // ev: e caron
+    {0x11c,     "G^"},   // G^: G circumflex
+    {0x11d,     "g^"},   // g^: g circumflex
+    {0x11e,     "G^u"},  // G^u: G breve
+    {0x11f,     "g^u"},  // g^u: g breve
+    {0x120,     "G."},   // G.: G dot
+    {0x121,     "g."},   // g.: g dot
+    {0x122,     "G,"},   // G,: G cedilla 
+    {0x123,     "g,"},   // g,: g cedilla
+    {0x124,     "H^"},   // H^: H circumflex
+    {0x125,     "h^"},   // h^: h circumflex
+    {0x126,     "H-"},   // H-: H with stroke
+    {0x127,     "h-"},   // h-: h with stoke
+    {0x128,     "I~"},   // I~: I tilde
+    {0x129,     "i~"},   // i~: i tilde
+    {0x12a,     "I^_"},  // I^_: I macron
+    {0x12b,     "i^_"},  // i^_: i macron
+    {0x12c,     "I^u"},  // I^u: I breve
+    {0x12d,     "i^u"},  // i^u: i breve
+    {0x12e,     "I;"},   // I;: I ogonek
+    {0x12f,     "i;"},   // i;: i ogonek
+    {0x130,     "I."},   // I.: I dot
+    {0x131,     "i"},    // i": dotless i
+    {0x132,     "IJ"},   // IJ: IJ
+    {0x133,     "ij"},   // ij: ij
+    {0x134,     "J^"},   // J^: J circumflex
+    {0x135,     "j^"},   // j^: j circumflex
+    {0x136,     "K,"},   // K,: K cedilla
+    {0x137,     "K,"},   // K,: k cedilla
+    {0x138,     "kra"},  // kra: kra
+    {0x139,     "L'"},   // L': L acute
+    {0x13a,     "l'"},   // l': l acute
+    {0x13b,     "L,"},   // L,: L cedilla
+    {0x13c,     "l,"},   // l,: l cedilla
+    {0x13d,     "Lv"},   // Lv: L caron
+    {0x13e,     "lv"},   // lv: l caron
+    {0x13f,     "L."},   // L.: L middle dot
+    {0x140,     "l."},   // l.: l middle dot
+    {0x141,     "L-"},   // L-: L stroke
+    {0x142,     "l-"},   // l-: l stroke
+    {0x143,     "N'"},   // N': N acute
+    {0x144,     "n'"},   // n': n acute
+    {0x145,     "N,"},   // N,: N cedilla
+    {0x146,     "n,"},   // n,: n cedilla
+    {0x147,     "Nv"},   // Nv: N caron
+    {0x148,     "nv"},   // nv: n caron
+    {0x149,     "n<"},   // n<: n pre-apostrophe
+//  {0x14a,     "???"},  // N eng
+//  {0x14b,     "???"},  // n eng
+    {0x14c,     "O^_"},  // O^_: O macron
+    {0x14d,     "o^_"},  // o^_: o macron
+    {0x14e,     "O^u"},  // O^u: O breve
+    {0x14f,     "o^u"},  // o^u: o breve
+    {0x150,     "O''"},  // O'': O double acute
+    {0x151,     "O''"},  // O'': o double acute
+    {0x152,     "OE"},   // OE: OE
+    {0x153,     "oe"},   // oe: oe
+    {0x154,     "R'"},   // R': R acute
+    {0x155,     "r'"},   // r': r acute
+    {0x156,     "R,"},   // R,: R cedilla
+    {0x157,     "r,"},   // r,: r cedilla
+    {0x158,     "Rv"},   // Rv: R caron
+    {0x159,     "rv"},   // rv: r caron
+    {0x15a,     "S'"},   // S': S acute
+    {0x15b,     "s'"},   // s': s acute
+    {0x15c,     "S^"},   // S^: S circumflex
+    {0x15d,     "s^"},   // s^: s circumflex
+    {0x15e,     "S,"},   // S,: S cedilla
+    {0x15f,     "s,"},   // s,: s cedilla
+    {0x160,     "Sv"},   // Sv: S caron
+    {0x161,     "sv"},   // sv: s caron
+    {0x162,     "T,"},   // T,: T cedilla
+    {0x163,     "t,"},   // t,: t cedilla
+    {0x164,     "Tv"},   // Tv: T caron
+    {0x165,     "tv"},   // tv: t caron
+    {0x166,     "T-"},   // T-: T stroke
+    {0x167,     "t-"},   // t-: t stroke
+    {0x168,     "U~"},   // U~: U tilde
+    {0x169,     "u~"},   // u~: u tilde
+    {0x16a,     "U^_"},  // U^_: U macron
+    {0x16b,     "u^_"},  // u^_: u macron
+    {0x16c,     "U^u"},  // U^u: U breve
+    {0x16d,     "u^u"},  // u^u: u breve
+    {0x16e,     "Uo"},   // Uo: U ring
+    {0x16f,     "uo"},   // uo: u ring
+    {0x170,     "U''"},  // U'': U double acute
+    {0x171,     "u''"},  // u'': u double acute
+    {0x172,     "U;"},   // U;: U ogonek
+    {0x173,     "u;"},   // u;: u ogonek
+    {0x174,     "W^"},   // W^: W circumflex
+    {0x175,     "w^"},   // w^: w circumflex
+    {0x176,     "Y^"},   // Y^: Y circumflex
+    {0x177,     "y^"},   // y^: y circumflex
+    {0x178,     "Y:"},   // Y:: Y diaeresis
+    {0x179,     "Z'"},   // Z': Z acute
+    {0x17a,     "z'"},   // z': z acute
+    {0x17b,     "Z."},   // Z.: Z dot
+    {0x17c,     "z."},   // z.: z dot
+    {0x17d,     "Zv"},   // Zv: Z caron
+    {0x17e,     "zv"},   // zv: z caron
+    {0x17f,     "ss"},   // ss: long s
 
 // I could put in Latin Extended B here but I think I see fewer
-// charafcters that I view as frequently used...
+// characters that I view as frequently used... And I might well run out
+// of sensible abbreviations. Note that anybody can out in just the
+// numeric hex code for a character and use that.
                     
 #undef C            
                     
