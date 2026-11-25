@@ -35,6 +35,7 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <map>
 #include <filesystem>
 #include <locale>
 #include <codecvt>
@@ -61,21 +62,21 @@
 extern FILE* logfile();
 #endif
 
-inline constexpr int CTRL_KEY(uint32_t k)
+inline constexpr int CTRL_KEY(std::uint32_t k)
 {   return k & 0x1f;
 }
 
-inline const uint32_t TAG_ALT = 0x02000000;
-inline const uint32_t TAG_FN  = 0x04000000;
+inline const std::uint32_t TAG_ALT = 0x02000000;
+inline const std::uint32_t TAG_FN  = 0x04000000;
 
-inline const uint32_t TAG_J   = 0x08000000;
-inline const uint32_t TAG_K   = 0x10000000;
-inline const uint32_t TAG_O   = 0x20000000;
-inline const uint32_t TAG_P   = 0x40000000;
-inline const uint32_t TAG_Q   = 0x80000000;
+inline const std::uint32_t TAG_J   = 0x08000000;
+inline const std::uint32_t TAG_K   = 0x10000000;
+inline const std::uint32_t TAG_O   = 0x20000000;
+inline const std::uint32_t TAG_P   = 0x40000000;
+inline const std::uint32_t TAG_Q   = 0x80000000;
 
-inline const uint32_t ESC      = 0x001b;
-inline const uint32_t BAD_UTF8 = 0x25a0;   // BLACK SQUARE
+inline const std::uint32_t ESC      = 0x001b;
+inline const std::uint32_t BAD_UTF8 = 0x25a0;   // BLACK SQUARE
 
 enum lexer_state
 {
@@ -149,8 +150,10 @@ public:
     string32 cmd_line;
     int cmd_cx, cmd_cy;
     int prompt_length;
+    std::uint32_t function_key_action[13];
+    void function_key();
     string32 shortcut_line();
-    bool cmd_process(uint32_t ch);
+    bool cmd_process(std::uint32_t ch);
 
 
 // Positions:
@@ -200,7 +203,7 @@ public:
     int mygetch8();
     int mygetch();
     bool overwriteMode = false;
-    void processKeypress(uint32_t c, bool insert=true);
+    void processKeypress(std::uint32_t c, bool insert=true);
     static funcMap keymap;
 
 // A pile of stuff regarding conversion between names and characters that
@@ -235,8 +238,8 @@ public:
 // which I activate if an operation that is not yet implemented is
 // called for.
     void insert_newline();
-    void insert_char(uint32_t c);
-    void overwrite_char(uint32_t c);
+    void insert_char(std::uint32_t c);
+    void overwrite_char(std::uint32_t c);
     void addch8(int c);
     void delete_forward();
     void join_lines();
@@ -345,8 +348,8 @@ public:
     void cmd_start_of_line();
     void cmd_end_of_line();
 
-    void cmd_insert_char(uint32_t c);
-    void cmd_overwrite_char(uint32_t c);
+    void cmd_insert_char(std::uint32_t c);
+    void cmd_overwrite_char(std::uint32_t c);
 
     void cmd_backspace();
     void cmd_basic_backspace();
@@ -359,6 +362,7 @@ public:
 };
 
 extern glyphMap user_names;
+extern std::multimap<std::uint32_t, const char*> user_decode;
 
 // The way I will handle "complex characters" is intended to be
 // aligned with ncurses. Such a character will be represented as
@@ -376,7 +380,7 @@ extern glyphMap user_names;
 // expected that the hash table loading will be miniscule and so if the
 // hash function is reasonably competent this will not need many probes.
 
-// The above allocates a uint32_t value to each distinct "complex"
+// The above allocates a std::uint32_t value to each distinct "complex"
 // character used in a document. On Linux and the version of ncursesw
 // I am using any complex character must be represented using at most
 // 5 wchar_t values, so that can be one base character plus up to 4
@@ -392,14 +396,10 @@ extern glyphMap user_names;
 // it would not be hard to generate a customised version that used more
 // memory but then allowed more modification.
 
-// But for me the big uncertainty is in idebntifing combining characters.
-// Other non-spacing or perhaps double-width characters are also probably
-// a bit of a pain!
-
 inline cplxMap ccharmap;
 
-inline uint32_t lookup_composite(cchar_t cc)
-{   uint32_t hash = 0;
+inline std::uint32_t lookup_composite(cchar_t cc)
+{   std::uint32_t hash = 0;
 #ifdef DEBUG
     fprintf(logfile(), "lookup composite %x %x %x\n",
                        cc.chars[0], cc.chars[1], cc.chars[2]);
@@ -451,8 +451,8 @@ inline uint32_t lookup_composite(cchar_t cc)
 // where the rendering into unicode uses one of a small set of combining
 // characters.
 
-inline uint32_t name_to_code(const char* name)
-{   uint32_t n = codepoints.lookup(name);
+inline std::uint32_t name_to_code(const char* name)
+{   std::uint32_t n = codepoints.lookup(name);
     if (n == -1U) return n;
     n &= 0x7fffffff;
     int extra = 0;
@@ -486,13 +486,18 @@ inline uint32_t name_to_code(const char* name)
     return lookup_composite(cc);    
 }
 
+extern std::uint32_t command_character;
+extern std::uint32_t lookup_user_name(string32 s);
+extern std::uint32_t lookup_name(string32 s);
+
+
 // I provide functions to convert both ways between string32 and
 // both std::string and C-style strings. These will pack and
-// unpock the combining characters.
+// unpack the combining characters.
 
 // NOTE: I can only use std::string and string32 freely in constexpr
-// functions from C++23 onwards so building this code has that requirement.
-// I may look into softening it later if I feel I need to.
+// functions from C++23 onwards so building this code needs a modern compiler.
+// I may look into softening that constraint later if I feel I need to.
 
 inline constexpr std::string S(string32 a)
 {   std::string r = "";
@@ -539,7 +544,7 @@ inline constexpr std::string S(char32_t* p)
 // If the input is malformed it returns -1 and it could then be out of step
 // for further bytes.
 
-inline constexpr uint32_t utf8_getc(const char*& b)
+inline constexpr std::uint32_t utf8_getc(const char*& b)
 {   int c = *b++ & 0xff, c1;
     if (c < 0x80) return c;       // Basic Latin block
     else if (c < 0xc0) return -1; // illegal continuation byte
@@ -596,7 +601,7 @@ inline constexpr string32 L(const char* a)
     while (*a != 0)
     {   int32_t c  = utf8_getc(a);
         if (c == -1) return string32();     // malformed input
-        uint32_t w = codepoints.lookup(c);
+        std::uint32_t w = codepoints.lookup(c);
         if (w == -1U || (w & 0x80000000) == 0)
         {   if (prev != -1) r += string32(1, prev);
             prev = c;

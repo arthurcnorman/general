@@ -273,18 +273,18 @@ funcMap R4::keymap =
     {KEY_HOME | TAG_FN,          &R4::pending},        /* home key */
     {KEY_BACKSPACE | TAG_FN,     &R4::backspace},      /* backspace key */
     {KEY_F0 | TAG_FN,            &R4::pending},        /* Function keys.  Space for 64 */
-    {KEY_F(1) | TAG_FN,          &R4::unicodeConvert}, /* F1: unicode convert */
-    {KEY_F(2) | TAG_FN,          &R4::pending},
-    {KEY_F(3) | TAG_FN,          &R4::pending},
-    {KEY_F(4) | TAG_FN,          &R4::pending},
-    {KEY_F(5) | TAG_FN,          &R4::pending},
-    {KEY_F(6) | TAG_FN,          &R4::pending},
-    {KEY_F(7) | TAG_FN,          &R4::pending},
-    {KEY_F(8) | TAG_FN,          &R4::pending},
-    {KEY_F(9) | TAG_FN,          &R4::pending},
-    {KEY_F(10) | TAG_FN,         &R4::pending},
-    {KEY_F(11) | TAG_FN,         &R4::pending},
-    {KEY_F(12) | TAG_FN,         &R4::pending},
+    {KEY_F(1) | TAG_FN,          &R4::function_key},   /* F1: unicode convert */
+    {KEY_F(2) | TAG_FN,          &R4::function_key},
+    {KEY_F(3) | TAG_FN,          &R4::function_key},
+    {KEY_F(4) | TAG_FN,          &R4::function_key},
+    {KEY_F(5) | TAG_FN,          &R4::function_key},
+    {KEY_F(6) | TAG_FN,          &R4::function_key},
+    {KEY_F(7) | TAG_FN,          &R4::function_key},
+    {KEY_F(8) | TAG_FN,          &R4::function_key},
+    {KEY_F(9) | TAG_FN,          &R4::function_key},
+    {KEY_F(10) | TAG_FN,         &R4::function_key},
+    {KEY_F(11) | TAG_FN,         &R4::function_key},
+    {KEY_F(12) | TAG_FN,         &R4::function_key},   /* I only use F1 to F12 */
     {KEY_F(13) | TAG_FN,         &R4::pending},
     {KEY_F(14) | TAG_FN,         &R4::pending},
     {KEY_F(15) | TAG_FN,         &R4::pending},

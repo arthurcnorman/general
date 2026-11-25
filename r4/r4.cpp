@@ -130,6 +130,47 @@ const char *homedir =
         if (r == nullptr) r = ".";
         return r; })();
 
+// getword() extracts a sequence of non-whitespace characters from the
+// string32 source. If there is a "\" present other than as the final
+// character of the source then the "\" is discarded and the character
+// after it included in the result even if it is whitespace. So the
+// input could be
+//    Word\ with\ spaces\ and\ \"\ in\ it
+// A "#" introduces at the start of where a word could begin causes the
+// rest of the line to be treated as comment, so if you need to use a
+// "#" you will probably write "\#".
+
+string32 getword(string32& source)
+{   while (source.length() != 0 &&
+           source[0] <= 0x7e && std::isspace(source[0]) source.erase(0, 1);
+    if (source.length() != 0 && source[0] == '#')
+    {   source = L("");
+        return L("");
+    }
+    string32 r = L("");
+    while (source.length() != 0 &&
+           source[0] > 0x7e || !std::isspace(source[0]))
+    {   if (source[0] == '\\' && source.length() != 1) source.erase(0, 1);
+        r.push_back(source[0]);
+        source.erase(0, 1);
+    }
+    while (source.length() != 0 &&
+           source[0] <= 0x7e && std::isspace(source[0]) source.erase(0, 1);
+    if (source.length() != 0 && source[0] == '#') source = L("");
+    return r;
+}
+
+std::uint32_t getcharcode(string32& source)
+{
+    string32 item = getword(source);
+// Now item could be one of three things:
+//     the name of a character
+//     [u+] [U+] [0x] [0X] hex digits
+//     " <a single character> "
+                       
+    return 0x1234;
+}
+
 R4::R4(const std::string& filename) : filename(filename)
 {
 #ifndef __CYGWIN__
@@ -196,6 +237,18 @@ R4::R4(const std::string& filename) : filename(filename)
     overwriteMode = false;
     count = 0; // So that trying to repeat a search does not do anything.
 
+    for (size_t i=0; i<html_count; i++)
+    {   const char* name = html_names[i];
+        std::uint16_t c1 = html_codes[i][0];
+        std::uint16_t c2 = html_codes[i][1];
+        cchar_t cch;
+        std::memset(&cch, 0, sizeof(cch));
+        cch.chars[0] = c1;
+        cch.chars[1] = c2;
+        std::uint32_t c = lookup_composite(cch);
+        user_name[name] = c;
+        user_decode[c] = name;
+    }
     std::string profile_name = std::string(homedir).append("/.unicode");
     std::ifstream profile(profile_name);
     if (profile.is_open())
@@ -203,6 +256,96 @@ R4::R4(const std::string& filename) : filename(filename)
 #ifdef DEBUG
         fprintf(logfile(), "~/.unicode seems to exist\n");
 #endif
+        std::string rawline;
+# The user-provided configuraion file can define custom names for
+# unicode characters. The format is:
+#    Anything from "#" to the end of a line is comment
+#    The first "word" on a line is the name to be defined. This
+#      can be any combination of characters. Within it "\" is an
+#      escape so that whitespace or intended "\" characters can be
+#      used. The word ends at the first (non-escaped) whitespace.
+#    There will then be one or more items that can be either hex
+#      numbers up to 10ffff (they may optionally have u+, U+, 0x or 0X
+#      as a prefix) or a word which stands for a codepoint in the
+#      main tables, or q quote-enclosed literal character.
+#      Note that the need for backslash escaped is needed even with
+#      double quotes, and so to write just a literal space character
+#      you are liable to need to write "\ ".
+#      The first item must stand for a spacing character and all
+#      subsequent ones must denote combining characters.
+# A base character can end up with a limited number of combining marks,
+# where that is 5 on Linux and Macintosh and is such that the character
+# itself and the combining marks fit in 6 wchar_t units for Windows.
+#
+# Note that .unicode can be a file in utf8 format and hence can contain
+# "exciting" characters.
+#
+# Examples:
+#    # Here are two ways to end up with the same effect. The first uses
+#    # a literal "+" and the system shorthand for a combining grave,
+#    # while th4e second uses official unicode names for both.
+#    plusgrave1   "+" `
+#    plusgrave2   plus_sign combining_grave_accent
+#    # Now a character you may want in your documents but that is
+#    # perhaps unusual enough not to have a short name in the tables
+#    # provided here. Again two presentations, one concise and the other
+#    # based on unicode naming:
+#    MB7a   U+1d7f3
+#    MB7b   mathematical_sans-serif_bold_digit_seven
+#    MN7c   "x"  # where x should be the desired unicode character, got into
+#                # .profile onw way or another.
+#    # Finally here is a symbol with multiple decorations:
+#    beacon   "|" U+0332 U+030a # vertical bar underlined, with a ring above.
+#
+        uint32_t chars[CCHARW_MAX];
+        int charsSoFar = 0;
+        while (std::getline(file, rawline))
+        {   string32 line = L(rawline);
+            cchar_t cc;
+            std::memset(&cc, 0, sizeof(cc));
+            int nchars = 0;
+            std::string name = getword(line);
+            if (line.length() == 0)
+            {   if (word.length() == 0) continue;
+                std::cerr << "Line in .unicode has name but no definition\n";
+                std::cerr << rawline << "\n";
+                continue;
+            }
+            while (line.length() != 0 && charsSoFar < CCHARW_MAX)
+            {   uint32_t ch = getcharcode(line);
+                if (ch == -1U)
+                {   std::cerr << "Malformed character specification\n";
+                    std::cerr << rawline << "\n";
+                }
+                chars[charsSoFar++] = ch;
+            }
+            if (line.length() != 0)
+            {   std::cerr << "Too many character specifications\n";
+                std::cerr << rawline << "\n";
+                std::cerr << "excess ones ignored\n";
+            }
+// For now a version for Linux
+            if (charsSoFar == 0)
+            {   std::cerr << "Failed to find character definition\n";
+                std::cerr << rawline;
+                continue;
+            }
+            if (charsSoFar == 1) ch = chars[1];
+            else   
+            {   for (int i=0; i<charsSoFar; i++)
+                    cc.chars[i] = chars[i];
+                ch = lookup_composite(cc);
+            }
+            user_names[name] = ch;
+            user_decode[ch] = name;
+
+
+// Now item could be one of three things:
+//     the name of a character
+//     [u+] [U+] [0x] [0X] hex digits
+//     " <a single character> "
+                       
+        }
         profile.close();
     }
 
@@ -503,7 +646,7 @@ void R4::makeCursorVisible()
     move(cy-wy, cx-wx);
 }
 
-void to_utf8(uint32_t ch, char*& p)
+void to_utf8(std::uint32_t ch, char*& p)
 {   if (ch <= 0x7f) *p++ = ch;
     else if (ch <= 0x7ff)
     {   *p++ = 0xc0 | ((ch >> 6) & 0x1f);
@@ -530,7 +673,7 @@ void to_utf8(uint32_t ch, char*& p)
 // If I am on a machine where wchar_t is 16 bits wode I need to
 // use utf16 encoding. Otherwise nothing much is needed.
 
-void to_utf16(uint32_t ch, wchar_t*& p)
+void to_utf16(std::uint32_t ch, wchar_t*& p)
 {   if (sizeof(wchar_t) == 4)
     {   if (ch <= 0xffff) *p++ = ch;
         else
@@ -548,7 +691,7 @@ void to_utf16(uint32_t ch, wchar_t*& p)
 std::string simple_word(string32 line, int col)
 {   std::string r = "";
     while (col < line.length())
-    {   uint32_t c = line[col++];
+    {   std::uint32_t c = line[col++];
         if (c > 0x7f || (!std::isalnum(c) && c != '_')) break;
         r.push_back((char)c);
     }
@@ -704,7 +847,7 @@ void R4::renderLine(int screeny, int row, string32 line,
     bool inKeyword = false;
     for (col=0; col<line.length(); col++)
     {   move(screeny, 0);
-        uint32_t c = line[col];
+        std::uint32_t c = line[col];
         if (c > 0x7f || !std::isalnum(c)) inKeyword = false;
         enum lexer_state oldstate = state;
         state = lexer_transition(state, c);
@@ -882,7 +1025,51 @@ void R4::renderScreen()
 }
 
 string32 R4::shortcut_line()
-{   return L("1: A  2: B  3: C  4: D  5: E  6: F  7: G  8: H  9: I  10: J  11: K  12: L"); 
+{   for (int i=1; i<=12; i++)
+        function_key_action[i] = -1U;
+    string32 r = L("");
+    int counter = 0;
+    string32 line = cmd_active ? cmd_line : buffer[cy];
+    size_t x = cmd_active ? cmd_cx : cx;
+    const int longest_name = 90;
+    int i = x - longest_name;
+    if (i < 0) i = 0;
+    string32 context = line.substr(i, x-i);
+// That has found the characters leading up to where the cursor is.
+// First see if there are any known character names immediatly leading
+// up to the cursor.
+    string32 w = context;
+    std::uint32_t ch = 0; 
+    while (w.length() != 0)
+    {   ch = lookup_user_name(w);
+        if (ch != -1U && counter < 12)   // Found an exact match
+        {   counter++;
+            function_key_action[counter] = ch;
+        }
+        w.erase(0, 1);
+    }
+    w = context;
+    while (w.length() != 0)
+    {   ch = lookup_name(w);
+        if (ch != -1U && counter < 12)   // Found an exact match
+        {   counter++;
+            function_key_action[counter] = ch;
+        }
+        w.erase(0, 1);
+    }
+    for (int i=1; i<=counter; i++)
+    {   if (i > 9)
+        {   r.push_back('1');
+            r.push_back('0' + i - 10);
+        }
+        else r.push_back('0' + i);
+        r.push_back(':');
+        r.push_back(' ');
+        r.push_back(function_key_action[i]);
+        r.push_back(' ');
+        r.push_back(' ');
+    }
+    return r;
 }
 
 // The selection block is invalid either if one of its endpoints is
@@ -936,9 +1123,9 @@ string32 R4::insertMarks(int y)
     return r;
 }
 
-uint32_t command_character;
+std::uint32_t command_character;
 
-void R4::processKeypress(uint32_t c, bool insert)
+void R4::processKeypress(std::uint32_t c, bool insert)
 {   command_character = c;
 // With ALT or after a menu key ^J, ^K, ^O, ^P, ^Q I will ignore the
 // case of simple letters. So eg ^KX and ^Kx will be treated the same way,
@@ -977,7 +1164,7 @@ int main(int argc, char* argv[])
 
 // Insert a character before the cursor.
 
-void R4::insert_char(uint32_t c)
+void R4::insert_char(std::uint32_t c)
 {   buffer[cy].insert(cx, 1, c);
     display("After inserting char: ", buffer[cy]);
     cx++;
@@ -989,7 +1176,7 @@ void R4::insert_char(uint32_t c)
     normalise(buffer[cy], cx);
 }
 
-void R4::overwrite_char(uint32_t c)
+void R4::overwrite_char(std::uint32_t c)
 {   if (cx == buffer[cy].length())
     {   insert_char(c);
         return;
@@ -1001,14 +1188,14 @@ void R4::overwrite_char(uint32_t c)
     cx++;
 }
 
-void R4::cmd_insert_char(uint32_t c)
+void R4::cmd_insert_char(std::uint32_t c)
 {   cmd_line.insert(cmd_cx, 1, c);
     cmd_cx++;
 // If I just inserted a combining mark I need to tidy up
     normalise(cmd_line, cmd_cx);
 }
 
-void R4::cmd_overwrite_char(uint32_t c)
+void R4::cmd_overwrite_char(std::uint32_t c)
 {   if (cx == cmd_line.length())
     {   cmd_insert_char(c);
         return;
@@ -1028,7 +1215,7 @@ void R4::hideMenu()
 
 void R4::j_menu()
 {   timeout(1000);
-    uint32_t c = mygetch();
+    std::uint32_t c = mygetch();
     timeout(-1);
     if (c != ERR)
     {   processKeypress(c | TAG_J, false);
@@ -1057,7 +1244,7 @@ void R4::j_menu()
 
 void R4::k_menu()
 {   timeout(1000);
-    uint32_t c = mygetch();
+    std::uint32_t c = mygetch();
     timeout(-1);
     if (c != ERR)
     {   processKeypress(c | TAG_K, false);
@@ -1087,7 +1274,7 @@ void R4::k_menu()
 
 void R4::p_menu()
 {   timeout(1000);
-    uint32_t c = mygetch();
+    std::uint32_t c = mygetch();
     timeout(-1);
 // Note tha the insert_char(c) here inserts the character regardless
 // of whether it is a control one or otherwise "odd". So in particular
@@ -1139,7 +1326,7 @@ void R4::p_menu()
 
 void R4::o_menu()
 {   timeout(1000);
-    uint32_t c = mygetch();
+    std::uint32_t c = mygetch();
     timeout(-1);
     if (c != ERR)
     {   processKeypress(c | TAG_O, false);
@@ -1169,7 +1356,7 @@ void R4::o_menu()
 
 void R4::q_menu()
 {   timeout(1000);
-    uint32_t c = mygetch();
+    std::uint32_t c = mygetch();
     timeout(-1);
     if (c != ERR)
     {   processKeypress(c | TAG_Q, false);
@@ -1956,7 +2143,7 @@ void R4::goto_line()
     display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
     cmd_active = true;
     renderScreen();
-    uint32_t ch;
+    std::uint32_t ch;
     size_t lineno = 0;
 #pragma message "goto_line needs to be done better"
 // I should read the whold inpout and then turn it into a number.
@@ -2033,7 +2220,7 @@ void R4::find()
     display("cmd_line=", cmd_line, " cmd_cx=", cmd_cx);
     cmd_active = true;
     renderScreen();
-    uint32_t ch;
+    std::uint32_t ch;
     for (;;)
     {   ch = mygetch();
         if (cmd_process(ch)) break;

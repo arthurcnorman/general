@@ -136,7 +136,7 @@
      {0x03c3,          "s "},   // s :  sigma
      {0x03c4,          "t "},   // t :  tau
      {0x03b6,          "z "},   // z :  zeta
-         
+         "
      {0x03c8,          "c "},   // c :  psi
      {0x03b7,          "h "},   // h :  eta
      {0x03be,          "j "},   // j :  xi
@@ -159,7 +159,7 @@
      {C(0x0305),       "^_"},  // combining overline
      {C(0x0306),       "^u"},  // combining breve
      {C(0x0307),       "."},   // combining dot above
-     {C(0x0308),       ":"},   // combining diaerisis
+     {C(0x0308),       "\""},  // combining diaerisis
      {C(0x0309),       "?"},   // combining hook above
      {C(0x030a),       "o"},   // combining ring above
      {C(0x030b),       "''"},  // combining double acute accent
@@ -307,7 +307,7 @@
     {0x175,     "w^"},   // w^: w circumflex
     {0x176,     "Y^"},   // Y^: Y circumflex
     {0x177,     "y^"},   // y^: y circumflex
-    {0x178,     "Y:"},   // Y:: Y diaeresis
+    {0x178,     "Y\""},  // Y:: Y diaeresis
     {0x179,     "Z'"},   // Z': Z acute
     {0x17a,     "z'"},   // z': z acute
     {0x17b,     "Z."},   // Z.: Z dot

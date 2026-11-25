@@ -71,7 +71,7 @@ bool preprocessor_concatenate1(warfningbool_, __COUNTER__) = \
 
 
 // This provides something that behaves rather like
-// unordered_map<const char*, uint32_t> but has the special feature
+// unordered_map<const char*, std::uint32_t> but has the special feature
 // that I can initialise it as a constexpr and have a static map
 // of this form with everything set up statically as part of my
 // executable. Furthermore checking if a C-style string is present
@@ -79,7 +79,7 @@ bool preprocessor_concatenate1(warfningbool_, __COUNTER__) = \
 // string comparisons even in the worst case, and table occupancy is
 // excellent so there is not too much wasted space.
 
-// I will also want a multimap from uint32_t back to a list or any or
+// I will also want a multimap from std::uint32_t back to a list or any or
 // all strings that would return the given integer when fed into
 // this table. I.e. I really want this to be a map from strings to
 // integers and a multimap forming an inverse of that. So that sort
@@ -87,7 +87,7 @@ bool preprocessor_concatenate1(warfningbool_, __COUNTER__) = \
 // data I set up.
 //
 // When I map from a name to a codepoint the codepoint will use the low
-// 21 bits of the uint32_t result I hand back. That is because the largest
+// 21 bits of the std::uint32_t result I hand back. That is because the largest
 // valid codepoint is 0x0010ffff. There are two extra bits of information
 // I pack into the higher bits.
 // If the character concerned is a combining one (or a variant selector)
@@ -100,6 +100,7 @@ bool preprocessor_concatenate1(warfningbool_, __COUNTER__) = \
 // few distinct marks are used there, So I record thise cases with the
 // base character in the low 21 bits and one of the following in some
 // higher bits:
+#define html_bits           0x0f000000
 #define macron_below        0x01000000  // U+0331
 #define double_low_line     0x02000000  // U+0333
 #define long_solidus        0x03000000  // U+0338
@@ -107,7 +108,7 @@ bool preprocessor_concatenate1(warfningbool_, __COUNTER__) = \
 #define reverse_solidus     0x05000000  // U+20e5
 #define variation           0x06000000  // U+fe00
 
-template<size_t N>
+template<size_t N, size_t HTML_N=91>
 class CuckooMap
 {
 public:
@@ -139,9 +140,16 @@ public:
 // Any input string that hashed to h0, h1 and h2 (3 notionally independent
 // hash values) will be places at key[0][h0], key[1][h1] or key[2][h2].
     const char* key[3][M] = {nullptr};
-    uint32_t    val[3][M] = {-1U};
+    std::uint32_t    val[3][M] = {-1U};
 
-// I then have a similary structured cuckoo hash table from uint32 keys
+// A few dozen HTML entities will turn into "complex" Unicode and I need to
+// list them separately.
+    size_t      html_N = HTML_N; 
+    size_t      html_count = 0;
+    const char* html_names[HTML_N] = {nullptr};
+    std::uint16_t    html_codes[HTML_N][2] = {{0,0}};
+
+// I then have a similary structured cuckoo hash table from std::uint32 keys
 // to unt32_t values. and also a simple table of strings.
 // The integer values returned by hashing are treated as having 20 low bits
 // that are an index into the tables of names (I will not have
@@ -152,12 +160,12 @@ public:
 // in the result short words come first and when words are the same length
 // they should be lexically ordered, so duplicated will be adjacent.
 
-    uint32_t    intkey[3][M] = {-1U};
-    uint32_t    intval[3][M] = {0};
+    std::uint32_t    intkey[3][M] = {-1U};
+    std::uint32_t    intval[3][M] = {0};
     const char* names[3*M]   = {nullptr};
     const char* alphanames[3*M] = {nullptr};
     static constexpr int nlengths = 30;
-    uint32_t    namelenp[nlengths] = {0};
+    std::uint32_t    namelenp[nlengths] = {0};
 
     std::uint64_t hash_multiplier = 0x9e3779b97f4a7c13;
     bool OK1 = true, OK2 = true;
@@ -185,12 +193,49 @@ public:
         }
         for (size_t i=0; i<3*M; i++)
             names[i] = alphanames[i] = nullptr;
+        for (size_t i=0; i<HTML_N; i++)
+        {   html_names[i] = nullptr;
+            html_codes[i][0] = html_codes[i][1] = 0;
+        }
 // Then insert all the data from the initializer_list.
         for (auto s : ss)
         {   if (OK1)
-            {   insert(s.second, s.first);
-                names[count_of_stored] = s.second;
-                alphanames[count_of_stored++] = s.second;
+            {   std::uint32_t code = s.first;
+                if ((code & html_bits) != 0) // A special HTML entity!
+                {   html_names[html_count] = s.second;
+                    html_codes[html_count][0] = code & 0xffff;
+// Here I decode from the packed form in my initialiser list to the pair of
+// 16-bit characters that these particular entities use to be rendered.
+                    switch (code & html_bits)
+                    {
+                    default:
+                    case macron_below:
+                        html_codes[html_count][1] = 0x331;
+                        break;
+                    case double_low_line:
+                        html_codes[html_count][1] = 0x333;
+                        break;
+                    case long_solidus:
+                        html_codes[html_count][1] = 0x338;
+                        break;
+                    case long_vertical_bar:
+                        html_codes[html_count][1] = 0x20d2;
+                        break;
+                    case reverse_solidus:
+                        html_codes[html_count][1] = 0x20e5;
+                        break;
+                    case variation:
+                        html_codes[html_count][1] = 0xfe00;
+                        break;
+                    }
+                    html_count++;
+                    if (html_count >= HTML_N) html_count = HTML_N-1;
+                }
+                else
+                {   insert(s.second, code);
+                    names[count_of_stored] = s.second;
+                    alphanames[count_of_stored++] = s.second;
+                }
             }
         }
 // It could be that with bad luck and the particular hash function in
@@ -215,7 +260,7 @@ public:
 // a block of k names starts at position p in the table and all those
 // correspond to codepoint c. I will insert a record in the intkey/intval
 // table that maps c onto a tuple {k, p}. Well I will pack this tuple in
-// a single uint32_t using 11 bits for k and 20 for p. That allows for up to
+// a single std::uint32_t using 11 bits for k and 20 for p. That allows for up to
 // about a million names (way more that I have) and 2048 aliases (again
 // extremely generous). The top bit tags whether the code is a combining
 // mark.
@@ -229,7 +274,7 @@ public:
 // indicate that the name was one of the HTML emity names calling for
 // use of combining characters. And the top bit will be set if the
 // code is itself combining. Assemble the value I want to record.
-            uint32_t v = (c & 0x80000000) | (k<<20) | p;
+            std::uint32_t v = (c & 0x80000000) | (k<<20) | p;
             insert(c & 0x7fffffff, v);
 // Note that with this I can check is a codepoint is combining by just
 // doing a lookup in this table and inspecting the yop bit.
@@ -272,8 +317,8 @@ public:
     }
 
     constexpr bool ordering(const char* a, const char* b)
-    {   uint32_t va = lookup(a);
-        uint32_t vb = lookup(b);
+    {   std::uint32_t va = lookup(a);
+        std::uint32_t vb = lookup(b);
         if (va != vb) return va < vb;
         va = len(a);
         vb = len(b);
@@ -285,7 +330,7 @@ public:
     }
 
     constexpr bool alphaordering(const char* a, const char* b)
-    {   uint32_t va = len(a), vb = len(b);
+    {   std::uint32_t va = len(a), vb = len(b);
         if (va != vb) return va < vb;
         while ((va=*a++) == (vb=*b++))
         {   if (va == 0) return true;
@@ -302,18 +347,18 @@ public:
         return *b == 0;
     }
 
-    constexpr uint64_t hash1(const char* s) const
-    {   uint64_t r = 1;
+    constexpr std::uint64_t hash1(const char* s) const
+    {   std::uint64_t r = 1;
         while (*s != 0)
         {   r = 257*r + *s++;
         }
         return r;
     }        
 
-    constexpr void insert(const char* k, uint32_t v)
+    constexpr void insert(const char* k, std::uint32_t v)
     {   size_t probes = 0;
         for (size_t i=0;;i=(i+1)%3)
-        {   uint64_t hv = hash1(k);
+        {   std::uint64_t hv = hash1(k);
 // I start with a 64-bit hash value (which is computed rather simply) then
 // derive three smaller values from it. It would be good if they were all
 // independent uniformly distributed. Or close enough to that to work
@@ -348,8 +393,8 @@ public:
 
 // lookup will return -1U if the string is not present, and as can be
 // seen does at most 3 probes.
-    constexpr uint32_t lookup(const char* k) const
-    {   uint64_t hv = hash1(k);
+    constexpr std::uint32_t lookup(const char* k) const
+    {   std::uint64_t hv = hash1(k);
         size_t h1 = hv % M;
         if (key[0][h1] != nullptr &&
             strequal(key[0][h1], k)) return val[0][h1];
@@ -364,10 +409,10 @@ public:
 
 // Almost exactly the same process is now here for use with integer
 // rather than string keys.
-    constexpr void insert(uint32_t k, uint32_t v)
+    constexpr void insert(std::uint32_t k, std::uint32_t v)
     {   size_t probes = 0;
         for (size_t i=0;;i=(i+1)%3)
-        {   uint64_t hv = k;
+        {   std::uint64_t hv = k;
             hv = hv*hv*k;
             size_t h[3] = {  hv % M,
                              (hv/M) % M,
@@ -390,8 +435,8 @@ public:
         }
     }
 
-    constexpr uint32_t lookup(uint32_t k) const
-    {   uint64_t hv = k;
+    constexpr std::uint32_t lookup(std::uint32_t k) const
+    {   std::uint64_t hv = k;
         hv=hv*hv*k;
         size_t h1 = hv % M;
         if (intkey[0][h1] == k) return intval[0][h1];

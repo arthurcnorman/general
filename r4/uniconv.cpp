@@ -42,10 +42,10 @@
 // that form because whatever machine I am on I keep my text buffer
 // using 32-bit characters.
 
-size_t wchar_to_utf32(uint32_t* dest, wchar_t* src, size_t len)
+size_t wchar_to_utf32(std::uint32_t* dest, wchar_t* src, size_t len)
 {   size_t r = 0;
     for (size_t i=0; i<len; i++)
-    {   uint32_t c = *src++;
+    {   std::uint32_t c = *src++;
         if (c >= 0xd800 && c <= 0xdbff)
         {   c = 0x10000 +
                 ((c & 0x3ff)<<10) |
@@ -58,10 +58,10 @@ size_t wchar_to_utf32(uint32_t* dest, wchar_t* src, size_t len)
     return r;
 }
 
-size_t utf32_to_wchar(wchar_t* dest, uint32_t* src, size_t len)
+size_t utf32_to_wchar(wchar_t* dest, std::uint32_t* src, size_t len)
 {   size_t r = 0;
     for (size_t i=0; i<len; i++)
-    {   uint32_t c = *src++;
+    {   std::uint32_t c = *src++;
         if (sizeof(wchar_t)==4 && c > 0xffff && r < CCHARW_MAX-1)
         {   *dest++ = 0xd800 | ((c-0x10000)>>10);
             r++;
@@ -81,11 +81,11 @@ size_t utf32_to_wchar(wchar_t* dest, uint32_t* src, size_t len)
 void R4::normalise(string32& line, int& x)
 {   if (cx == 0) return;
 //  display("begin normalise: ", line, "x = ", x);
-    uint32_t c = line[x-1];
+    std::uint32_t c = line[x-1];
 #ifdef DEBUG
 //  fprintf(logfile(), "potential combining char = %x\n", c);
 #endif
-    uint32_t v = codepoints.lookup(c);
+    std::uint32_t v = codepoints.lookup(c);
 #ifdef DEBUG
 //  fprintf(logfile(), "lookup says = %x\n", c);
 #endif
@@ -102,10 +102,10 @@ void R4::normalise(string32& line, int& x)
         x = 1;
     }
 //  display("need to merge char into: ", line, "x = ", x);
-    uint32_t mergeWith = line[x-1];
+    std::uint32_t mergeWith = line[x-1];
     cchar_t newchar;
     std::memset(&newchar, 0, sizeof(newchar));
-    uint32_t ww[CCHARW_MAX];
+    std::uint32_t ww[CCHARW_MAX];
     memset(&ww, 0, sizeof(ww));
     size_t n;
 #ifdef DEBUG
@@ -146,10 +146,10 @@ void R4::denormalise(string32& line, int& x)
 {   if (x == 0) return;         // Do nothing if at start of line.
     int oldx = x;
     display("start denormalise", line, "x = ", x);
-    uint32_t c = line[x-1];
+    std::uint32_t c = line[x-1];
     if (c <= 0x0010ffff) return; // A simple character. 
     cchar_t w = ccharmap[c];
-    uint32_t ww[CCHARW_MAX];
+    std::uint32_t ww[CCHARW_MAX];
     memset(&ww, 0, sizeof(ww));
 // In case I am on a machine where sizeof(wchar_t)==4 I expand to
 // 32-bit characters.
@@ -157,7 +157,7 @@ void R4::denormalise(string32& line, int& x)
     int i;
     for (i=CCHARW_MAX-1; i!=0; i--)
         if (ww[i] != 0) break;  // find final character.
-    uint32_t final = ww[i];     // a combining mark.
+    std::uint32_t final = ww[i];     // a combining mark.
     if (i == 1) c = ww[0];      // Removing the only or final combiner
     else
     {   ww[i] = 0;
@@ -304,8 +304,6 @@ static int hexval(int c)
 // User shortcusts need to be kept in a dynamic unordered_map because
 // the table is set up at runtime.
 
-glyphMap user_names;  // For user-defined shortcuts.
-
 bool ishexnum(std::string s)
 {   if (s.length() != 4 && s.length() != 6) return false;
     for (auto ch : s)
@@ -319,7 +317,7 @@ bool ishexnum(std::string s)
 // basic latin block, and if so whether they denote a textual
 // representation of some Unicode character. I have some lists of
 // character names and also allow 4 or 6-gigit hex values where
-// digits beyong '9' must be given in lower case.
+// digits beyond '9' must be given in lower case, i.e. a-f not A-F.
 
 // I have lookup_user_name as a separate function because i want to
 // do a complete search there before considering other options.
@@ -330,8 +328,12 @@ std::uint32_t lookup_user_name(string32 s)
     {   if (ch >= 0x80) return -1;
         s1.push_back((char)ch);
     }
-    if (user_names.count(s1) != 0)  return user_names[s1];
-    return -1;
+    if (user_names.count(s1) != 0)
+    {   std::uint32_t ch = user_names[s1];
+        if (s1.length() == 1 && ch == s1[0]) return -1U;
+        else return ch;
+    }
+    return -1U;
 }
 
 std::uint32_t lookup_name(string32 s)
@@ -340,8 +342,10 @@ std::uint32_t lookup_name(string32 s)
     {   if (ch >= 0x80) return -1U;
         s1.push_back((char)ch);
     }
-    uint32_t val = name_to_code(s1.c_str());
-    if (val != -1U) return val;
+    std::uint32_t val = name_to_code(s1.c_str());
+    if (val != -1U)
+    {   if (s1.length() != 1 || val != s1[0]) return val;
+    }
     if (ishexnum(s1))
     {   int32_t val = std::stoi(s1, nullptr, 16);
 // I will disallow numbers that are either too large or that are in the
@@ -368,7 +372,7 @@ void vecinsert(std::vector<std::string>& v, std::string s)
 }
 
 std::vector<std::string> lookup_code(std::uint32_t c)
-{   uint32_t w = codepoints.lookup(c);
+{   std::uint32_t w = codepoints.lookup(c);
     size_t offset = w & 0xfffff;
     size_t len = (w>>20) & 0x7ff;
     std::vector<std::string> v;
@@ -423,7 +427,7 @@ bool is_low_surrogate(int c)
 }
 
 
-// The design for how ALT-x converts between names and symbols
+// The design for how ALT-x/F1 converts between names and symbols
 // and numeric codes.
 //
 // When you press ALT-x it may modify characters before the cursor. If
@@ -461,7 +465,7 @@ bool is_low_surrogate(int c)
 // left stripped of that mark), and at the end of any transformation a
 // trailing combining mark is merged into the preceeding stmbol.
 
-std::string hexify(uint32_t n)
+std::string hexify(std::uint32_t n)
 {   if (n <= 0xffff) return std::format("{:04x}", n);
     else return std::format("{:06x}", n);
 }
@@ -477,7 +481,7 @@ void R4::convert(string32& line, int& x)
     {   beep();         // An empty line will not match anything.
         return;
     }
-    uint32_t ch = line[x-1];
+    std::uint32_t ch = line[x-1];
     if (ch >= 0x7e)
     {   converted_names = lookup_code(ch);
         std::string replacement;
@@ -507,7 +511,7 @@ void R4::convert(string32& line, int& x)
     const int longest_name = 90;
     int i = x - longest_name;
     if (i < 0) i = 0;   // only go back as far as the start of the line.
-    uint32_t c;
+    std::uint32_t c;
 // I start by checking if a user custom name matches at any length. If
 // it does that will be my first choice. I will not want to allow for
 // matches of length 1 -- even though the Adobe list includes all
@@ -563,7 +567,7 @@ void R4::continueName(string32& line, int& x)
 // Word_text was the match I had found, so lost its first char so I can
 // look for another.
     word_text.erase(0, 1);
-    uint32_t c = -1;
+    std::uint32_t c = -1;
     std::string replacement;
     if (userNames)
     {   while (word_text.length() > 1)
@@ -643,6 +647,18 @@ void R4::unicodeConvert()
 
 void R4::cmd_unicodeConvert()
 {   convert(cmd_line, cmd_cx);
+}
+
+void R4::function_key()
+{   int fnum = command_character - KEY_F(1) + 1;
+    std::uint32_t ch = function_key_action[fnum];
+    if (ch == -1U)
+    {   beep();
+        return;
+    }
+    fprintf(logfile(), "use character %x\n", (int)ch);
+// I need to think about the consequences of several function key presses
+// in a row...
 }
 
 // end of uniconv.cpp
